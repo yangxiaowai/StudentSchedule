@@ -1,11 +1,16 @@
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/config/SwaggerConfig.java
+/Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/dto/LoginResponse.java
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/mapper/UserMapper.java
+/Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/dto/LoginRequest.java
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/controller/HomeController.java
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/service/UserService.java
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/service/impl/UserDetailsServiceImpl.java
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/controller/UserController.java
+/Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/dto/RegisterRequest.java
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/config/WebConfig.java
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/common/Result.java
+/Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/utils/JwtUtil.java
+/Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/config/JwtAuthenticationFilter.java
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/config/MyBatisConfig.java
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/entity/User.java
 /Users/yangjun/Downloads/StudentSchedule-main/src/main/java/com/example/learning/learning_habit_plan_backend/LearningHabitPlanBackendApplication.java

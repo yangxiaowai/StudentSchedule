@@ -1,6 +1,13 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import './style.css'
+import { userStore } from './store/user.js'
 
-createApp(App).use(router).mount('#app')
+const app = createApp(App)
+
+app.use(router)
+
+// 初始化用户状态
+userStore.init()
+
+app.mount('#app')
