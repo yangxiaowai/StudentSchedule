@@ -660,7 +660,7 @@ const handleAiSearch = async () => {
 }
 
 .material-actions button {
-  background: none;
+  background-color:#4a6cf7;
   border: none;
   width: 30px;
   height: 30px;
@@ -668,13 +668,21 @@ const handleAiSearch = async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #666;
+  color: white;
   border-radius: 4px;
+  transition: all 0.2s;
 }
 
 .material-actions button:hover {
-  background-color: #f5f5f5;
-  color: #4a6cf7;
+  background-color: #3a5ce4;
+  color: white;
+}
+.material-actions button:nth-child(2) {
+  background-color: #ff4d4f;
+}
+
+.material-actions button:nth-child(2):hover {
+  background-color: #e43f40;
 }
 
 .empty-library {
