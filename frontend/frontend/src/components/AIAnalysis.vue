@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { Chart, registerables } from 'chart.js'
+import * as chartjs from 'chart.js/auto' // 自动注册所有组件
 import { Chart as VueChart } from 'vue-chartjs'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
