@@ -79,6 +79,10 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/static/**").permitAll()
                 .requestMatchers("/error").permitAll()
+                // 允许访问上传文件的路径
+                .requestMatchers("/uploads/**").permitAll()
+                // 允许访问任务相关的API
+                .requestMatchers("/api/tasks/**").authenticated()
                 // 需要认证的端点
                 .anyRequest().authenticated()
             )
