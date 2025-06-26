@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class LoginResponse {
     private String accessToken;
@@ -13,6 +12,13 @@ public class LoginResponse {
     private String tokenType = "Bearer";
     private Long expiresIn; // 过期时间（秒）
     private UserInfo userInfo;
+    
+    public LoginResponse(String accessToken, String refreshToken, Long expiresIn, UserInfo userInfo) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.expiresIn = expiresIn;
+        this.userInfo = userInfo;
+    }
     
     @Data
     @AllArgsConstructor
@@ -45,12 +51,5 @@ public class LoginResponse {
         public void setEmail(String email) {
             this.email = email;
         }
-    }
-    
-    public LoginResponse(String accessToken, String refreshToken, Long expiresIn, UserInfo userInfo) {
-        this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
-        this.expiresIn = expiresIn;
-        this.userInfo = userInfo;
     }
 }

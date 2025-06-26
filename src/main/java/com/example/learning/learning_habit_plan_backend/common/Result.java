@@ -1,13 +1,16 @@
 package com.example.learning.learning_habit_plan_backend.common;
 
 //import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 //@AllArgsConstructor
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Result<T> {
+    private static final int SUCCESS_CODE = 200;
     private int code;
     private String message;
     private T data;
@@ -20,7 +23,7 @@ public class Result<T> {
     }
 
     public static <T> Result<T> success(T data) {
-        return new Result<>(200, "成功", data);
+        return new Result<>(SUCCESS_CODE, "操作成功", data);
     }
 
     public static <T> Result<T> success() {
