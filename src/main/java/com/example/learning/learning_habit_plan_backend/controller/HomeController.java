@@ -8,7 +8,7 @@ public class HomeController {
 
     @GetMapping("/")
     public String home() {
-        return "forward:/index1.html";
+        return "forward:/index.html";
     }
 
     @GetMapping("/home")
