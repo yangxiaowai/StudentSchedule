@@ -192,19 +192,29 @@
           placeholder="输入学习主题，AI将推荐相关学习网站..."
           @keyup.enter="handleAiSearch"
       />
-      <button @click="handleAiSearch">
+      <button @click="handleAiSearch" :disabled="aiLoading">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
           <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
         </svg>
-        AI推荐
+        {{ aiLoading ? '搜索中...' : 'AI推荐' }}
       </button>
     </div>
 
-    <div v-if="aiResults.length > 0" class="ai-results">
+    <div v-if="aiLoading" class="ai-loading">
+      <div class="loading-spinner"></div>
+      <p>AI正在搜索最佳学习资源...</p>
+    </div>
+
+    <div v-else-if="aiError" class="ai-error">
+      <p>{{ aiError }}</p>
+      <button @click="handleAiSearch" class="retry-button">重试</button>
+    </div>
+
+    <div v-else-if="aiResults.length > 0" class="ai-results">
       <h3>AI推荐的学习资源：</h3>
       <ul>
         <li v-for="(result, index) in aiResults" :key="index">
-          <a :href="result.url" target="_blank">{{ result.title }}</a>
+          <a :href="result.url" target="_blank" rel="noopener noreferrer">{{ result.title }}</a>
           <p>{{ result.description }}</p>
         </li>
       </ul>
@@ -426,32 +436,59 @@ const getSubjectIcon = (subject) => {
   }
   return iconMap[subject] || '文'
 }
+
 // AI搜索相关状态
 const aiSearchQuery = ref('')
 const aiResults = ref([])
+const aiLoading = ref(false)
+const aiError = ref(null)
 
 // AI搜索方法
 const handleAiSearch = async () => {
-  if (!aiSearchQuery.value.trim()) return
+  console.log('开始执行handleAiSearch')
 
-  // 模拟AI搜索结果
-  aiResults.value = [
-    {
-      title: `${aiSearchQuery.value} - 学习指南`,
-      description: `关于${aiSearchQuery.value}的全面学习资源`,
-      url: 'https://example.com/study-guide'
-    },
-    {
-      title: `${aiSearchQuery.value} - 视频教程`,
-      description: `专业讲解${aiSearchQuery.value}的视频课程`,
-      url: 'https://example.com/video-course'
+  // 修复这里 - 添加大括号确保逻辑正确
+  if (!aiSearchQuery.value || !aiSearchQuery.value.trim()) {
+    console.log('搜索内容为空，直接返回')
+    return
+  }
+
+  // 取消之前的请求
+  if (window.aiSearchController) {
+    window.aiSearchController.abort()
+  }
+  window.aiSearchController = new AbortController()
+
+  console.log('准备发起请求，搜索内容:', aiSearchQuery.value)
+  aiLoading.value = true
+  aiError.value = null
+  aiResults.value = []
+
+  try {
+    const response = await fetch(`/api/ai-search?query=${encodeURIComponent(aiSearchQuery.value)}`, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    console.log('响应状态:', response.status)
+    if (!response.ok) {
+      throw new Error(`HTTP错误! 状态: ${response.status}`);
     }
-  ]
-
-  // 实际项目中这里应该调用API
-  // const response = await fetch(`/api/ai-search?query=${encodeURIComponent(aiSearchQuery.value)}`)
-  // aiResults.value = await response.json()
+    const data = await response.json();
+    console.log('响应数据:', data);
+    aiResults.value = data;
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('请求详细错误:', error);
+      aiError.value = `请求失败: ${error.message}`;
+    }
+  } finally {
+    aiLoading.value = false;
+    window.aiSearchController = null;
+  }
 }
+
+
 
 </script>
 <style scoped>
@@ -877,6 +914,46 @@ const handleAiSearch = async () => {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.ai-search-box button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.ai-loading, .ai-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #4a6cf7;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.ai-error {
+  color: #ff4d4f;
+}
+
+.retry-button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background-color: #f5f5f5;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 .ai-results {
