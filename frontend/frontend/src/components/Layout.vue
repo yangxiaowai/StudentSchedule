@@ -4,7 +4,7 @@
       <div class="nav-links">
         <router-link to="task-manager" class="nav-link">学习任务管理</router-link>
         <router-link to="history" class="nav-link">历史学习记录</router-link>
-        <router-link to="data-integration" class="nav-link">数据整合</router-link>
+        <router-link to="data-integration" class="nav-link">资料检索库</router-link>
         <router-link to="plan-manager" class="nav-link">学习计划管理</router-link>
         <router-link to="ai-analysis" class="nav-link">AI分析</router-link>
       </div>
