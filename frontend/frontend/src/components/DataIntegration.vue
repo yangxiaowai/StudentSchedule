@@ -354,18 +354,6 @@ const openMaterial = (material) => {
   // 实际项目中这里会打开资料详情或预览
 }
 
-const downloadMaterial = (material) => {
-  console.log('下载资料:', material.name)
-  // 实际项目中这里会触发下载
-}
-
-const deleteMaterial = (material) => {
-  console.log('删除资料:', material.name)
-  if (confirm(`确定要删除 "${material.name}" 吗？`)) {
-    materials.value = materials.value.filter(m => m.id !== material.id)
-  }
-}
-
 const triggerFileInput = () => {
   document.getElementById('fileInput').click()
 }
@@ -390,23 +378,115 @@ const cancelUpload = () => {
   showUploadModal.value = false
 }
 
-const confirmUpload = () => {
-  // 模拟上传过程
-  selectedFiles.value.forEach(file => {
-    const newMaterial = {
-      id: materials.value.length + 1,
-      name: file.name,
-      subject: uploadSubject.value,
-      type: uploadType.value,
-      uploadTime: new Date().toISOString(),
-      size: file.size,
-      url: '#'
-    }
-    materials.value.unshift(newMaterial)
-  })
+const uploadFile = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
 
-  cancelUpload()
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+    // 添加进度监控
+    onUploadProgress: (progressEvent) => {
+      const percent = Math.round(
+          (progressEvent.loaded / progressEvent.total) * 100
+      );
+      console.log(`上传进度: ${percent}%`);
+    }
+  });
+  // ...处理响应
+};
+
+
+// 替换原有的 confirmUpload 方法
+const confirmUpload = async () => {
+  if (!canUpload.value) return
+
+  try {
+    const formData = new FormData()
+    selectedFiles.value.forEach(file => {
+      formData.append('file', file)
+      formData.append('subject', uploadSubject.value)
+      formData.append('type', uploadType.value)
+
+      // 为每个文件单独发送请求
+      fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData
+      }).then(response => {
+        if (!response.ok) throw new Error('上传失败')
+        return response.json()
+      }).then(data => {
+        console.log('上传成功:', data)
+        // 添加到文件列表
+        materials.value.unshift({
+          id: materials.value.length + 1,
+          name: data.fileName,
+          subject: data.subject,
+          type: data.fileType,
+          uploadTime: new Date().toISOString(),
+          size: data.size,
+          url: data.fileDownloadUri
+        })
+      }).catch(error => {
+        console.error('上传错误:', error)
+        alert(`文件 ${file.name} 上传失败: ${error.message}`)
+      })
+    })
+
+    cancelUpload()
+  } catch (error) {
+    console.error('上传错误:', error)
+    alert('上传失败: ' + error.message)
+  }
 }
+
+// 替换原有的 downloadMaterial 方法
+const downloadMaterial = async (material) => {
+  try {
+    window.open(material.url, '_blank')
+  } catch (error) {
+    console.error('下载错误:', error)
+    alert('下载失败: ' + error.message)
+  }
+}
+
+// 替换原有的 deleteMaterial 方法
+const deleteMaterial = async (material) => {
+  if (!confirm(`确定要删除 "${material.name}" 吗？`)) return
+
+  try {
+    const response = await fetch(`/api/files/delete/${encodeURIComponent(material.name)}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) throw new Error('删除失败')
+
+    // 从列表中移除
+    materials.value = materials.value.filter(m => m.name !== material.name)
+  } catch (error) {
+    console.error('删除错误:', error)
+    alert('删除失败: ' + error.message)
+  }
+}
+
+// 修改 onMounted 加载文件列表
+onMounted(() => {
+  fetch('/api/files/list')
+      .then(response => response.json())
+      .then(data => {
+        materials.value = data.map(file => ({
+          id: materials.value.length + 1,
+          name: file.fileName,
+          subject: file.subject || '其他',
+          type: file.fileType || '文件',
+          uploadTime: new Date().toISOString(),
+          size: file.size,
+          url: file.fileDownloadUri
+        }))
+      })
+      .catch(error => console.error('加载文件错误:', error))
+})
+
 
 const formatDate = (dateString) => {
   const date = new Date(dateString)
@@ -422,6 +502,22 @@ const formatFileSize = (bytes) => {
 }
 
 const getSubjectIcon = (subject) => {
+  // 将学科值转换为中文
+  const subjectMap = {
+    'chinese': '语文',
+    'math': '数学',
+    'english': '英语',
+    'physics': '物理',
+    'chemistry': '化学',
+    'biology': '生物',
+    'politics': '政治',
+    'history': '历史',
+    'geography': '地理'
+  };
+
+  // 获取中文名称
+  const chineseName = subjectMap[subject] || subject;
+
   const iconMap = {
     '语文': '语',
     '数学': '数',
@@ -431,11 +527,12 @@ const getSubjectIcon = (subject) => {
     '生物': '生',
     '政治': '政',
     '历史': '史',
-    '地理': '地',
-    '其他': '他'
-  }
-  return iconMap[subject] || '文'
+    '地理': '地'
+  };
+
+  return iconMap[chineseName] || '文';
 }
+
 
 // AI搜索相关状态
 const aiSearchQuery = ref('')
@@ -653,36 +750,33 @@ const handleAiSearch = async () => {
   color: #666;
 }
 
-.material-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
 .material-actions button {
-  background-color:#4a6cf7;
-  border: none;
-  width: 30px;
-  height: 30px;
+  width: auto;
+  padding: 6px 12px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: white;
-  border-radius: 4px;
-  transition: all 0.2s;
+  gap: 5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.material-actions button:hover {
-  background-color: #3a5ce4;
-  color: white;
+.material-actions button:first-child {
+  background: linear-gradient(135deg, #4a6cf7, #6b8cff);
 }
+
+.material-actions button:first-child:hover {
+  background: linear-gradient(135deg, #3a5ce4, #5b7cff);
+  transform: translateY(-2px);
+}
+
 .material-actions button:nth-child(2) {
-  background-color: #ff4d4f;
+  background: linear-gradient(135deg, #ff6b6b, #ff8787);
 }
 
 .material-actions button:nth-child(2):hover {
-  background-color: #e43f40;
+  background: linear-gradient(135deg, #ff5252, #ff6b6b);
+  transform: translateY(-2px);
 }
 
 .empty-library {
