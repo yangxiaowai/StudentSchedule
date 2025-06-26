@@ -179,3 +179,45 @@ export const getStoredUserInfo = () => {
   const userInfo = localStorage.getItem('userInfo')
   return userInfo ? JSON.parse(userInfo) : null
 }
+
+// 发送邮箱验证码
+export const sendVerificationCode = async (email) => {
+  const result = await request(`${API_BASE_URL}/send-verification-code`, {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  })
+  
+  return {
+    success: result.code === 200,
+    message: result.message,
+    data: result.data
+  }
+}
+
+// 验证邮箱验证码
+export const verifyCode = async (email, code) => {
+  const result = await request(`${API_BASE_URL}/verify-code`, {
+    method: 'POST',
+    body: JSON.stringify({ email, code })
+  })
+  
+  return {
+    success: result.code === 200,
+    message: result.message,
+    data: result.data
+  }
+}
+
+// 基于验证码重置密码
+export const resetPasswordByCode = async (email, code, newPassword) => {
+  const result = await request(`${API_BASE_URL}/reset-password-by-code`, {
+    method: 'POST',
+    body: JSON.stringify({ email, code, newPassword })
+  })
+  
+  return {
+    success: result.code === 200,
+    message: result.message,
+    data: result.data
+  }
+}

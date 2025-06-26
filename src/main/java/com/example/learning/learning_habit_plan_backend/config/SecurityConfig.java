@@ -74,6 +74,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/user/register", "/api/user/login").permitAll()
                 .requestMatchers("/api/user/refresh", "/api/user/forgot-password").permitAll()
                 .requestMatchers("/api/user/reset-password", "/api/user/validate-reset-token").permitAll()
+                .requestMatchers("/api/user/send-verification-code", "/api/user/verify-code").permitAll()
+                .requestMatchers("/api/user/reset-password-by-code").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/static/**").permitAll()
                 .requestMatchers("/error").permitAll()
