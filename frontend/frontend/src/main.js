@@ -3,6 +3,9 @@ import App from './App.vue'
 import router from './router'
 import { userStore } from './store/user.js'
 
+// 引入Font Awesome
+import '@fortawesome/fontawesome-free/css/all.css'
+
 const app = createApp(App)
 
 app.use(router)
