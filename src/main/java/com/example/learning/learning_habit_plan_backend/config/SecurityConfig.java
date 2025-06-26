@@ -74,9 +74,15 @@ public class SecurityConfig {
                 .requestMatchers("/api/user/register", "/api/user/login").permitAll()
                 .requestMatchers("/api/user/refresh", "/api/user/forgot-password").permitAll()
                 .requestMatchers("/api/user/reset-password", "/api/user/validate-reset-token").permitAll()
+                .requestMatchers("/api/user/send-verification-code", "/api/user/verify-code").permitAll()
+                .requestMatchers("/api/user/reset-password-by-code").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/static/**").permitAll()
                 .requestMatchers("/error").permitAll()
+                // 允许访问上传文件的路径
+                .requestMatchers("/uploads/**").permitAll()
+                // 允许访问任务相关的API
+                .requestMatchers("/api/tasks/**").authenticated()
                     .requestMatchers("/api/ai-search").permitAll()
                 // 需要认证的端点
                 .anyRequest().authenticated()

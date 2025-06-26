@@ -5,6 +5,7 @@ import com.example.learning.learning_habit_plan_backend.dto.LoginResponse;
 import com.example.learning.learning_habit_plan_backend.dto.RegisterRequest;
 import com.example.learning.learning_habit_plan_backend.entity.User;
 import com.example.learning.learning_habit_plan_backend.mapper.UserMapper;
+import com.example.learning.learning_habit_plan_backend.service.EmailService;
 import com.example.learning.learning_habit_plan_backend.service.UserService;
 import com.example.learning.learning_habit_plan_backend.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -28,6 +30,9 @@ public class UserServiceImpl implements UserService {
     
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
+    
+    @Autowired
+    private EmailService emailService;
 
     @Override
     public LoginResponse login(LoginRequest loginRequest) {
@@ -148,9 +153,8 @@ public class UserServiceImpl implements UserService {
         String resetTokenKey = "password_reset:" + user.getId();
         redisTemplate.opsForValue().set(resetTokenKey, resetToken, 30, TimeUnit.MINUTES);
         
-        // TODO: 发送邮件（这里可以集成邮件服务）
-        System.out.println("密码重置链接已发送到邮箱: " + email);
-        System.out.println("重置Token: " + resetToken);
+        // 发送密码重置邮件
+        emailService.sendPasswordResetEmail(email, resetToken);
     }
     
     @Override
@@ -192,6 +196,23 @@ public class UserServiceImpl implements UserService {
             return token.equals(storedToken) && !jwtUtil.isTokenExpired(token);
         } catch (Exception e) {
             return false;
+        }
+    }
+    
+    @Override
+    public void resetPasswordByEmail(String email, String newPassword) {
+        try {
+            User user = userMapper.selectByEmail(email);
+            if (user == null) {
+                throw new RuntimeException("用户不存在");
+            }
+            
+            // 更新密码
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userMapper.updateById(user);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("密码重置失败: " + e.getMessage());
         }
     }
 }

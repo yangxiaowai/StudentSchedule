@@ -14,6 +14,21 @@ spring:
       host: localhost
       port: 6379
 
+  # 邮件配置
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: 2872050303@qq.com
+    password: hexoxjivhzrvdcjd
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+    default-encoding: UTF-8
+
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.example.learning.learning_habit_plan_backend.entity
