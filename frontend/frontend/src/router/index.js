@@ -9,6 +9,7 @@ import Login from '../pages/Login.vue'
 import Register from '../pages/Register.vue'
 import ForgotPassword from '../pages/ForgotPassword.vue'
 import ResetPassword from '../pages/ResetPassword.vue'
+import VerificationCodeDemo from '../pages/VerificationCodeDemo.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -26,6 +27,11 @@ const routes = [
     path: '/reset-password',
     name: 'ResetPassword',
     component: ResetPassword
+  },
+  {
+    path: '/verification-demo',
+    name: 'VerificationCodeDemo',
+    component: VerificationCodeDemo
   },
   {
     path: '/',

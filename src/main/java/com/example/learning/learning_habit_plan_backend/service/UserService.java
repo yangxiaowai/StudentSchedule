@@ -46,5 +46,10 @@ public interface UserService {
      * 验证密码重置Token
      */
     boolean validatePasswordResetToken(String token);
+    
+    /**
+     * 通过邮箱重置密码
+     */
+    void resetPasswordByEmail(String email, String newPassword);
 }
 
