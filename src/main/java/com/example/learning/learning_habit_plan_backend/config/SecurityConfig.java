@@ -77,6 +77,7 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/static/**").permitAll()
                 .requestMatchers("/error").permitAll()
+                    .requestMatchers("/api/ai-search").permitAll()
                 // 需要认证的端点
                 .anyRequest().authenticated()
             )
