@@ -192,19 +192,29 @@
           placeholder="输入学习主题，AI将推荐相关学习网站..."
           @keyup.enter="handleAiSearch"
       />
-      <button @click="handleAiSearch">
+      <button @click="handleAiSearch" :disabled="aiLoading">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
           <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
         </svg>
-        AI推荐
+        {{ aiLoading ? '搜索中...' : 'AI推荐' }}
       </button>
     </div>
 
-    <div v-if="aiResults.length > 0" class="ai-results">
+    <div v-if="aiLoading" class="ai-loading">
+      <div class="loading-spinner"></div>
+      <p>AI正在搜索最佳学习资源...</p>
+    </div>
+
+    <div v-else-if="aiError" class="ai-error">
+      <p>{{ aiError }}</p>
+      <button @click="handleAiSearch" class="retry-button">重试</button>
+    </div>
+
+    <div v-else-if="aiResults.length > 0" class="ai-results">
       <h3>AI推荐的学习资源：</h3>
       <ul>
         <li v-for="(result, index) in aiResults" :key="index">
-          <a :href="result.url" target="_blank">{{ result.title }}</a>
+          <a :href="result.url" target="_blank" rel="noopener noreferrer">{{ result.title }}</a>
           <p>{{ result.description }}</p>
         </li>
       </ul>
@@ -344,18 +354,6 @@ const openMaterial = (material) => {
   // 实际项目中这里会打开资料详情或预览
 }
 
-const downloadMaterial = (material) => {
-  console.log('下载资料:', material.name)
-  // 实际项目中这里会触发下载
-}
-
-const deleteMaterial = (material) => {
-  console.log('删除资料:', material.name)
-  if (confirm(`确定要删除 "${material.name}" 吗？`)) {
-    materials.value = materials.value.filter(m => m.id !== material.id)
-  }
-}
-
 const triggerFileInput = () => {
   document.getElementById('fileInput').click()
 }
@@ -380,23 +378,115 @@ const cancelUpload = () => {
   showUploadModal.value = false
 }
 
-const confirmUpload = () => {
-  // 模拟上传过程
-  selectedFiles.value.forEach(file => {
-    const newMaterial = {
-      id: materials.value.length + 1,
-      name: file.name,
-      subject: uploadSubject.value,
-      type: uploadType.value,
-      uploadTime: new Date().toISOString(),
-      size: file.size,
-      url: '#'
-    }
-    materials.value.unshift(newMaterial)
-  })
+const uploadFile = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
 
-  cancelUpload()
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+    // 添加进度监控
+    onUploadProgress: (progressEvent) => {
+      const percent = Math.round(
+          (progressEvent.loaded / progressEvent.total) * 100
+      );
+      console.log(`上传进度: ${percent}%`);
+    }
+  });
+  // ...处理响应
+};
+
+
+// 替换原有的 confirmUpload 方法
+const confirmUpload = async () => {
+  if (!canUpload.value) return
+
+  try {
+    const formData = new FormData()
+    selectedFiles.value.forEach(file => {
+      formData.append('file', file)
+      formData.append('subject', uploadSubject.value)
+      formData.append('type', uploadType.value)
+
+      // 为每个文件单独发送请求
+      fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData
+      }).then(response => {
+        if (!response.ok) throw new Error('上传失败')
+        return response.json()
+      }).then(data => {
+        console.log('上传成功:', data)
+        // 添加到文件列表
+        materials.value.unshift({
+          id: materials.value.length + 1,
+          name: data.fileName,
+          subject: data.subject,
+          type: data.fileType,
+          uploadTime: new Date().toISOString(),
+          size: data.size,
+          url: data.fileDownloadUri
+        })
+      }).catch(error => {
+        console.error('上传错误:', error)
+        alert(`文件 ${file.name} 上传失败: ${error.message}`)
+      })
+    })
+
+    cancelUpload()
+  } catch (error) {
+    console.error('上传错误:', error)
+    alert('上传失败: ' + error.message)
+  }
 }
+
+// 替换原有的 downloadMaterial 方法
+const downloadMaterial = async (material) => {
+  try {
+    window.open(material.url, '_blank')
+  } catch (error) {
+    console.error('下载错误:', error)
+    alert('下载失败: ' + error.message)
+  }
+}
+
+// 替换原有的 deleteMaterial 方法
+const deleteMaterial = async (material) => {
+  if (!confirm(`确定要删除 "${material.name}" 吗？`)) return
+
+  try {
+    const response = await fetch(`/api/files/delete/${encodeURIComponent(material.name)}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) throw new Error('删除失败')
+
+    // 从列表中移除
+    materials.value = materials.value.filter(m => m.name !== material.name)
+  } catch (error) {
+    console.error('删除错误:', error)
+    alert('删除失败: ' + error.message)
+  }
+}
+
+// 修改 onMounted 加载文件列表
+onMounted(() => {
+  fetch('/api/files/list')
+      .then(response => response.json())
+      .then(data => {
+        materials.value = data.map(file => ({
+          id: materials.value.length + 1,
+          name: file.fileName,
+          subject: file.subject || '其他',
+          type: file.fileType || '文件',
+          uploadTime: new Date().toISOString(),
+          size: file.size,
+          url: file.fileDownloadUri
+        }))
+      })
+      .catch(error => console.error('加载文件错误:', error))
+})
+
 
 const formatDate = (dateString) => {
   const date = new Date(dateString)
@@ -412,6 +502,22 @@ const formatFileSize = (bytes) => {
 }
 
 const getSubjectIcon = (subject) => {
+  // 将学科值转换为中文
+  const subjectMap = {
+    'chinese': '语文',
+    'math': '数学',
+    'english': '英语',
+    'physics': '物理',
+    'chemistry': '化学',
+    'biology': '生物',
+    'politics': '政治',
+    'history': '历史',
+    'geography': '地理'
+  };
+
+  // 获取中文名称
+  const chineseName = subjectMap[subject] || subject;
+
   const iconMap = {
     '语文': '语',
     '数学': '数',
@@ -421,37 +527,65 @@ const getSubjectIcon = (subject) => {
     '生物': '生',
     '政治': '政',
     '历史': '史',
-    '地理': '地',
-    '其他': '他'
-  }
-  return iconMap[subject] || '文'
+    '地理': '地'
+  };
+
+  return iconMap[chineseName] || '文';
 }
+
+
 // AI搜索相关状态
 const aiSearchQuery = ref('')
 const aiResults = ref([])
+const aiLoading = ref(false)
+const aiError = ref(null)
 
 // AI搜索方法
 const handleAiSearch = async () => {
-  if (!aiSearchQuery.value.trim()) return
+  console.log('开始执行handleAiSearch')
 
-  // 模拟AI搜索结果
-  aiResults.value = [
-    {
-      title: `${aiSearchQuery.value} - 学习指南`,
-      description: `关于${aiSearchQuery.value}的全面学习资源`,
-      url: 'https://example.com/study-guide'
-    },
-    {
-      title: `${aiSearchQuery.value} - 视频教程`,
-      description: `专业讲解${aiSearchQuery.value}的视频课程`,
-      url: 'https://example.com/video-course'
+  // 修复这里 - 添加大括号确保逻辑正确
+  if (!aiSearchQuery.value || !aiSearchQuery.value.trim()) {
+    console.log('搜索内容为空，直接返回')
+    return
+  }
+
+  // 取消之前的请求
+  if (window.aiSearchController) {
+    window.aiSearchController.abort()
+  }
+  window.aiSearchController = new AbortController()
+
+  console.log('准备发起请求，搜索内容:', aiSearchQuery.value)
+  aiLoading.value = true
+  aiError.value = null
+  aiResults.value = []
+
+  try {
+    const response = await fetch(`/api/ai-search?query=${encodeURIComponent(aiSearchQuery.value)}`, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    console.log('响应状态:', response.status)
+    if (!response.ok) {
+      throw new Error(`HTTP错误! 状态: ${response.status}`);
     }
-  ]
-
-  // 实际项目中这里应该调用API
-  // const response = await fetch(`/api/ai-search?query=${encodeURIComponent(aiSearchQuery.value)}`)
-  // aiResults.value = await response.json()
+    const data = await response.json();
+    console.log('响应数据:', data);
+    aiResults.value = data;
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('请求详细错误:', error);
+      aiError.value = `请求失败: ${error.message}`;
+    }
+  } finally {
+    aiLoading.value = false;
+    window.aiSearchController = null;
+  }
 }
+
+
 
 </script>
 <style scoped>
@@ -616,28 +750,33 @@ const handleAiSearch = async () => {
   color: #666;
 }
 
-.material-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
 .material-actions button {
-  background: none;
-  border: none;
-  width: 30px;
-  height: 30px;
+  width: auto;
+  padding: 6px 12px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #666;
-  border-radius: 4px;
+  gap: 5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.material-actions button:hover {
-  background-color: #f5f5f5;
-  color: #4a6cf7;
+.material-actions button:first-child {
+  background: linear-gradient(135deg, #4a6cf7, #6b8cff);
+}
+
+.material-actions button:first-child:hover {
+  background: linear-gradient(135deg, #3a5ce4, #5b7cff);
+  transform: translateY(-2px);
+}
+
+.material-actions button:nth-child(2) {
+  background: linear-gradient(135deg, #ff6b6b, #ff8787);
+}
+
+.material-actions button:nth-child(2):hover {
+  background: linear-gradient(135deg, #ff5252, #ff6b6b);
+  transform: translateY(-2px);
 }
 
 .empty-library {
@@ -877,6 +1016,46 @@ const handleAiSearch = async () => {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.ai-search-box button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.ai-loading, .ai-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #4a6cf7;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.ai-error {
+  color: #ff4d4f;
+}
+
+.retry-button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background-color: #f5f5f5;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 .ai-results {
