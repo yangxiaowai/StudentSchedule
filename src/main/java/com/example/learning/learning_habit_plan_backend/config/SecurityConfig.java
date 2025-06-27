@@ -83,8 +83,12 @@ public class SecurityConfig {
                 .requestMatchers("/uploads/**").permitAll()
                 // 允许访问任务相关的API
                 .requestMatchers("/api/tasks/**").authenticated()
+                    .requestMatchers("/api/ai-search").permitAll()
                 // 需要认证的端点
-                .anyRequest().authenticated()
+                    .requestMatchers("/api/files/**").permitAll()
+                    .requestMatchers("/uploads/**").permitAll()
+
+                    .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
