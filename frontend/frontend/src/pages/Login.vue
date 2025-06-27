@@ -18,8 +18,8 @@
             </svg>
           </div>
           <div class="stat-content">
-            <h3>156</h3>
-            <p>已完成课程</p>
+            <h3>128</h3>
+            <p>已刷题目</p>
           </div>
         </div>
         
@@ -30,8 +30,8 @@
             </svg>
           </div>
           <div class="stat-content">
-            <h3>23</h3>
-            <p>学习笔记</p>
+            <h3>45</h3>
+            <p>错题整理</p>
           </div>
         </div>
         
@@ -42,8 +42,8 @@
             </svg>
           </div>
           <div class="stat-content">
-            <h3>89%</h3>
-            <p>知识掌握度</p>
+            <h3>92%</h3>
+            <p>目标达成率</p>
           </div>
         </div>
       </div>
@@ -55,8 +55,8 @@
           </svg>
           <h4>每日格言</h4>
         </div>
-        <p>"学而时习之，不亦说乎"</p>
-        <span>- 孔子</span>
+        <p>"宝剑锋从磨砺出，梅花香自苦寒来"</p>
+        <span>- 古训</span>
       </div>
     </div>
     
@@ -81,8 +81,8 @@
             </svg>
           </div>
           <div class="logo-text">
-            <h1>学习习惯养成计划</h1>
-            <p>培养良好习惯，成就更好自己</p>
+            <h1>高考冲刺学习计划</h1>
+            <p>科学规划时间，冲刺理想大学</p>
           </div>
         </div>
       </div>
@@ -160,7 +160,7 @@
           <svg class="quote-icon" viewBox="0 0 24 24">
             <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z" fill="currentColor"/>
           </svg>
-          <p>每一次登录，都是向目标迈进的一步</p>
+          <p>每一次努力，都是向理想大学迈进的一步</p>
           <svg class="quote-icon" viewBox="0 0 24 24">
             <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z" fill="currentColor"/>
           </svg>
@@ -215,26 +215,26 @@
         
         <div class="schedule-item">
           <div class="time-slot">
-            <span class="time">09:00</span>
+            <span class="time">08:00</span>
             <div class="status-dot completed"></div>
           </div>
-          <p>JavaScript基础复习</p>
+          <p>数学函数专题复习</p>
         </div>
         
         <div class="schedule-item">
           <div class="time-slot">
-            <span class="time">10:30</span>
+            <span class="time">10:00</span>
             <div class="status-dot in-progress"></div>
           </div>
-          <p>React组件开发</p>
+          <p>英语阅读理解训练</p>
         </div>
         
         <div class="schedule-item">
           <div class="time-slot">
-            <span class="time">14:00</span>
+            <span class="time">14:30</span>
             <div class="status-dot pending"></div>
           </div>
-          <p>项目实战练习</p>
+          <p>物理力学综合练习</p>
         </div>
       </div>
       
@@ -246,13 +246,13 @@
           <h4>推荐资源</h4>
         </div>
         
-        <a href="https://book.douban.com/subject/10546125/" target="_blank" class="resource-item resource-link">
+        <a href="https://www.xueersi.com/" target="_blank" class="resource-item resource-link">
           <div class="resource-icon">
-            📖
+            📚
           </div>
           <div class="resource-content">
-            <h5>《JavaScript高级程序设计》</h5>
-            <p>经典前端开发教材</p>
+            <h5>高考数学专题突破</h5>
+            <p>函数与导数重点解析</p>
           </div>
           <div class="link-indicator">
             <svg viewBox="0 0 24 24">
@@ -261,13 +261,13 @@
           </div>
         </a>
         
-        <a href="https://cn.vuejs.org/tutorial/" target="_blank" class="resource-item resource-link">
+        <a href="https://www.koolearn.com/" target="_blank" class="resource-item resource-link">
           <div class="resource-icon">
-            🎥
+            🎯
           </div>
           <div class="resource-content">
-            <h5>Vue.js实战视频课程</h5>
-            <p>从入门到精通</p>
+            <h5>英语高频词汇速记</h5>
+            <p>3500词汇高效记忆法</p>
           </div>
           <div class="link-indicator">
             <svg viewBox="0 0 24 24">
@@ -276,13 +276,13 @@
           </div>
         </a>
         
-        <a href="https://github.com/trending" target="_blank" class="resource-item resource-link">
+        <a href="https://www.gaokao.com/" target="_blank" class="resource-item resource-link">
           <div class="resource-icon">
-            💻
+            📝
           </div>
           <div class="resource-content">
-            <h5>GitHub开源项目</h5>
-            <p>实践编程技能</p>
+            <h5>历年真题解析</h5>
+            <p>近五年高考试题精讲</p>
           </div>
           <div class="link-indicator">
             <svg viewBox="0 0 24 24">
