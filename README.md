@@ -115,6 +115,86 @@ CREATE TABLE user (
 - 唯一索引 : username , email 字段
 - 普通索引 : 为常用查询字段 username , email 创建索引以提高查询性能
 
+### Task表结构
+
+### 建表SQL
+
+```sql
+-- 创建Task表
+CREATE TABLE IF NOT EXISTS `task` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY 
+    COMMENT '主键ID',
+    `file_path` VARCHAR(500) COMMENT '文件路径',
+    `name` VARCHAR(255) COMMENT '任务名称',
+    `subject` VARCHAR(100) COMMENT '学科',
+    `content` TEXT COMMENT '任务内容',
+    `start_time` DATETIME COMMENT '开始时间',
+    `end_time` DATETIME COMMENT '截止时间',
+    `progress` INT DEFAULT 0 COMMENT '任务完成进度
+    （0-100）',
+    `completed` BOOLEAN DEFAULT FALSE COMMENT '任
+    务是否完成',
+    `content_type` VARCHAR(50) COMMENT '内容类型',
+    `remark` TEXT COMMENT '备注',
+    `file_url` VARCHAR(500) COMMENT '上传文件的访问
+    路径或URL'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 
+COLLATE=utf8mb4_unicode_ci COMMENT='任务表';
+```
+
+### 索引创建
+
+```sql
+-- 创建索引以提高查询性能
+CREATE INDEX idx_task_subject ON `task`
+(`subject`);
+CREATE INDEX idx_task_completed ON `task`
+(`completed`);
+CREATE INDEX idx_task_start_time ON `task`
+(`start_time`);
+CREATE INDEX idx_task_end_time ON `task`
+(`end_time`);
+CREATE INDEX idx_task_progress ON `task`
+(`progress`);
+```
+
+## 字段详细说明
+
+| 字段名 | 数据类型 | 约束 | 默认值 | 说明 |
+| :---: | :---: | :---: | :---: | :---: |
+| id | BIGINT | PRIMARY KEY, AUTO_INCREMENT | - | 主键ID 自增长的唯一标识符，用于唯一标识每个任务记录 |
+| file_path | VARCHAR(500) | NULL | NULL | 文件路径 存储与任务相关的本地文件路径，用于文件系统中的文件定位 |
+| name | VARCHAR(255) | NULL | NULL | 任务名称 任务的标题或名称，用于快速识别任务内容 |
+| subject | VARCHAR(100) | NULL | NULL | 学科 任务所属的学科分类，如"数学"、"英语"、"物理"等 |
+| content | TEXT | NULL | NULL | 任务内容 任务的详细描述和具体要求，支持长文本存储 |
+| start_time | DATETIME | NULL | NULL | 开始时间 任务的计划开始时间，用于时间管理和进度跟踪 |
+｜字段名 数据类型 约束 默认值 说明 id BIGINT PRIMARY KEY, AUTO_INCREMENT - 主键ID 自增长的唯一标识符，用于唯一标识每个任务记录 file_path VARCHAR(500) NULL NULL 文件路径 存储与任务相关的本地文件路径，用于文件系统中的文件定位 name VARCHAR(255) NULL NULL 任务名称 任务的标题或名称，用于快速识别任务内容 subject VARCHAR(100) NULL NULL 学科 任务所属的学科分类，如"数学"、"英语"、"物理"等 content TEXT NULL NULL 任务内容 任务的详细描述和具体要求，支持长文本存储 start_time DATETIME NULL NULL 开始时间 任务的计划开始时间，用于时间管理和进度跟踪 end_time DATETIME NULL NULL 截止时间 任务的最后完成期限，用于提醒和优先级排序 progress INT NULL 0 任务完成进度 以百分比表示的完成进度（0-100），0表示未开始，100表示已完成 completed BOOLEAN NULL FALSE 任务完成状态 布尔值标识任务是否已完成，TRUE表示已完成，FALSE表示未完成 content_type VARCHAR(50) NULL NULL 内容类型 标识任务内容的类型，如"作业"、"项目"、"考试"等 remark TEXT NULL NULL 备注 任务的额外说明、注意事项或其他相关信息 file_url VARCHAR(500) NULL NULL 文件访问URL 上传文件的网络访问地址，用于在线访问相关文件资源
+
+## 索引说明
+
+| 索引名 | 字段 | 用途 |
+| :---: | :---: | :---: |
+| idx_task_subject | subject | 提高按学科查询任务的性能 |
+| idx_task_completed | completed | 优化按完成状态筛选任务的查询 |
+| idx_task_start_time | start_time | 加速按开始时间排序和范围查询 |
+| idx_task_end_time | end_time | 提高按截止时间查询和排序的效率 |
+| idx_task_progress | progress | 优化按进度查询和统计的性能 |
+
+## 使用说明
+
+1. 字符集 : 使用 utf8mb4 字符集，支持完整的Unicode字符，包括emoji等特殊字符
+2. 存储引擎 : 使用InnoDB引擎，支持事务和外键约束
+3. 兼容性 : 适用于MySQL 8.0+版本
+4. 扩展性 : 表结构设计考虑了未来可能的功能扩展需求
+
+## 执行步骤
+
+1. 确保MySQL服务正在运行
+2. 连接到目标数据库
+3. 执行建表SQL语句
+4. 执行索引创建语句
+5. 验证表结构是否创建成功
+
 ## 数据库用户权限设置
 
 ## Redis 配置
