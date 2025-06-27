@@ -1,24 +1,39 @@
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\UserServiceImpl.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\utils\JwtUtil.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\MyBatisConfig.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\common\Result.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\WebConfig.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\LearningHabitPlanBackendApplication.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\UserDetailsServiceImpl.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\RestTemplateConfig.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\SecurityConfig.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\User.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\AIResourceResponse.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\LoginRequest.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\AISearchServiceImpl.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\AISearchService.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\common\handler\GlobalExceptionHandler.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\UserController.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\SwaggerConfig.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\AISearchController.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\mapper\UserMapper.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\HomeController.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\RegisterRequest.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\UserService.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\JwtAuthenticationFilter.java
-C:\Users\29586\IdeaProjects\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\LoginResponse.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\SecurityConfig.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\FileUploadResponse.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\AISearchServiceImpl.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\UserServiceImpl.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\LoginResponse.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\LearningHabitPlanBackendApplication.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\VerificationCodeServiceImpl.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\common\handler\GlobalExceptionHandler.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\UserService.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\SwaggerConfig.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\EmailServiceImpl.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\LoginRequest.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\UserController.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\TaskService.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\JwtAuthenticationFilter.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\VerificationCodeService.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\CorsConfig.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\WebConfig.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\RestTemplateConfig.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\mapper\UserMapper.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\utils\JwtUtil.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\FileController.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\RegisterRequest.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\User.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\repository\TaskRepository.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\UserDetailsServiceImpl.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\JacksonConfig.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\AIResourceResponse.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\AISearchController.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\MyBatisConfig.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\EmailService.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\model\ErrorResponse.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\FileStorageService.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\common\Result.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\HomeController.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\TaskController.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\Task.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\AISearchService.java
+D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\FileStorageServiceImpl.java
