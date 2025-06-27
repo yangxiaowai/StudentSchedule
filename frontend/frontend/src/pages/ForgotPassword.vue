@@ -2,11 +2,32 @@
   <div class="forgot-password-container">
     <!-- 背景装饰 -->
     <div class="background-decoration">
-      <div class="circle circle-1"></div>
-      <div class="circle circle-2"></div>
-      <div class="circle circle-3"></div>
+      <div class="floating-element element-1"></div>
+      <div class="floating-element element-2"></div>
+      <div class="floating-element element-3"></div>
+      <div class="floating-element element-4"></div>
     </div>
     
+    <!-- 左侧安全提示 -->
+    <div class="left-sidebar">
+      <div class="sidebar-section">
+        <h3>🔒 安全提示</h3>
+        <ul class="security-tips">
+          <li>我们会向您的注册邮箱发送验证码</li>
+          <li>新密码将被安全加密存储</li>
+        </ul>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>📞 需要帮助？</h3>
+        <div class="help-contact">
+          <p>如果遇到问题，请联系客服</p>
+          <p class="contact-info">📧 support@example.com</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 中央重置卡片 -->
     <div class="forgot-password-card">
       <!-- 头部区域 -->
       <div class="card-header">
@@ -231,6 +252,25 @@
         <router-link to="/register" class="link">还没有账号？立即注册</router-link>
       </div>
     </div>
+    
+    <!-- 右侧密码建议 -->
+    <div class="right-sidebar">
+      <div class="sidebar-section">
+        <h3>🔐 密码安全建议</h3>
+        <ul class="password-tips">
+          <li>密码长度至少8位字符</li>
+          <li>包含大小写字母、数字和特殊字符</li>
+        </ul>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>❓ 常见问题</h3>
+        <div class="faq-section">
+          <p><strong>收不到验证码？</strong><br>请检查垃圾邮件文件夹</p>
+          <p><strong>忘记注册邮箱？</strong><br>请联系客服协助找回</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -405,12 +445,138 @@ export default {
 .forgot-password-container {
   min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
   position: relative;
   overflow: hidden;
+  align-items: center;
+}
+
+/* 左侧边栏 */
+.left-sidebar {
+  width: 200px;
+  padding: 25px 18px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+.sidebar-section {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-section h3 {
+  color: white;
+  font-size: 16px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.security-tips {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.security-tips li {
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 8px;
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.4;
+  font-size: 14px;
+}
+
+.security-tips li:before {
+  content: '•';
+  color: #4CAF50;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+.help-contact {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.help-contact p {
+  margin: 8px 0;
+  line-height: 1.4;
+  font-size: 14px;
+}
+
+.contact-info {
+  color: #4CAF50;
+  font-weight: 500;
+}
+
+/* 中央内容区域 */
+.main-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+/* 右侧边栏 */
+.right-sidebar {
+  width: 200px;
+  padding: 25px 18px;
+  backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.password-tips {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.password-tips li {
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 8px;
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.4;
+  font-size: 14px;
+}
+
+.password-tips li:before {
+  content: '•';
+  color: #4CAF50;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+.faq-section {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.faq-section p {
+  margin: 12px 0;
+  line-height: 1.4;
+  font-size: 14px;
+}
+
+.faq-section strong {
+  color: white;
+  font-weight: 600;
 }
 
 /* 背景装饰 */
@@ -467,7 +633,8 @@ export default {
   border-radius: 24px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 480px;
+  max-width: 560px;
+  margin: 0 auto;
   position: relative;
   z-index: 1;
   overflow: hidden;
@@ -905,29 +1072,89 @@ export default {
 }
 
 /* 响应式设计 */
-@media (max-width: 640px) {
-  .forgot-password-container {
+@media (max-width: 1200px) {
+  .left-sidebar,
+  .right-sidebar {
+    width: 160px;
+    padding: 20px 15px;
+  }
+  
+  .sidebar-section {
     padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .sidebar-section h3 {
+    font-size: 14px;
+  }
+  
+  .security-tips li,
+  .password-tips li,
+  .faq-section p {
+    font-size: 13px;
+  }
+  
+  .forgot-password-card {
+    max-width: 520px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .forgot-password-container {
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 1rem;
+  }
+  
+  .left-sidebar,
+  .right-sidebar {
+    display: none;
+  }
+  
+  .main-content {
+    width: 100%;
+    padding: 2rem 1rem;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .forgot-password-card {
+    width: 100%;
+    max-width: 480px;
+  }
+}
+
+@media (max-width: 768px) {
+  .forgot-password-container {
+    padding: 1rem;
+  }
+  
+  .main-content {
+    padding: 1rem;
+    min-height: calc(100vh - 2rem);
   }
   
   .forgot-password-card {
     max-width: 100%;
+    margin: 0 auto;
   }
   
   .card-header {
-    padding: 32px 24px 16px;
+    padding: 2rem 1.5rem 1rem;
   }
   
   .card-content {
-    padding: 16px 24px 32px;
+    padding: 1rem 1.5rem 2rem;
   }
   
   .card-header h2 {
-    font-size: 28px;
+    font-size: 1.75rem;
   }
   
   .step-content h3 {
-    font-size: 20px;
+    font-size: 1.25rem;
   }
   
   .step-icon {
@@ -945,7 +1172,25 @@ export default {
   }
   
   .message {
-    margin: 16px 24px;
+    margin: 1rem 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .main-content {
+    padding: 0.5rem;
+  }
+  
+  .card-header {
+    padding: 1.5rem 1rem 0.75rem;
+  }
+  
+  .card-content {
+    padding: 0.75rem 1rem 1.5rem;
+  }
+  
+  .message {
+    margin: 0.75rem 1rem;
   }
 }
 
