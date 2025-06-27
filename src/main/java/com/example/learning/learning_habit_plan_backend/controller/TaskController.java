@@ -34,7 +34,9 @@ public ResponseEntity<?> createTask(
         @RequestParam(value = "remark", required = false) String remark,
         @RequestParam(value = "progress", required = false) Integer progress,
         @RequestParam(value = "isCompleted", required = false) Boolean isCompleted,
-        @RequestParam(value = "file", required = false) MultipartFile file
+        @RequestParam(value = "file", required = false) MultipartFile file,
+        @RequestParam(value = "fileName", required = false) String fileName,
+        @RequestParam(value = "fileUrl", required = false) String fileUrl
 ) {
     try {
         Task task = new Task();
@@ -48,9 +50,17 @@ public ResponseEntity<?> createTask(
         task.setProgress(progress);
         task.setCompleted(isCompleted);
 
+        // 处理文件信息
         if (file != null && !file.isEmpty()) {
+            // 如果有实际文件上传，保存文件并设置路径
             String filePath = saveUploadedFile(file);
             task.setFilePath(filePath);
+            task.setFileUrl(filePath);
+            task.setFileName(file.getOriginalFilename());
+        } else if (fileName != null && !fileName.isEmpty() && fileUrl != null && !fileUrl.isEmpty()) {
+            // 如果前端已经上传了文件并提供了文件信息，直接使用
+            task.setFileName(fileName);
+            task.setFileUrl(fileUrl);
         }
 
         Task saved = taskService.save(task);
@@ -101,7 +111,9 @@ public ResponseEntity<?> updateTask(
         @RequestParam(value = "remark", required = false) String remark,
         @RequestParam(value = "progress", required = false) Integer progress,
         @RequestParam(value = "isCompleted", required = false) Boolean isCompleted,
-        @RequestParam(value = "file", required = false) MultipartFile file
+        @RequestParam(value = "file", required = false) MultipartFile file,
+        @RequestParam(value = "fileName", required = false) String fileName,
+        @RequestParam(value = "fileUrl", required = false) String fileUrl
 ) {
     try {
         Task task = taskService.findById(id);
@@ -119,9 +131,22 @@ public ResponseEntity<?> updateTask(
         task.setProgress(progress);
         task.setCompleted(isCompleted);
 
+        // 处理文件信息
         if (file != null && !file.isEmpty()) {
+            // 如果有新文件上传，保存文件并更新路径
             String filePath = saveUploadedFile(file);
             task.setFilePath(filePath);
+            task.setFileUrl(filePath);
+            task.setFileName(file.getOriginalFilename());
+        } else if (fileName != null && !fileName.isEmpty() && fileUrl != null && !fileUrl.isEmpty()) {
+            // 如果前端提供了文件信息，更新文件信息
+            task.setFileName(fileName);
+            task.setFileUrl(fileUrl);
+        } else if (fileName == null && fileUrl == null) {
+            // 如果前端明确传递了null值，表示要清除文件信息
+            task.setFileName(null);
+            task.setFileUrl(null);
+            task.setFilePath(null);
         }
 
         Task updated = taskService.save(task);

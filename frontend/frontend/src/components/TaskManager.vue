@@ -15,6 +15,7 @@
               <th>开始时间</th>
               <th>结束时间</th>
               <th>进度</th>
+              <th>附件</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -27,6 +28,13 @@
               <td>{{ formatDateTime(task.endTime) || '未设置' }}</td>
               <td :style="{'--progress': task.progress || 0}" class="progress-cell">
                 <span class="progress-text">{{ task.progress || 0 }}%</span>
+              </td>
+              <td class="file-cell">
+                <button v-if="task.fileUrl" class="icon-button file" title="打开文件" @click="openFile(task.fileUrl)">
+                  <i class="fas fa-file-alt"></i>
+                  {{ task.fileName || '附件' }}
+                </button>
+                <span v-else class="no-file">无附件</span>
               </td>
               <td class="actions-cell">
                 <button class="icon-button edit" title="编辑" @click="editTask(task)">
@@ -149,6 +157,13 @@
                 <span>点击或拖拽文件到此处上传</span>
                 <input type="file" @change="handleFileUpload">
               </div>
+              <div v-if="uploadedFileInfo" class="uploaded-file-info">
+                <i class="fas fa-file-alt"></i>
+                <span>{{ uploadedFileInfo.originalName }}</span>
+                <button type="button" @click="removeUploadedFile" class="remove-file-btn">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
             </div>
             
             <div class="form-actions">
@@ -170,6 +185,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onMounted } from 'vue'
+import { uploadForTask } from '@/utils/fileUpload'
 
 function formatDateTime(dateStr) {
   if (!dateStr) return ''
@@ -284,8 +300,13 @@ async function addTask() {
     formData.append(key, stringValue)
   })
   
-  // 如果有文件，添加到formData
-  if (newTask.value.file) {
+  // 如果有文件信息，添加到formData
+  if (uploadedFileInfo.value) {
+    // 如果是新上传的文件，文件信息已经在uploadedFileInfo中
+    formData.append('fileName', uploadedFileInfo.value.fileName)
+    formData.append('fileUrl', uploadedFileInfo.value.fileUrl)
+  } else if (newTask.value.file) {
+    // 兼容原有的文件上传方式
     formData.append('file', newTask.value.file)
   }
 
@@ -346,10 +367,18 @@ async function addTask() {
 function resetForm() {
   Object.assign(newTask.value, {
     name: '', subject: '', content: '', startTime: '', endTime: '',
-    type: '', remark: '', file: null, progress: 0, isCompleted: false
+    type: '', remark: '', file: null, progress: 0, isCompleted: false,
+    fileName: '', fileUrl: ''
   })
   formErrors.value = {}
   isEditing.value = false
+  uploadedFileInfo.value = null
+  
+  // 清除文件输入框
+  const fileInput = document.querySelector('input[type="file"]')
+  if (fileInput) {
+    fileInput.value = ''
+  }
 }
 
 function editTask(task) {
@@ -361,6 +390,18 @@ function editTask(task) {
     endTime: task.endTime ? new Date(task.endTime).toISOString().slice(0, 16) : ''
   }
   Object.assign(newTask.value, formattedTask)
+  
+  // 如果任务有文件信息，设置uploadedFileInfo
+  if (task.fileName && task.fileUrl) {
+    uploadedFileInfo.value = {
+      fileName: task.fileName,
+      fileUrl: task.fileUrl,
+      originalName: task.fileName
+    }
+  } else {
+    uploadedFileInfo.value = null
+  }
+  
   showModal.value = true
 }
 
@@ -387,15 +428,59 @@ async function deleteTask(taskId) {
   }
 }
 
-function handleFileUpload(event) {
+// 文件上传处理
+const uploadedFileInfo = ref(null)
+
+const handleFileUpload = async (event) => {
   const file = event.target.files[0]
-  if (file) {
-    if (file.size > 10 * 1024 * 1024) {
-      alert('文件大小不能超过10MB')
-      event.target.value = ''
-      return
+  if (!file) return
+
+  if (file.size > 10 * 1024 * 1024) {
+    alert('文件大小不能超过10MB')
+    event.target.value = ''
+    return
+  }
+
+  try {
+    // 使用fileUpload工具上传文件
+    const result = await uploadForTask(file, newTask.value.subject || 'other')
+    
+    // 保存上传结果
+    uploadedFileInfo.value = {
+      fileName: result.fileName,
+      fileUrl: result.fileDownloadUri,
+      originalName: file.name
     }
-    newTask.value.file = file
+    
+    // 将文件信息添加到任务对象
+    newTask.value.fileName = result.fileName
+    newTask.value.fileUrl = result.fileDownloadUri
+    
+    alert('文件上传成功！')
+  } catch (error) {
+    console.error('文件上传失败:', error)
+    alert('文件上传失败: ' + error.message)
+    event.target.value = ''
+  }
+}
+
+// 打开文件
+const openFile = (fileUrl) => {
+  if (fileUrl) {
+    window.open(fileUrl, '_blank')
+  }
+}
+
+// 移除已上传的文件
+const removeUploadedFile = () => {
+  uploadedFileInfo.value = null
+  newTask.value.fileName = ''
+  newTask.value.fileUrl = ''
+  
+  // 清除文件输入框
+  const fileInput = document.querySelector('input[type="file"]')
+  if (fileInput) {
+    fileInput.value = ''
   }
 }</script>
 
@@ -739,8 +824,74 @@ input[type="file"]:hover {
   background: #f8f9fa;
 }
 
+/* 文件相关样式 */
+.file-cell {
+  text-align: center;
+}
+
+.icon-button.file {
+  background: #17a2b8;
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-button.file:hover {
+  background: #138496;
+  transform: translateY(-1px);
+}
+
+.no-file {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.uploaded-file-info {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #e8f5e8;
+  border: 1px solid #4CAF50;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.uploaded-file-info i {
+  color: #4CAF50;
+}
+
+.remove-file-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.7rem;
+  margin-left: auto;
+}
+
+.remove-file-btn:hover {
+  background: #c82333;
+}
+
 /* 进度条样式 */
-td:nth-child(6) {
+td:nth-child(7) {
   position: relative;
 }
 

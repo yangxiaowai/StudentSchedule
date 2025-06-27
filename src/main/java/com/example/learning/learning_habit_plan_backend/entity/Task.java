@@ -24,6 +24,7 @@ public class Task {
     private String contentType;   // 内容类型
     private String remark;        // 备注
     private String fileUrl;       // 上传文件的访问路径或URL
+    private String fileName;      // 上传文件的原始名称
 
     // 省略无参构造器（JPA需要）
     public Task() {}
@@ -102,7 +103,15 @@ public class Task {
 
     public void setFilePath(String filePath) {
         this.filePath = filePath;
-}
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
 
 }
 
