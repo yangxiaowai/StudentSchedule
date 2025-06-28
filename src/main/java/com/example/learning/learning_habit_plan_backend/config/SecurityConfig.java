@@ -87,6 +87,9 @@ public class SecurityConfig {
                 // 需要认证的端点
                     .requestMatchers("/api/files/**").permitAll()
                     .requestMatchers("/uploads/**").permitAll()
+                    .requestMatchers("/api/preview/**").permitAll()
+                    .requestMatchers("/api/files/upload").permitAll() // 允许文件上传
+                    .requestMatchers("/api/files/download/**").permitAll() // 允许文件下载
 
                     .anyRequest().authenticated()
             )
