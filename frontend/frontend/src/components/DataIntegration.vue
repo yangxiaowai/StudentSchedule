@@ -25,6 +25,11 @@
             <option v-for="subject in subjects" :value="subject.value">{{ subject.label }}</option>
           </select>
         </div>
+        <!-- 在上传模态框的modal-body中添加 -->
+        <div v-if="uploadProgress > 0" class="upload-progress">
+          <progress :value="uploadProgress" max="100"></progress>
+          <span>{{ uploadProgress }}%</span>
+        </div>
 
         <div class="filter-group">
           <label>内容类型：</label>
@@ -240,6 +245,7 @@ const showUploadModal = ref(false)
 const selectedFiles = ref([])
 const uploadSubject = ref('')
 const uploadType = ref('')
+const uploadProgress = ref(0)
 
 // 学科和内容类型选项
 const subjects = ref([
@@ -262,38 +268,6 @@ const contentTypes = ref([
   { value: 'ppt', label: '课件' }
 ])
 
-// 模拟数据
-onMounted(() => {
-  materials.value = [
-    {
-      id: 1,
-      name: '高等数学上册.pdf',
-      subject: '数学',
-      type: '教材',
-      uploadTime: '2023-05-15T10:30:00',
-      size: 4500000,
-      url: '#'
-    },
-    {
-      id: 2,
-      name: '英语四级词汇表.docx',
-      subject: '英语',
-      type: '笔记',
-      uploadTime: '2023-06-20T14:45:00',
-      size: 1200000,
-      url: '#'
-    },
-    {
-      id: 3,
-      name: '政治经济学讲义.pptx',
-      subject: '政治',
-      type: '课件',
-      uploadTime: '2023-07-10T09:15:00',
-      size: 3200000,
-      url: '#'
-    }
-  ]
-})
 
 // 计算属性
 const filteredMaterials = computed(() => {
@@ -307,18 +281,17 @@ const filteredMaterials = computed(() => {
         m.subject.toLowerCase().includes(query) ||
         m.type.toLowerCase().includes(query))
   }
-
   // 学科过滤
   if (selectedSubject.value) {
     result = result.filter(m => m.subject === selectedSubject.value)
   }
 
-  // 类型过滤
+// 类型过滤
   if (selectedType.value) {
     result = result.filter(m => m.type === selectedType.value)
   }
 
-  // 排序
+// 排序
   switch (sortOption.value) {
     case 'time-desc':
       return result.sort((a, b) => new Date(b.uploadTime) - new Date(a.uploadTime))
@@ -349,10 +322,268 @@ const handleSearch = () => {
   // 实际项目中这里会调用API
 }
 
-const openMaterial = (material) => {
-  console.log('打开资料:', material.name)
-  // 实际项目中这里会打开资料详情或预览
-}
+const openMaterial = async (material) => {
+  try {
+    const token = localStorage.getItem('accessToken');
+    const response = await fetch(`/api/preview/${material.id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const previewData = await response.json();
+
+    if (previewData.error) {
+      throw new Error(previewData.error);
+    }
+
+    // 根据文件类型调用不同的预览方法
+    switch (previewData.fileType) {
+      case 'txt':
+        await previewTextFile(previewData);
+        break;
+      case 'pdf':
+        await previewPdfFile(previewData);
+        break;
+      case 'doc':
+      case 'docx':
+      case 'ppt':
+      case 'pptx':
+        await previewOfficeFile(previewData);
+        break;
+      default:
+        throw new Error('不支持预览此文件类型');
+    }
+  } catch (error) {
+    console.error('预览失败:', error);
+    alert(`预览失败: ${error.message}`);
+  }
+};
+
+
+// 文本文件预览
+const previewTextFile = async (previewData) => {
+  // 创建模态框而不是新窗口
+  const modal = document.createElement('div');
+  modal.style.position = 'fixed';
+  modal.style.top = '0';
+  modal.style.left = '0';
+  modal.style.width = '100%';
+  modal.style.height = '100%';
+  modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+  modal.style.zIndex = '1000';
+  modal.style.display = 'flex';
+  modal.style.justifyContent = 'center';
+  modal.style.alignItems = 'center';
+
+  // 内容容器
+  const content = document.createElement('div');
+  content.style.backgroundColor = 'white';
+  content.style.padding = '20px';
+  content.style.borderRadius = '8px';
+  content.style.maxWidth = '80%';
+  content.style.maxHeight = '80%';
+  content.style.overflow = 'auto';
+
+  // 标题和关闭按钮
+  const header = document.createElement('div');
+  header.style.display = 'flex';
+  header.style.justifyContent = 'space-between';
+  header.style.marginBottom = '10px';
+
+  const title = document.createElement('h3');
+  title.textContent = previewData.fileName;
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '×';
+  closeBtn.style.background = 'none';
+  closeBtn.style.border = 'none';
+  closeBtn.style.fontSize = '20px';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.onclick = () => document.body.removeChild(modal);
+
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+
+  // 内容区域
+  const textContent = document.createElement('pre');
+  textContent.style.whiteSpace = 'pre-wrap';
+  textContent.style.fontFamily = 'monospace';
+  textContent.textContent = atob(previewData.content);
+
+  content.appendChild(header);
+  content.appendChild(textContent);
+  modal.appendChild(content);
+
+  // 添加到DOM
+  document.body.appendChild(modal);
+};
+
+// PDF文件预览（渲染所有页面）
+const previewPdfFile = async (previewData) => {
+  try {
+    // 动态加载PDF.js库
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js');
+
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+    // 创建预览模态框
+    const modal = createModal(previewData.fileName);
+    const content = modal.querySelector('.modal-content');
+
+    // 创建PDF容器
+    const pdfContainer = document.createElement('div');
+    pdfContainer.className = 'pdf-container';
+    content.appendChild(pdfContainer);
+
+    // 加载PDF
+    const loadingTask = pdfjsLib.getDocument({
+      data: Uint8Array.from(atob(previewData.content), c => c.charCodeAt(0))
+    });
+
+    const pdf = await loadingTask.promise;
+
+    // 渲染所有页面
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 1.0 });
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // 添加页面分隔线（除第一页外）
+      if (i > 1) {
+        const divider = document.createElement('hr');
+        divider.style.margin = '20px 0';
+        pdfContainer.appendChild(divider);
+      }
+
+      // 添加页面标题
+      const pageHeader = document.createElement('div');
+      pageHeader.textContent = `第 ${i} 页`;
+      pageHeader.style.marginBottom = '10px';
+      pageHeader.style.fontWeight = 'bold';
+      pdfContainer.appendChild(pageHeader);
+
+      // 添加画布
+      pdfContainer.appendChild(canvas);
+
+      // 渲染页面
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise;
+    }
+
+  } catch (error) {
+    console.error('PDF渲染失败:', error);
+    const modal = createModal(previewData.fileName);
+    modal.querySelector('.modal-content').innerHTML = `
+      <p>PDF预览失败: ${error.message}</p>
+      <a href="/api/files/download/${encodeURIComponent(previewData.fileName)}"
+         target="_blank" class="download-link">
+        下载文件
+      </a>
+    `;
+  }
+};
+
+const previewOfficeFile = async (previewData) => {
+  try {
+    const modal = createModal(previewData.fileName);
+    const content = modal.querySelector('.modal-content');
+
+    // 使用永中DCS在线预览（国内可直接访问）
+    const iframe = document.createElement('iframe');
+    iframe.style.width = '100%';
+    iframe.style.height = '80vh';
+    iframe.style.border = 'none';
+
+    // 构造永中DCS预览URL（使用当前域名和新的查询参数格式）
+    const fileUrl = encodeURIComponent(
+        window.location.origin + '/api/files/download?fileName=' + encodeURIComponent(previewData.fileName)
+    );
+    iframe.src = `https://dcs.yozosoft.com/onlinePreview?url=${fileUrl}`;
+
+    content.appendChild(iframe);
+
+    // 添加备用下载链接
+    const downloadLink = document.createElement('a');
+    downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
+    downloadLink.className = 'download-link';
+    downloadLink.textContent = '下载文件';
+    downloadLink.target = '_blank';
+    content.appendChild(downloadLink);
+
+  } catch (error) {
+    console.error('预览失败:', error);
+    const modal = createModal(previewData.fileName);
+    modal.querySelector('.modal-content').innerHTML = `
+      <div class="office-preview-fallback">
+        <p>在线预览不可用，请下载后查看</p>
+        <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
+           class="download-link">
+          下载文件
+        </a>
+      </div>
+    `;
+  }
+};
+
+
+
+// 创建模态框的通用方法
+const createModal = (title) => {
+  const modal = document.createElement('div');
+  modal.className = 'file-preview-modal';
+  modal.style.position = 'fixed';
+  modal.style.top = '0';
+  modal.style.left = '0';
+  modal.style.width = '100%';
+  modal.style.height = '100%';
+  modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+  modal.style.zIndex = '1000';
+  modal.style.display = 'flex';
+  modal.style.justifyContent = 'center';
+  modal.style.alignItems = 'center';
+
+  const content = document.createElement('div');
+  content.className = 'modal-content';
+  content.style.backgroundColor = 'white';
+  content.style.padding = '20px';
+  content.style.borderRadius = '8px';
+  content.style.width = '90%';
+  content.style.maxWidth = '900px';
+  content.style.maxHeight = '90vh';
+  content.style.overflow = 'auto';
+  content.style.position = 'relative';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '×';
+  closeBtn.style.position = 'absolute';
+  closeBtn.style.top = '10px';
+  closeBtn.style.right = '10px';
+  closeBtn.style.background = 'none';
+  closeBtn.style.border = 'none';
+  closeBtn.style.fontSize = '24px';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.onclick = () => document.body.removeChild(modal);
+
+  const titleElement = document.createElement('h3');
+  titleElement.textContent = title;
+  titleElement.style.marginTop = '0';
+
+  content.appendChild(closeBtn);
+  content.appendChild(titleElement);
+  modal.appendChild(content);
+
+  document.body.appendChild(modal);
+  return modal;
+};
 
 const triggerFileInput = () => {
   document.getElementById('fileInput').click()
@@ -396,96 +627,170 @@ const uploadFile = async (file) => {
   // ...处理响应
 };
 
-
 // 替换原有的 confirmUpload 方法
 const confirmUpload = async () => {
-  if (!canUpload.value) return
+      if (!canUpload.value) return;
 
-  try {
-    const formData = new FormData()
-    selectedFiles.value.forEach(file => {
-      formData.append('file', file)
-      formData.append('subject', uploadSubject.value)
-      formData.append('type', uploadType.value)
+      try {
+        console.log('开始上传文件 - 文件名:', selectedFiles.value[0].name, 
+                  ', 大小:', selectedFiles.value[0].size, 
+                  ', 类型:', selectedFiles.value[0].type);
+        console.log('学科:', uploadSubject.value, ', 内容类型:', uploadType.value);
+        
+        const formData = new FormData();
+        // 只上传第一个文件（如需多文件上传需调整）
+        formData.append('file', selectedFiles.value[0]);
+        formData.append('subject', uploadSubject.value);
+        formData.append('type', uploadType.value);
 
-      // 为每个文件单独发送请求
-      fetch('/api/files/upload', {
-        method: 'POST',
-        body: formData
-      }).then(response => {
-        if (!response.ok) throw new Error('上传失败')
-        return response.json()
-      }).then(data => {
-        console.log('上传成功:', data)
+        // 添加JWT认证头
+        const token = localStorage.getItem('accessToken');
+        console.log('使用的令牌:', token ? token.substring(0, 20) + '...' : '无令牌');
+
+    // 删除下面这行重复的声明
+    // const response = await fetch('/api/files/upload', {
+
+    console.log('发送上传请求到: /api/files/upload');
+        const uploadResponse = await fetch('/api/files/upload', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        console.log('上传响应状态:', uploadResponse.status);
+
+    if (!uploadResponse.ok) {
+      const errorData = await uploadResponse.json();
+      throw new Error(errorData.message || '上传失败');
+    }
+
+    const data = await uploadResponse.json();
+        console.log('上传响应数据:', data);
+
         // 添加到文件列表
         materials.value.unshift({
-          id: materials.value.length + 1,
+          id: data.id,
           name: data.fileName,
           subject: data.subject,
-          type: data.fileType,
-          uploadTime: new Date().toISOString(),
+          type: data.contentType,
+          uploadTime: data.uploadTime || new Date().toISOString(),
           size: data.size,
           url: data.fileDownloadUri
-        })
-      }).catch(error => {
-        console.error('上传错误:', error)
-        alert(`文件 ${file.name} 上传失败: ${error.message}`)
-      })
-    })
+        });
+        console.log('文件已添加到资料库列表');
 
-    cancelUpload()
+    // 重置上传状态
+    cancelUpload();
+
+    alert('文件上传成功');
   } catch (error) {
-    console.error('上传错误:', error)
-    alert('上传失败: ' + error.message)
-  }
-}
+        console.error('上传错误:', error);
+        
+        // 添加详细的错误信息输出
+        if (error.response) {
+          console.error('错误响应状态:', error.response.status);
+          console.error('错误响应数据:', error.response.data);
+        } else {
+          console.error('错误详细信息:', error.message);
+        }
+        
+        alert(`上传失败: ${error.message}`);
+      }
+};
+
+
 
 // 替换原有的 downloadMaterial 方法
 const downloadMaterial = async (material) => {
   try {
-    window.open(material.url, '_blank')
+    // 直接使用文件下载URL
+    window.open(material.url, '_blank');
+
+    // 或者使用API下载（如果需要额外处理）
+    // const token = localStorage.getItem('accessToken');
+    // const response = await fetch(`/api/files/download?fileName=${encodeURIComponent(material.name)}`, {
+    //   headers: {
+    //     'Authorization': `Bearer ${token}`
+    //   }
+    // });
+    // const blob = await response.blob();
+    // const url = window.URL.createObjectURL(blob);
+    // const a = document.createElement('a');
+    // a.href = url;
+    // a.download = material.name;
+    // document.body.appendChild(a);
+    // a.click();
+    // document.body.removeChild(a);
   } catch (error) {
-    console.error('下载错误:', error)
-    alert('下载失败: ' + error.message)
+    console.error('下载错误:', error);
+    alert(`下载失败: ${error.message}`);
   }
-}
+};
+
 
 // 替换原有的 deleteMaterial 方法
 const deleteMaterial = async (material) => {
-  if (!confirm(`确定要删除 "${material.name}" 吗？`)) return
+  if (!confirm(`确定要删除 "${material.name}" 吗？`)) return;
 
   try {
-    const response = await fetch(`/api/files/delete/${encodeURIComponent(material.name)}`, {
-      method: 'DELETE'
-    })
+    const token = localStorage.getItem('accessToken');
+    const response = await fetch(`/api/files/delete/${material.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-    if (!response.ok) throw new Error('删除失败')
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || '删除失败');
+    }
 
     // 从列表中移除
-    materials.value = materials.value.filter(m => m.name !== material.name)
+    materials.value = materials.value.filter(m => m.id !== material.id);
+    alert('文件删除成功');
   } catch (error) {
-    console.error('删除错误:', error)
-    alert('删除失败: ' + error.message)
+    console.error('删除错误:', error);
+    alert(`删除失败: ${error.message}`);
   }
-}
+};
+
 
 // 修改 onMounted 加载文件列表
 onMounted(() => {
-  fetch('/api/files/list')
-      .then(response => response.json())
-      .then(data => {
-        materials.value = data.map(file => ({
-          id: materials.value.length + 1,
-          name: file.fileName,
-          subject: file.subject || '其他',
-          type: file.fileType || '文件',
-          uploadTime: new Date().toISOString(),
-          size: file.size,
-          url: file.fileDownloadUri
-        }))
-      })
-      .catch(error => console.error('加载文件错误:', error))
-})
+  loadMaterials();
+});
+
+const loadMaterials = async () => {
+  try {
+    const token = localStorage.getItem('accessToken');
+    const response = await fetch('/api/files/list', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('获取文件列表失败');
+    }
+
+    const data = await response.json();
+    materials.value = data.map(file => ({
+      id: file.id,
+      name: file.fileName,
+      subject: file.subject,
+      type: file.contentType,
+      uploadTime: file.uploadTime || new Date().toISOString(),
+      size: file.size,
+      url: file.fileDownloadUri
+    }));
+  } catch (error) {
+    console.error('加载文件错误:', error);
+    alert(`加载文件列表失败: ${error.message}`);
+  }
+};
 
 
 const formatDate = (dateString) => {
@@ -495,7 +800,7 @@ const formatDate = (dateString) => {
 
 const formatFileSize = (bytes) => {
   if (bytes === 0) return '0 Bytes'
-  const k =1024
+  const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
@@ -532,7 +837,6 @@ const getSubjectIcon = (subject) => {
 
   return iconMap[chineseName] || '文';
 }
-
 
 // AI搜索相关状态
 const aiSearchQuery = ref('')
@@ -585,9 +889,23 @@ const handleAiSearch = async () => {
   }
 }
 
+// 辅助函数：加载外部脚本
+const loadScript = (url) => {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${url}"]`)) {
+      resolve();
+      return;
+    }
 
-
+    const script = document.createElement('script');
+    script.src = url;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+};
 </script>
+
 <style scoped>
 .material-container {
   display: flex;
@@ -1095,4 +1413,116 @@ const handleAiSearch = async () => {
   font-size: 14px;
 }
 
+/* 文件预览模态框样式 */
+.file-preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.file-preview-modal .modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow: auto;
+  position: relative;
+}
+
+.file-preview-modal .modal-content h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.file-preview-modal .close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+}
+
+.file-preview-modal .close-btn:hover {
+  color: #333;
+}
+
+/* PDF容器 */
+.pdf-container {
+  width: 100%;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* PDF页面画布 */
+.pdf-container canvas {
+  display: block;
+  margin: 0 auto 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 100%;
+}
+
+/* 下载链接 */
+.download-link {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 16px;
+  background-color: #4a6cf7;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.download-link:hover {
+  background-color: #3a5ce4;
+}
+.office-preview-notice {
+  text-align: center;
+  padding: 20px;
+}
+
+.office-preview-notice p {
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #666;
+}
+
+/* 添加上传进度条样式 */
+.upload-progress {
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-progress progress {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+}
+
+.upload-progress span {
+  font-size: 14px;
+  color: #666;
+}
+
+/* 错误提示样式 */
+.error-message {
+  color: #ff4d4f;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
 </style>
+
