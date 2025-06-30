@@ -442,8 +442,26 @@ const handleFileUpload = async (event) => {
   }
 
   try {
-    // 使用fileUpload工具上传文件
-    const result = await uploadForTask(file, newTask.value.subject || 'other')
+    // 使用统一的文件上传API（与资料库相同）
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('subject', newTask.value.subject || 'other');
+    formData.append('type', 'task'); // 标记为任务类型
+
+    const token = localStorage.getItem('accessToken');
+    const response = await fetch('/api/files/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error('文件上传失败');
+    }
+
+    const result = await response.json();
     
     // 保存上传结果
     uploadedFileInfo.value = {
@@ -482,7 +500,8 @@ const removeUploadedFile = () => {
   if (fileInput) {
     fileInput.value = ''
   }
-}</script>
+}
+</script>
 
 <style scoped>
 .task-manager {
