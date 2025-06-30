@@ -1,4 +1,5 @@
 com\example\learning\learning_habit_plan_backend\dto\FilePreviewResponse.class
+com\example\learning\learning_habit_plan_backend\entity\LearningMaterial.class
 com\example\learning\learning_habit_plan_backend\config\JwtAuthenticationFilter.class
 com\example\learning\learning_habit_plan_backend\service\impl\UserServiceImpl.class
 com\example\learning\learning_habit_plan_backend\dto\LoginResponse.class
@@ -14,6 +15,7 @@ com\example\learning\learning_habit_plan_backend\service\UserService.class
 com\example\learning\learning_habit_plan_backend\config\RestTemplateConfig.class
 com\example\learning\learning_habit_plan_backend\dto\FileUploadResponse.class
 com\example\learning\learning_habit_plan_backend\service\EmailService.class
+com\example\learning\learning_habit_plan_backend\repository\LearningMaterialRepository.class
 com\example\learning\learning_habit_plan_backend\service\VerificationCodeService.class
 com\example\learning\learning_habit_plan_backend\dto\LoginRequest.class
 com\example\learning\learning_habit_plan_backend\service\FileStorageService.class
