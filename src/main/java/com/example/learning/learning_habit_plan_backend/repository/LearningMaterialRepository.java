@@ -15,4 +15,7 @@ public interface LearningMaterialRepository extends JpaRepository<LearningMateri
 
     @Query("SELECT m FROM LearningMaterial m WHERE m.filePath LIKE %:fileName%")
     List<LearningMaterial> findByFilePathContaining(@Param("fileName") String fileName);
+    
+    @Query("SELECT m FROM LearningMaterial m WHERE m.filePath LIKE CONCAT('%', :fileName)")
+    List<LearningMaterial> findByFilePathEndingWith(@Param("fileName") String fileName);
 }
