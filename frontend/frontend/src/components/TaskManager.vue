@@ -75,16 +75,16 @@
                  required
                >
                  <option disabled value="">请选择学科</option>
-                 <option>语文</option>
-                 <option>数学</option>
-                 <option>英语</option>
-                 <option>物理</option>
-                 <option>化学</option>
-                 <option>生物</option>
-                 <option>政治</option>
-                 <option>历史</option>
-                 <option>地理</option>
-                 <option>其他</option>
+                 <option value="chinese">语文</option>
+                 <option value="math">数学</option>
+                 <option value="english">英语</option>
+                 <option value="physics">物理</option>
+                 <option value="chemistry">化学</option>
+                 <option value="biology">生物</option>
+                 <option value="politics">政治</option>
+                 <option value="history">历史</option>
+                 <option value="geography">地理</option>
+                 <option value="other">其他</option>
                </select>
                <span class="error-message" v-if="formErrors.subject">{{ formErrors.subject }}</span>
              </div>
@@ -125,16 +125,22 @@
                </div>
              </div>
             
-            <div class="form-group">
-              <label>内容类型</label>
-              <select v-model="newTask.type">
+            <div class="form-group" :class="{ 'has-error': formErrors.type }">
+              <label>内容类型 <span class="required">*</span></label>
+              <select 
+                v-model="newTask.type"
+                :class="{ 'error': formErrors.type }"
+                @focus="formErrors.type = null"
+                required
+              >
                 <option disabled value="">请选择内容类型</option>
-                <option>教材</option>
-                <option>笔记</option>
-                <option>真题</option>
-                <option>习题</option>
-                <option>课件</option>
+                <option value="textbook">教材</option>
+                <option value="notes">笔记</option>
+                <option value="exam">真题</option>
+                <option value="exercise">习题</option>
+                <option value="ppt">课件</option>
               </select>
+              <span class="error-message" v-if="formErrors.type">{{ formErrors.type }}</span>
             </div>
 
             <div class="form-group">
@@ -234,6 +240,11 @@ const validateForm = () => {
   
   if (!newTask.value.content?.trim()) {
     formErrors.value.content = '请输入任务内容'
+  }
+  
+  // 添加内容类型验证
+  if (!newTask.value.type) {
+    formErrors.value.type = '请选择内容类型'
   }
   
   if (!newTask.value.startTime) {
@@ -435,6 +446,19 @@ const handleFileUpload = async (event) => {
   const file = event.target.files[0]
   if (!file) return
 
+  // 验证是否已选择学科和内容类型
+  if (!newTask.value.subject) {
+    alert('请先选择学科再上传文件')
+    event.target.value = ''
+    return
+  }
+  
+  if (!newTask.value.type) {
+    alert('请先选择内容类型再上传文件')
+    event.target.value = ''
+    return
+  }
+
   if (file.size > 10 * 1024 * 1024) {
     alert('文件大小不能超过10MB')
     event.target.value = ''
@@ -445,8 +469,10 @@ const handleFileUpload = async (event) => {
     // 使用统一的文件上传API（与资料库相同）
     const formData = new FormData();
     formData.append('file', file);
+    // 传递用户选择的学科，如果未选择则默认为'other'
     formData.append('subject', newTask.value.subject || 'other');
-    formData.append('type', 'task'); // 标记为任务类型
+    // 传递用户选择的内容类型，如果未选择则默认为'other'
+    formData.append('type', newTask.value.type || 'other');
 
     const token = localStorage.getItem('accessToken');
     const response = await fetch('/api/files/upload', {
@@ -876,14 +902,15 @@ input[type="file"]:hover {
 
 .uploaded-file-info {
   margin-top: 0.5rem;
-  padding: 0.5rem;
+  padding: 0.75rem; /* 增加内边距 */
   background: #e8f5e8;
   border: 1px solid #4CAF50;
-  border-radius: 4px;
+  border-radius: 6px; /* 增加圆角 */
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem; /* 增加间距 */
   font-size: 0.9rem;
+  position: relative; /* 确保定位正确 */
 }
 
 .uploaded-file-info i {
@@ -895,18 +922,21 @@ input[type="file"]:hover {
   color: white;
   border: none;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  width: 24px;  /* 增加尺寸 */
+  height: 24px; /* 增加尺寸 */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: 0.8rem; /* 稍微增大字体 */
   margin-left: auto;
+  z-index: 10; /* 确保在最上层 */
+  transition: all 0.2s ease; /* 添加过渡效果 */
 }
 
 .remove-file-btn:hover {
   background: #c82333;
+  transform: scale(1.1); /* 悬停时稍微放大 */
 }
 
 /* 进度条样式 */
