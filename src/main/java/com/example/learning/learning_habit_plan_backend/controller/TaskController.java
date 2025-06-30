@@ -2,6 +2,9 @@ package com.example.learning.learning_habit_plan_backend.controller;
 
 import com.example.learning.learning_habit_plan_backend.entity.Task;
 import com.example.learning.learning_habit_plan_backend.service.TaskService;
+// 添加以下两行导入
+import com.example.learning.learning_habit_plan_backend.service.FileStorageService;
+import com.example.learning.learning_habit_plan_backend.dto.FileUploadResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,55 +25,61 @@ public class TaskController {
 
     @Autowired
     private TaskService taskService;
+    
+    // 添加FileStorageService依赖
+    @Autowired
+    private FileStorageService fileStorageService;
 
     @PostMapping
-public ResponseEntity<?> createTask(
-        @RequestParam("name") String name,
-        @RequestParam("subject") String subject,
-        @RequestParam("content") String content,
-        @RequestParam("startTime") String startTime,
-        @RequestParam("endTime") String endTime,
-        @RequestParam(value = "type", required = false) String type,
-        @RequestParam(value = "remark", required = false) String remark,
-        @RequestParam(value = "progress", required = false) Integer progress,
-        @RequestParam(value = "isCompleted", required = false) Boolean isCompleted,
-        @RequestParam(value = "file", required = false) MultipartFile file,
-        @RequestParam(value = "fileName", required = false) String fileName,
-        @RequestParam(value = "fileUrl", required = false) String fileUrl
-) {
-    try {
-        Task task = new Task();
-        task.setName(name);
-        task.setSubject(subject);
-        task.setContent(content);
-        // 使用 ISO 格式解析日期时间
-        task.setStartTime(startTime != null && !startTime.isEmpty() ? LocalDateTime.parse(startTime) : null);
-        task.setEndTime(endTime != null && !endTime.isEmpty() ? LocalDateTime.parse(endTime) : null);
-        task.setRemark(remark);
-        task.setProgress(progress);
-        task.setCompleted(isCompleted);
+    public ResponseEntity<?> createTask(
+            @RequestParam("name") String name,
+            @RequestParam("subject") String subject,
+            @RequestParam("content") String content,
+            @RequestParam("startTime") String startTime,
+            @RequestParam("endTime") String endTime,
+            @RequestParam(value = "type", required = false) String type,
+            @RequestParam(value = "remark", required = false) String remark,
+            @RequestParam(value = "progress", required = false) Integer progress,
+            @RequestParam(value = "isCompleted", required = false) Boolean isCompleted,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "fileName", required = false) String fileName,
+            @RequestParam(value = "fileUrl", required = false) String fileUrl
+    ) {
+        try {
+            Task task = new Task();
+            task.setName(name);
+            task.setSubject(subject);
+            task.setContent(content);
+            task.setStartTime(startTime != null && !startTime.isEmpty() ? LocalDateTime.parse(startTime) : null);
+            task.setEndTime(endTime != null && !endTime.isEmpty() ? LocalDateTime.parse(endTime) : null);
+            task.setRemark(remark);
+            task.setProgress(progress);
+            task.setCompleted(isCompleted);
 
-        // 处理文件信息
-        if (file != null && !file.isEmpty()) {
-            // 如果有实际文件上传，保存文件并设置路径
-            String filePath = saveUploadedFile(file);
-            task.setFilePath(filePath);
-            task.setFileUrl(filePath);
-            task.setFileName(file.getOriginalFilename());
-        } else if (fileName != null && !fileName.isEmpty() && fileUrl != null && !fileUrl.isEmpty()) {
-            // 如果前端已经上传了文件并提供了文件信息，直接使用
-            task.setFileName(fileName);
-            task.setFileUrl(fileUrl);
+            // 处理文件信息 - 修改这部分逻辑
+            if (file != null && !file.isEmpty()) {
+                // 使用FileStorageService统一处理文件上传
+                FileUploadResponse fileResponse = fileStorageService.storeFile(file, subject, "task");
+                
+                // 设置任务的文件信息
+                task.setFileName(fileResponse.getFileName());
+                task.setFileUrl(fileResponse.getFileDownloadUri());
+                task.setFilePath(fileResponse.getFileDownloadUri());
+            } else if (fileName != null && !fileName.isEmpty() && fileUrl != null && !fileUrl.isEmpty()) {
+                // 如果前端已经上传了文件并提供了文件信息，直接使用
+                task.setFileName(fileName);
+                task.setFileUrl(fileUrl);
+                task.setFilePath(fileUrl);
+            }
+
+            Task saved = taskService.save(task);
+            return ResponseEntity.ok(saved);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ErrorResponse errorResponse = new ErrorResponse("保存任务失败", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
-
-        Task saved = taskService.save(task);
-        return ResponseEntity.ok(saved);
-    } catch (Exception e) {
-        e.printStackTrace();
-        ErrorResponse errorResponse = new ErrorResponse("保存任务失败", e.getMessage());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
-}
 
 private static final String UPLOAD_DIR = "D:/upload_files/"; 
 

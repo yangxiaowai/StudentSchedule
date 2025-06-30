@@ -83,20 +83,16 @@ public class SecurityConfig {
                 .requestMatchers("/uploads/**").permitAll()
                 // 允许访问任务相关的API
                 .requestMatchers("/api/tasks/**").authenticated()
-                    .requestMatchers("/api/ai-search").permitAll()
+                .requestMatchers("/api/ai-search").permitAll()
                 // 需要认证的端点
-                    .requestMatchers("/api/files/**").permitAll()
-                    .requestMatchers("/uploads/**").permitAll()
-                    .requestMatchers("/api/preview/**").permitAll()
-                    .requestMatchers("/api/files/upload").permitAll() // 允许文件上传
-                    .requestMatchers("/api/files/download/**").permitAll() // 允许文件下载
-
-                    .anyRequest().authenticated()
+                .requestMatchers("/api/files/**").permitAll()
+                .requestMatchers("/api/preview/**").permitAll()
+                .requestMatchers("/api/files/upload").permitAll() // 允许文件上传
+                .requestMatchers("/api/files/download/**").permitAll() // 允许文件下载
+                .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-                .anyRequest().permitAll()
-            );
 
         return http.build();
     }
