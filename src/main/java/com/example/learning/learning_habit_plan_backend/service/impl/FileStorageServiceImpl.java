@@ -197,11 +197,19 @@ public class FileStorageServiceImpl implements FileStorageService {
             }
             
             // 根据文件名查找文件记录（fileName实际上是UUID格式的文件名）
-             List<LearningMaterial> materials = materialRepository.findByFilePathContaining(fileName);
-             LearningMaterial material = materials.stream()
-                     .filter(m -> m.getUserId().equals(userId))
-                     .findFirst()
-                     .orElseThrow(() -> new RuntimeException("文件不存在或无权限删除"));
+            // 使用更精确的查询方法，查找路径以fileName结尾的文件
+            List<LearningMaterial> materials = materialRepository.findByFilePathEndingWith(fileName);
+            
+            // 打印调试信息
+            System.out.println("删除文件: " + fileName);
+            System.out.println("找到匹配的文件数量: " + materials.size());
+            materials.forEach(m -> System.out.println("文件路径: " + m.getFilePath() + ", 用户ID: " + m.getUserId()));
+            
+            // 过滤出当前用户的文件
+            LearningMaterial material = materials.stream()
+                    .filter(m -> m.getUserId().equals(userId))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("文件不存在或无权限删除"));
             
             // 删除物理文件
             Path filePath = Paths.get(material.getFilePath());
@@ -219,18 +227,48 @@ public class FileStorageServiceImpl implements FileStorageService {
     @Override
     public byte[] loadFileAsResource(String fileName) {
         try {
-            // 根据文件名查找文件
-            List<LearningMaterial> materials = materialRepository.findByFilePathContaining(fileName);
+            // 从请求头获取JWT令牌
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+            String token = request.getHeader("Authorization");
+            
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            
+            if (token == null || token.isEmpty()) {
+                throw new RuntimeException("未提供有效的认证令牌");
+            }
+            
+            Long userId;
+            try {
+                userId = jwtUtil.getUserIdFromToken(token);
+            } catch (ExpiredJwtException e) {
+                throw new RuntimeException("令牌已过期，请重新登录", e);
+            } catch (JwtException | IllegalArgumentException e) {
+                throw new RuntimeException("无效的认证令牌", e);
+            }
+            
+            // 根据文件名查找文件（使用更精确的查询方法）
+            List<LearningMaterial> materials = materialRepository.findByFilePathEndingWith(fileName);
             if (materials.isEmpty()) {
                 throw new RuntimeException("文件不存在");
             }
             
-            LearningMaterial material = materials.get(0);
+            // 过滤出当前用户的文件
+            LearningMaterial material = materials.stream()
+                    .filter(m -> m.getUserId().equals(userId))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("文件不存在或无权限访问"));
+            
             Path filePath = Paths.get(material.getFilePath());
             
             if (!Files.exists(filePath)) {
                 throw new RuntimeException("文件不存在");
             }
+            
+            // 打印调试信息
+            System.out.println("加载文件: " + fileName);
+            System.out.println("文件路径: " + filePath);
             
             return Files.readAllBytes(filePath);
         } catch (Exception e) {

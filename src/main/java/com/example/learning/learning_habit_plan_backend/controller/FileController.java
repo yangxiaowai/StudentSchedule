@@ -1,6 +1,4 @@
 package com.example.learning.learning_habit_plan_backend.controller;
-
-import com.example.learning.learning_habit_plan_backend.dto.FileUploadResponse;
 import com.example.learning.learning_habit_plan_backend.dto.FileUploadResponse;
 import com.example.learning.learning_habit_plan_backend.entity.LearningMaterial;
 import com.example.learning.learning_habit_plan_backend.repository.LearningMaterialRepository;
@@ -11,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.List;
 
@@ -53,8 +52,12 @@ public class FileController {
             LearningMaterial material = materialRepository.findById(fileId)
                     .orElseThrow(() -> new RuntimeException("文件不存在"));
             
+            // 从文件路径中提取文件名（UUID格式）
+            String filePath = material.getFilePath();
+            String fileName = Paths.get(filePath).getFileName().toString();
+            
             // 删除文件（使用文件名）
-            fileStorageService.deleteFile(material.getFileName());
+            fileStorageService.deleteFile(fileName);
             return ResponseEntity.ok(Map.of("message", "文件删除成功"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -325,7 +325,7 @@ const handleSearch = () => {
 const openMaterial = async (material) => {
   try {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`/api/preview/${material.id}`, {
+    const response = await fetch(`/api/files/preview/${material.id}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -338,7 +338,7 @@ const openMaterial = async (material) => {
     }
 
     // 根据文件类型调用不同的预览方法
-    switch (previewData.fileType) {
+    switch (previewData.fileType.toLowerCase()) {
       case 'txt':
         await previewTextFile(previewData);
         break;
@@ -351,8 +351,29 @@ const openMaterial = async (material) => {
       case 'pptx':
         await previewOfficeFile(previewData);
         break;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        await previewImageFile(previewData);
+        break;
       default:
-        throw new Error('不支持预览此文件类型');
+        // 对于不支持的文件类型，提供下载选项
+        const modal = createModal(previewData.fileName);
+        const content = modal.querySelector('.modal-content');
+        content.innerHTML = `
+          <div style="text-align: center; padding: 20px;">
+            <div style="margin-bottom: 15px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            </div>
+            <p style="margin-bottom: 15px;">不支持预览此文件类型 (${previewData.fileType})</p>
+            <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
+               target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+              下载文件
+            </a>
+          </div>
+        `;
+        break;
     }
   } catch (error) {
     console.error('预览失败:', error);
@@ -360,6 +381,51 @@ const openMaterial = async (material) => {
   }
 };
 
+
+// 图片文件预览
+const previewImageFile = async (previewData) => {
+  try {
+    // 创建预览模态框
+    const modal = createModal(previewData.fileName);
+    const content = modal.querySelector('.modal-content');
+    
+    // 创建图片容器
+    const imageContainer = document.createElement('div');
+    imageContainer.style.textAlign = 'center';
+    imageContainer.style.padding = '10px';
+    content.appendChild(imageContainer);
+    
+    // 添加下载链接
+    const downloadLink = document.createElement('a');
+    downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
+    downloadLink.textContent = '下载原图';
+    downloadLink.target = '_blank';
+    downloadLink.style.display = 'inline-block';
+    downloadLink.style.marginBottom = '15px';
+    imageContainer.appendChild(downloadLink);
+    
+    // 创建图片元素
+    const img = document.createElement('img');
+    img.src = `data:image/${previewData.fileType};base64,${previewData.content}`;
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '80vh';
+    img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    imageContainer.appendChild(img);
+    
+  } catch (error) {
+    console.error('图片预览失败:', error);
+    const modal = createModal(previewData.fileName);
+    modal.querySelector('.modal-content').innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <p>图片预览失败: ${error.message}</p>
+        <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
+           target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+          下载图片
+        </a>
+      </div>
+    `;
+  }
+};
 
 // 文本文件预览
 const previewTextFile = async (previewData) => {
@@ -422,63 +488,120 @@ const previewTextFile = async (previewData) => {
 // PDF文件预览（渲染所有页面）
 const previewPdfFile = async (previewData) => {
   try {
-    // 动态加载PDF.js库
-    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js');
-
-    const pdfjsLib = window['pdfjs-dist/build/pdf'];
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-
     // 创建预览模态框
     const modal = createModal(previewData.fileName);
     const content = modal.querySelector('.modal-content');
-
+    
     // 创建PDF容器
     const pdfContainer = document.createElement('div');
     pdfContainer.className = 'pdf-container';
+    pdfContainer.style.textAlign = 'center';
     content.appendChild(pdfContainer);
-
-    // 加载PDF
-    const loadingTask = pdfjsLib.getDocument({
-      data: Uint8Array.from(atob(previewData.content), c => c.charCodeAt(0))
-    });
-
-    const pdf = await loadingTask.promise;
-
-    // 渲染所有页面
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale: 1.0 });
-
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-
-      // 添加页面分隔线（除第一页外）
-      if (i > 1) {
-        const divider = document.createElement('hr');
-        divider.style.margin = '20px 0';
-        pdfContainer.appendChild(divider);
-      }
-
-      // 添加页面标题
-      const pageHeader = document.createElement('div');
-      pageHeader.textContent = `第 ${i} 页`;
-      pageHeader.style.marginBottom = '10px';
-      pageHeader.style.fontWeight = 'bold';
-      pdfContainer.appendChild(pageHeader);
-
-      // 添加画布
-      pdfContainer.appendChild(canvas);
-
-      // 渲染页面
-      await page.render({
-        canvasContext: context,
-        viewport: viewport
-      }).promise;
+    
+    // 添加下载链接
+    const downloadLink = document.createElement('a');
+    downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
+    downloadLink.className = 'download-link';
+    downloadLink.textContent = '下载原文件';
+    downloadLink.target = '_blank';
+    downloadLink.style.display = 'inline-block';
+    downloadLink.style.marginTop = '15px';
+    downloadLink.style.marginBottom = '15px';
+    pdfContainer.appendChild(downloadLink);
+    
+    // 如果是多页面文档
+    if (previewData.multiPage) {
+      // 分割页面内容
+      const pageImages = previewData.content.split(',');
+      
+      // 创建页面导航
+      const pageNav = document.createElement('div');
+      pageNav.className = 'page-navigation';
+      pageNav.style.marginBottom = '15px';
+      pageNav.style.display = 'flex';
+      pageNav.style.justifyContent = 'center';
+      pageNav.style.gap = '10px';
+      
+      // 添加页面计数器
+      const pageCounter = document.createElement('div');
+      pageCounter.className = 'page-counter';
+      pageCounter.style.margin = '0 10px';
+      pageCounter.style.lineHeight = '30px';
+      
+      // 添加上一页按钮
+      const prevBtn = document.createElement('button');
+      prevBtn.textContent = '上一页';
+      prevBtn.style.padding = '5px 10px';
+      prevBtn.style.cursor = 'pointer';
+      
+      // 添加下一页按钮
+      const nextBtn = document.createElement('button');
+      nextBtn.textContent = '下一页';
+      nextBtn.style.padding = '5px 10px';
+      nextBtn.style.cursor = 'pointer';
+      
+      pageNav.appendChild(prevBtn);
+      pageNav.appendChild(pageCounter);
+      pageNav.appendChild(nextBtn);
+      pdfContainer.appendChild(pageNav);
+      
+      // 创建图片容器
+      const imageContainer = document.createElement('div');
+      imageContainer.className = 'pdf-image-container';
+      imageContainer.style.maxWidth = '100%';
+      imageContainer.style.margin = '0 auto';
+      pdfContainer.appendChild(imageContainer);
+      
+      // 当前页码
+      let currentPage = 0;
+      
+      // 显示指定页面
+      const showPage = (pageIndex) => {
+        // 清空容器
+        imageContainer.innerHTML = '';
+        
+        // 更新页码显示
+        pageCounter.textContent = `第 ${pageIndex + 1} 页 / 共 ${pageImages.length} 页`;
+        
+        // 创建图片元素
+        const img = document.createElement('img');
+        img.src = `data:image/png;base64,${pageImages[pageIndex]}`;
+        img.style.maxWidth = '100%';
+        img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        imageContainer.appendChild(img);
+        
+        // 更新按钮状态
+        prevBtn.disabled = pageIndex === 0;
+        nextBtn.disabled = pageIndex === pageImages.length - 1;
+      };
+      
+      // 显示第一页
+      showPage(currentPage);
+      
+      // 绑定按钮事件
+      prevBtn.addEventListener('click', () => {
+        if (currentPage > 0) {
+          currentPage--;
+          showPage(currentPage);
+        }
+      });
+      
+      nextBtn.addEventListener('click', () => {
+        if (currentPage < pageImages.length - 1) {
+          currentPage++;
+          showPage(currentPage);
+        }
+      });
+      
+    } else {
+      // 单页PDF（兼容旧版本）
+      const img = document.createElement('img');
+      img.src = `data:image/png;base64,${previewData.content}`;
+      img.style.maxWidth = '100%';
+      img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+      pdfContainer.appendChild(img);
     }
-
+    
   } catch (error) {
     console.error('PDF渲染失败:', error);
     const modal = createModal(previewData.fileName);
@@ -496,37 +619,170 @@ const previewOfficeFile = async (previewData) => {
   try {
     const modal = createModal(previewData.fileName);
     const content = modal.querySelector('.modal-content');
+    
+    // 如果是PPT/PPTX且是多页面文档（使用新的预览方式）
+    if ((previewData.fileType === 'ppt' || previewData.fileType === 'pptx') && previewData.multiPage) {
+      // 创建PPT容器
+      const pptContainer = document.createElement('div');
+      pptContainer.className = 'ppt-container';
+      pptContainer.style.textAlign = 'center';
+      content.appendChild(pptContainer);
+      
+      // 添加下载链接
+      const downloadLink = document.createElement('a');
+      downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
+      downloadLink.className = 'download-link';
+      downloadLink.textContent = '下载原文件';
+      downloadLink.target = '_blank';
+      downloadLink.style.display = 'inline-block';
+      downloadLink.style.marginTop = '15px';
+      downloadLink.style.marginBottom = '15px';
+      pptContainer.appendChild(downloadLink);
+      
+      // 分割幻灯片内容
+      const slideImages = previewData.content.split(',');
+      
+      // 创建幻灯片导航
+      const slideNav = document.createElement('div');
+      slideNav.className = 'slide-navigation';
+      slideNav.style.marginBottom = '15px';
+      slideNav.style.display = 'flex';
+      slideNav.style.justifyContent = 'center';
+      slideNav.style.gap = '10px';
+      
+      // 添加幻灯片计数器
+      const slideCounter = document.createElement('div');
+      slideCounter.className = 'slide-counter';
+      slideCounter.style.margin = '0 10px';
+      slideCounter.style.lineHeight = '30px';
+      
+      // 添加上一页按钮
+      const prevBtn = document.createElement('button');
+      prevBtn.textContent = '上一页';
+      prevBtn.style.padding = '5px 10px';
+      prevBtn.style.cursor = 'pointer';
+      
+      // 添加下一页按钮
+      const nextBtn = document.createElement('button');
+      nextBtn.textContent = '下一页';
+      nextBtn.style.padding = '5px 10px';
+      nextBtn.style.cursor = 'pointer';
+      
+      slideNav.appendChild(prevBtn);
+      slideNav.appendChild(slideCounter);
+      slideNav.appendChild(nextBtn);
+      pptContainer.appendChild(slideNav);
+      
+      // 创建图片容器
+      const imageContainer = document.createElement('div');
+      imageContainer.className = 'ppt-image-container';
+      imageContainer.style.maxWidth = '100%';
+      imageContainer.style.margin = '0 auto';
+      pptContainer.appendChild(imageContainer);
+      
+      // 当前幻灯片索引
+      let currentSlide = 0;
+      
+      // 显示指定幻灯片
+      const showSlide = (slideIndex) => {
+        // 清空容器
+        imageContainer.innerHTML = '';
+        
+        // 更新幻灯片计数器
+        slideCounter.textContent = `第 ${slideIndex + 1} 页 / 共 ${slideImages.length} 页`;
+        
+        // 创建图片元素
+        const img = document.createElement('img');
+        img.src = `data:image/png;base64,${slideImages[slideIndex]}`;
+        img.style.maxWidth = '100%';
+        img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        imageContainer.appendChild(img);
+        
+        // 更新按钮状态
+        prevBtn.disabled = slideIndex === 0;
+        nextBtn.disabled = slideIndex === slideImages.length - 1;
+      };
+      
+      // 显示第一页
+      showSlide(currentSlide);
+      
+      // 绑定按钮事件
+      prevBtn.addEventListener('click', () => {
+        if (currentSlide > 0) {
+          currentSlide--;
+          showSlide(currentSlide);
+        }
+      });
+      
+      nextBtn.addEventListener('click', () => {
+        if (currentSlide < slideImages.length - 1) {
+          currentSlide++;
+          showSlide(currentSlide);
+        }
+      });
+      
+    } else if (previewData.fileType === 'doc' || previewData.fileType === 'docx') {
+      // 对于Word文档，显示文本内容
+      const docContainer = document.createElement('div');
+      docContainer.className = 'doc-container';
+      docContainer.style.padding = '20px';
+      docContainer.style.backgroundColor = '#fff';
+      docContainer.style.border = '1px solid #ddd';
+      docContainer.style.borderRadius = '5px';
+      docContainer.style.maxHeight = '600px';
+      docContainer.style.overflow = 'auto';
+      docContainer.style.whiteSpace = 'pre-wrap';
+      docContainer.style.fontFamily = 'Arial, sans-serif';
+      docContainer.style.lineHeight = '1.5';
+      
+      // 解码Base64内容
+      const textContent = atob(previewData.content);
+      docContainer.textContent = textContent;
+      
+      // 添加下载链接
+      const downloadLink = document.createElement('a');
+      downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
+      downloadLink.textContent = '下载原文件';
+      downloadLink.target = '_blank';
+      downloadLink.style.display = 'block';
+      downloadLink.style.marginTop = '15px';
+      downloadLink.style.textAlign = 'center';
+      
+      content.appendChild(docContainer);
+      content.appendChild(downloadLink);
+      
+    } else {
+      // 使用永中DCS在线预览（国内可直接访问）
+      const iframe = document.createElement('iframe');
+      iframe.style.width = '100%';
+      iframe.style.height = '80vh';
+      iframe.style.border = 'none';
 
-    // 使用永中DCS在线预览（国内可直接访问）
-    const iframe = document.createElement('iframe');
-    iframe.style.width = '100%';
-    iframe.style.height = '80vh';
-    iframe.style.border = 'none';
+      // 构造永中DCS预览URL（使用当前域名和新的查询参数格式）
+      const fileUrl = encodeURIComponent(
+          window.location.origin + '/api/files/download?fileName=' + encodeURIComponent(previewData.fileName)
+      );
+      iframe.src = `https://dcs.yozosoft.com/onlinePreview?url=${fileUrl}`;
 
-    // 构造永中DCS预览URL（使用当前域名和新的查询参数格式）
-    const fileUrl = encodeURIComponent(
-        window.location.origin + '/api/files/download?fileName=' + encodeURIComponent(previewData.fileName)
-    );
-    iframe.src = `https://dcs.yozosoft.com/onlinePreview?url=${fileUrl}`;
+      content.appendChild(iframe);
 
-    content.appendChild(iframe);
-
-    // 添加备用下载链接
-    const downloadLink = document.createElement('a');
-    downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
-    downloadLink.className = 'download-link';
-    downloadLink.textContent = '下载文件';
-    downloadLink.target = '_blank';
-    content.appendChild(downloadLink);
+      // 添加备用下载链接
+      const downloadLink = document.createElement('a');
+      downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
+      downloadLink.className = 'download-link';
+      downloadLink.textContent = '下载文件';
+      downloadLink.target = '_blank';
+      content.appendChild(downloadLink);
+    }
 
   } catch (error) {
-    console.error('预览失败:', error);
+    console.error('Office文件预览失败:', error);
     const modal = createModal(previewData.fileName);
     modal.querySelector('.modal-content').innerHTML = `
-      <div class="office-preview-fallback">
-        <p>在线预览不可用，请下载后查看</p>
+      <div style="text-align: center; padding: 20px;">
+        <p>预览失败: ${error.message}</p>
         <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
-           class="download-link">
+           target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
           下载文件
         </a>
       </div>
@@ -704,24 +960,38 @@ const confirmUpload = async () => {
 // 替换原有的 downloadMaterial 方法
 const downloadMaterial = async (material) => {
   try {
-    // 直接使用文件下载URL
-    window.open(material.url, '_blank');
-
-    // 或者使用API下载（如果需要额外处理）
-    // const token = localStorage.getItem('accessToken');
-    // const response = await fetch(`/api/files/download?fileName=${encodeURIComponent(material.name)}`, {
-    //   headers: {
-    //     'Authorization': `Bearer ${token}`
-    //   }
-    // });
-    // const blob = await response.blob();
-    // const url = window.URL.createObjectURL(blob);
-    // const a = document.createElement('a');
-    // a.href = url;
-    // a.download = material.name;
-    // document.body.appendChild(a);
-    // a.click();
-    // document.body.removeChild(a);
+    // 获取授权令牌
+    const token = localStorage.getItem('accessToken');
+    
+    // 从URL中提取文件名参数
+    const urlParams = new URLSearchParams(material.url.split('?')[1]);
+    const fileName = urlParams.get('fileName');
+    
+    if (!fileName) {
+      throw new Error('无法获取文件名');
+    }
+    
+    // 使用API下载并添加授权令牌
+    const response = await fetch(`/api/files/download?fileName=${encodeURIComponent(fileName)}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || '下载失败');
+    }
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = material.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url); // 释放URL对象
   } catch (error) {
     console.error('下载错误:', error);
     alert(`下载失败: ${error.message}`);
