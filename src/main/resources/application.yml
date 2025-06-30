@@ -4,8 +4,8 @@ server:
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/learning_plan?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
-    username: zky
-    password: Zky050724
+    username: root
+    password: yj050109
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
