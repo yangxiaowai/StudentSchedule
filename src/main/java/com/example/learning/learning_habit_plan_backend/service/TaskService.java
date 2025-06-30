@@ -26,4 +26,9 @@ public class TaskService {
     public void deleteById(Long id) {
         taskRepository.deleteById(id);
     }
+
+    // 新增方法：根据ID列表批量查询任务
+    public List<Task> getTasksByIds(List<Long> taskIds) {
+        return taskRepository.findAllById(taskIds);
+    }
 }
