@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+  # 禁用邮件配置
+  mail:
+    host: localhost
+    port: 25
+    username: test
+    password: test
+
+# 文件上传目录
+file:
+  upload-dir: ./uploads
+
+# 禁用Redis（如果有相关配置）
+logging:
+  level:
+    com.example: DEBUG
