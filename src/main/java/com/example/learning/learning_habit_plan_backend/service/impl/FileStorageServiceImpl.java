@@ -11,14 +11,12 @@ import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -90,7 +88,15 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             // 生成唯一文件名
             String originalFileName = file.getOriginalFilename();
-            String fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
+            if (originalFileName == null || originalFileName.isEmpty()) {
+                throw new RuntimeException("文件名不能为空");
+            }
+            
+            String fileExtension = "";
+            int lastDotIndex = originalFileName.lastIndexOf(".");
+            if (lastDotIndex > 0) {
+                fileExtension = originalFileName.substring(lastDotIndex);
+            }
             String uniqueFileName = UUID.randomUUID() + fileExtension;
 
             // 保存文件
@@ -276,19 +282,5 @@ public class FileStorageServiceImpl implements FileStorageService {
         }
     }
 
-    private Long getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("用户未认证");
-        }
 
-        // 获取JWT令牌
-        String token = (String) authentication.getCredentials();
-        if (token == null) {
-            throw new RuntimeException("无法获取用户令牌");
-        }
-
-        // 从令牌中获取用户ID
-        return jwtUtil.getUserIdFromToken(token);
-    }
 }

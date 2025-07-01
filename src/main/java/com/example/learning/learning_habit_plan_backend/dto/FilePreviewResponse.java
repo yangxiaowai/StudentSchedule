@@ -1,7 +1,6 @@
 package com.example.learning.learning_habit_plan_backend.dto;
 
 import lombok.Data;
-import java.util.List;
 
 @Data
 public class FilePreviewResponse {
