@@ -84,6 +84,8 @@ public class SecurityConfig {
                 // 允许访问任务相关的API
                 .requestMatchers("/api/tasks/**").authenticated()
                 .requestMatchers("/api/ai-search").permitAll()
+                // 允许访问AI分析相关的API
+                .requestMatchers("/api/analysis/**").authenticated()
                 // 需要认证的端点
                 .requestMatchers("/api/files/**").permitAll()
                 .requestMatchers("/api/preview/**").permitAll()

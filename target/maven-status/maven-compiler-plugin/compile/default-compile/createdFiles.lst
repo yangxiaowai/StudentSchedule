@@ -39,6 +39,7 @@ com\example\learning\learning_habit_plan_backend\entity\Task.class
 com\example\learning\learning_habit_plan_backend\controller\FileController.class
 com\example\learning\learning_habit_plan_backend\dto\LoginResponse$UserInfo.class
 com\example\learning\learning_habit_plan_backend\repository\TaskRepository.class
+com\example\learning\learning_habit_plan_backend\controller\AnalysisController.class
 com\example\learning\learning_habit_plan_backend\service\impl\FilePreviewServiceImpl.class
 com\example\learning\learning_habit_plan_backend\model\ErrorResponse.class
 com\example\learning\learning_habit_plan_backend\dto\RegisterRequest.class

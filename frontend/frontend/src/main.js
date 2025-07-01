@@ -6,6 +6,9 @@ import './style.css'
 // 引入Font Awesome
 import '@fortawesome/fontawesome-free/css/all.css'
 
+// 引入axios配置
+import './api/config.js'
+
 const app = createApp(App)
 app.use(router)
 app.mount('#app')

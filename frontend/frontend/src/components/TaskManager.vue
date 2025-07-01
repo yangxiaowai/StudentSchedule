@@ -1,9 +1,20 @@
 <template>
   <div class="task-manager">
-    <h2>任务管理</h2>
-    <button @click="showModal = true">
-      <i class="fas fa-plus"></i> 添加任务
-    </button>
+    <div class="header-section">
+      <h2>任务管理</h2>
+      <div class="header-buttons">
+        <button @click="showModal = true">
+          <i class="fas fa-plus"></i> 添加任务
+        </button>
+        <button 
+          v-if="selectedTasks.length > 0" 
+          @click="goToAnalysis" 
+          class="analysis-btn"
+        >
+          <i class="fas fa-chart-line"></i> 分析选中任务 ({{ selectedTasks.length }})
+        </button>
+      </div>
+    </div>
 
     <div class="table-container">
         <table>
@@ -17,6 +28,7 @@
               <th>进度</th>
               <th>附件</th>
               <th>操作</th>
+              <th>选择分析</th>
             </tr>
           </thead>
           <tbody>
@@ -43,6 +55,14 @@
                 <button class="icon-button delete" title="删除" @click="deleteTask(task.id)">
                   <i class="fas fa-trash-alt"></i>
                 </button>
+              </td>
+              <td class="select-cell">
+                <input 
+                  type="checkbox" 
+                  v-model="selectedTasks" 
+                  :value="task" 
+                  class="task-checkbox"
+                />
               </td>
             </tr>
           </tbody>
@@ -212,6 +232,7 @@ onMounted(() => {
 const showModal = ref(false)
 const isEditing = ref(false)
 const tasks = ref([])
+const selectedTasks = ref([])
 const newTask = ref({
   name: '',
   subject: '',
@@ -527,6 +548,66 @@ const removeUploadedFile = () => {
     fileInput.value = ''
   }
 }
+
+// 跳转到AI分析页面
+const goToAnalysis = () => {
+  if (selectedTasks.value.length === 0) {
+    alert('请先选择要分析的任务')
+    return
+  }
+  
+  console.log('原始选中任务:', selectedTasks.value)
+  
+  // 只提取必要的字段，确保ID是数字类型
+  const simplifiedTasks = selectedTasks.value.map(task => {
+    console.log('处理任务:', task, '原始任务ID:', task.id, '类型:', typeof task.id)
+    
+    // 确保ID是数字类型
+    let taskId = task.id
+    if (typeof taskId === 'string') {
+      taskId = parseInt(taskId, 10)
+      if (isNaN(taskId)) {
+        console.error('无法将任务ID转换为数字:', task.id)
+        taskId = null
+      }
+    }
+    
+    if (!taskId) {
+      console.error('任务缺少有效ID:', task)
+    }
+    
+    // 只返回必要的字段
+    return {
+      id: taskId,
+      name: task.name,
+      subject: task.subject,
+      startTime: task.startTime,
+      endTime: task.endTime,
+      progress: task.progress
+    }
+  }).filter(task => task.id) // 过滤掉没有有效ID的任务
+  
+  console.log('简化后的任务数据:', simplifiedTasks)
+  
+  if (simplifiedTasks.length === 0) {
+    alert('没有有效的任务可供分析')
+    return
+  }
+  
+  // 将选中的任务转换为JSON字符串
+  const tasksJson = JSON.stringify(simplifiedTasks)
+  console.log('转换为JSON后:', tasksJson)
+  
+  // 将选中的任务存储到localStorage
+  localStorage.setItem('selectedTasksForAnalysis', tasksJson)
+  
+  // 验证存储是否成功
+  const storedData = localStorage.getItem('selectedTasksForAnalysis')
+  console.log('验证存储的数据:', storedData)
+  
+  // 跳转到AI分析页面
+  window.location.href = '/ai-analysis'
+}
 </script>
 
 <style scoped>
@@ -539,9 +620,24 @@ const removeUploadedFile = () => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
 .task-manager h2 {
   color: #2c3e50;
-  margin-bottom: 1.5rem;
+  margin: 0;
   font-size: 1.8rem;
   font-weight: 600;
 }
@@ -604,6 +700,28 @@ button:hover {
   background: #45a049;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+}
+
+.analysis-btn {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 120px;
+}
+
+.analysis-btn:hover {
+  background: linear-gradient(135deg, #1976D2, #1565C0);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 }
 
 .icon-button {
@@ -690,6 +808,23 @@ td {
 
 tr:hover {
   background: #f8f9fa;
+}
+
+.select-cell {
+  text-align: center;
+  padding: 1rem;
+}
+
+.task-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #4CAF50;
+  transform: scale(1.2);
+}
+
+.task-checkbox:hover {
+  transform: scale(1.3);
 }
 
 .modal {
