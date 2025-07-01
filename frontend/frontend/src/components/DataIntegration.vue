@@ -1,5 +1,5 @@
 <template>
-  <div class="material-container">
+  <div class="material-container" :class="{ 'page-loaded': pageLoaded }">
     <!-- 顶部搜索栏 -->
     <div class="search-section">
       <div class="search-bar">
@@ -9,11 +9,16 @@
             placeholder="输入关键词搜索资料..."
             @keyup.enter="handleSearch"
         />
-        <button @click="handleSearch">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+        <button class="search-btn" @click="handleSearch" :class="{ 'searching': isSearching }">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="search-icon">
             <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
           </svg>
-          搜索
+          <span class="search-text">搜索</span>
+          <div class="search-loading">
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+          </div>
         </button>
       </div>
 
@@ -67,13 +72,17 @@
 
       <div class="material-grid">
         <div
-            v-for="material in filteredMaterials"
+            v-for="(material, index) in filteredMaterials"
             :key="material.id"
             class="material-card"
+            :style="{ '--animation-delay': index * 0.1 + 's' }"
             @click="openMaterial(material)"
+            @mouseenter="handleCardHover(material.id, true)"
+            @mouseleave="handleCardHover(material.id, false)"
         >
-          <div class="material-icon">
+          <div class="material-icon" :class="{ 'icon-hover': hoveredCard === material.id }">
             <span class="subject-icon">{{ getSubjectIcon(material.subject) }}</span>
+            <div class="icon-glow"></div>
           </div>
           <div class="material-info">
             <h3>{{ material.name }}</h3>
@@ -83,17 +92,19 @@
             </p>
           </div>
           <div class="material-actions">
-            <button @click.stop="downloadMaterial(material)">
+            <button class="action-btn download-btn" @click.stop="downloadMaterial(material); createRippleEffect($event)" title="下载文件">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                 <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
               </svg>
+              <span class="btn-ripple"></span>
             </button>
-            <button @click.stop="deleteMaterial(material)">
+            <button class="action-btn delete-btn" @click.stop="deleteMaterial(material); createRippleEffect($event)" title="删除文件">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
                 <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
               </svg>
+              <span class="btn-ripple"></span>
             </button>
           </div>
         </div>
@@ -110,11 +121,19 @@
     <!-- 底部上传按钮 -->
     <div class="upload-section">
       <button class="upload-btn" @click="showUploadModal = true">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-          <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
-        </svg>
-        上传资料
+        <div class="upload-icon-wrapper">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16" class="upload-icon">
+            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+            <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+          </svg>
+          <div class="upload-glow"></div>
+        </div>
+        <span class="upload-text">上传资料</span>
+        <div class="upload-particles">
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+        </div>
       </button>
     </div>
 
@@ -247,6 +266,11 @@ const uploadSubject = ref('')
 const uploadType = ref('')
 const uploadProgress = ref(0)
 
+// 动画相关状态
+const pageLoaded = ref(false)
+const isSearching = ref(false)
+const hoveredCard = ref(null)
+
 // 学科和内容类型选项
 const subjects = ref([
   { value: 'chinese', label: '语文' },
@@ -317,24 +341,56 @@ const canUpload = computed(() => {
 })
 
 // 方法
-const handleSearch = () => {
-  console.log('搜索:', searchQuery.value)
+const handleSearch = async () => {
+  if (isSearching.value) return;
+  
+  isSearching.value = true;
+  console.log('搜索:', searchQuery.value);
+  
+  // 模拟搜索延迟
+  await new Promise(resolve => setTimeout(resolve, 800));
+  
+  isSearching.value = false;
   // 实际项目中这里会调用API
 }
 
 const openMaterial = async (material) => {
+  // 显示加载提示
+  const loadingModal = createLoadingModal(material.fileName || material.name);
+  
   try {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`/api/files/preview/${material.id}`, {
+    
+    // 添加超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+    
+    const response = await fetch(`/api/preview/file/${material.id}`, {
       headers: {
         'Authorization': `Bearer ${token}`
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
 
     const previewData = await response.json();
+    
+    // 关闭加载提示
+    document.body.removeChild(loadingModal);
 
     if (previewData.error) {
       throw new Error(previewData.error);
+    }
+
+    // 检查fileType是否存在，如果不存在则从文件名中提取
+    if (!previewData.fileType) {
+      const fileExtension = material.fileName.split('.').pop();
+      previewData.fileType = fileExtension || 'unknown';
     }
 
     // 根据文件类型调用不同的预览方法
@@ -351,10 +407,16 @@ const openMaterial = async (material) => {
       case 'pptx':
         await previewOfficeFile(previewData);
         break;
+      case 'xls':
+      case 'xlsx':
+        await previewExcelFile(previewData);
+        break;
       case 'jpg':
       case 'jpeg':
       case 'png':
       case 'gif':
+      case 'bmp':
+      case 'webp':
         await previewImageFile(previewData);
         break;
       default:
@@ -376,8 +438,48 @@ const openMaterial = async (material) => {
         break;
     }
   } catch (error) {
+    // 关闭加载提示（如果还存在）
+    try {
+      if (loadingModal && loadingModal.parentNode) {
+        document.body.removeChild(loadingModal);
+      }
+    } catch (e) {}
+    
     console.error('预览失败:', error);
-    alert(`预览失败: ${error.message}`);
+    
+    // 显示友好的错误信息
+    let errorMessage = '预览失败';
+    if (error.name === 'AbortError') {
+      errorMessage = '预览超时，请检查网络连接或稍后重试';
+    } else if (error.message.includes('HTTP 404')) {
+      errorMessage = '文件不存在或已被删除';
+    } else if (error.message.includes('HTTP 413')) {
+      errorMessage = '文件过大，无法预览';
+    } else if (error.message.includes('HTTP 500')) {
+      errorMessage = '服务器错误，请稍后重试';
+    } else {
+      errorMessage = `预览失败: ${error.message}`;
+    }
+    
+    // 创建错误提示模态框
+    const errorModal = createModal('预览失败');
+    const content = errorModal.querySelector('.modal-content');
+    content.innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <div style="margin-bottom: 15px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+        </div>
+        <p style="margin-bottom: 15px; color: #666;">${errorMessage}</p>
+        <a href="/api/files/download?fileName=${encodeURIComponent(material.fileName || material.name)}"
+           target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+          下载文件
+        </a>
+      </div>
+    `;
   }
 };
 
@@ -475,7 +577,7 @@ const previewTextFile = async (previewData) => {
   const textContent = document.createElement('pre');
   textContent.style.whiteSpace = 'pre-wrap';
   textContent.style.fontFamily = 'monospace';
-  textContent.textContent = atob(previewData.content);
+  textContent.textContent = decodeURIComponent(escape(atob(previewData.content)));
 
   content.appendChild(header);
   content.appendChild(textContent);
@@ -731,13 +833,29 @@ const previewOfficeFile = async (previewData) => {
       docContainer.style.borderRadius = '5px';
       docContainer.style.maxHeight = '600px';
       docContainer.style.overflow = 'auto';
-      docContainer.style.whiteSpace = 'pre-wrap';
+      // 移除pre-wrap样式，让HTML内容正常渲染
       docContainer.style.fontFamily = 'Arial, sans-serif';
-      docContainer.style.lineHeight = '1.5';
+      docContainer.style.lineHeight = '1.6';
       
-      // 解码Base64内容
-      const textContent = atob(previewData.content);
-      docContainer.textContent = textContent;
+      // 改进的Base64解码方式，更好地处理UTF-8编码
+      let htmlContent;
+      try {
+        // 使用TextDecoder来正确处理UTF-8编码
+        const binaryString = atob(previewData.content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const decoder = new TextDecoder('utf-8');
+        htmlContent = decoder.decode(bytes);
+      } catch (error) {
+        console.warn('UTF-8解码失败，使用备用方法:', error);
+        // 备用解码方法
+        htmlContent = decodeURIComponent(escape(atob(previewData.content)));
+      }
+      
+      // 使用innerHTML来渲染HTML格式的内容
+      docContainer.innerHTML = htmlContent;
       
       // 添加下载链接
       const downloadLink = document.createElement('a');
@@ -790,7 +908,59 @@ const previewOfficeFile = async (previewData) => {
   }
 };
 
-
+// Excel文件预览
+const previewExcelFile = async (previewData) => {
+  try {
+    const modal = createModal(previewData.fileName);
+    const content = modal.querySelector('.modal-content');
+    
+    // 创建Excel容器
+    const excelContainer = document.createElement('div');
+    excelContainer.className = 'excel-container';
+    excelContainer.style.padding = '20px';
+    excelContainer.style.backgroundColor = '#fff';
+    excelContainer.style.border = '1px solid #ddd';
+    excelContainer.style.borderRadius = '5px';
+    excelContainer.style.maxHeight = '600px';
+    excelContainer.style.overflow = 'auto';
+    excelContainer.style.fontFamily = 'Arial, sans-serif';
+    
+    // 解码Base64内容 - 正确处理UTF-8编码
+    const htmlContent = decodeURIComponent(escape(atob(previewData.content)));
+    // 使用innerHTML来渲染HTML格式的表格内容
+    excelContainer.innerHTML = htmlContent;
+    
+    // 添加下载链接
+    const downloadLink = document.createElement('a');
+    downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
+    downloadLink.textContent = '下载原文件';
+    downloadLink.target = '_blank';
+    downloadLink.style.display = 'block';
+    downloadLink.style.marginTop = '15px';
+    downloadLink.style.textAlign = 'center';
+    downloadLink.style.padding = '8px 16px';
+    downloadLink.style.backgroundColor = '#4CAF50';
+    downloadLink.style.color = 'white';
+    downloadLink.style.textDecoration = 'none';
+    downloadLink.style.borderRadius = '4px';
+    
+    content.appendChild(excelContainer);
+    content.appendChild(downloadLink);
+    
+  } catch (error) {
+    console.error('Excel文件预览失败:', error);
+    const modal = createModal(previewData.fileName);
+    modal.querySelector('.modal-content').innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <p>Excel预览失败: ${error.message}</p>
+        <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
+           target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+          下载文件
+        </a>
+      </div>
+    `;
+  }
+};
 
 // 创建模态框的通用方法
 const createModal = (title) => {
@@ -837,6 +1007,67 @@ const createModal = (title) => {
   content.appendChild(titleElement);
   modal.appendChild(content);
 
+  document.body.appendChild(modal);
+  return modal;
+};
+
+const createLoadingModal = (fileName) => {
+  const modal = document.createElement('div');
+  modal.className = 'loading-modal';
+  modal.style.position = 'fixed';
+  modal.style.top = '0';
+  modal.style.left = '0';
+  modal.style.width = '100%';
+  modal.style.height = '100%';
+  modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+  modal.style.zIndex = '10001';
+  modal.style.display = 'flex';
+  modal.style.alignItems = 'center';
+  modal.style.justifyContent = 'center';
+  
+  const content = document.createElement('div');
+  content.className = 'loading-content';
+  content.style.background = 'white';
+  content.style.padding = '30px';
+  content.style.borderRadius = '8px';
+  content.style.textAlign = 'center';
+  content.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+  
+  const spinner = document.createElement('div');
+  spinner.className = 'loading-spinner';
+  spinner.style.width = '40px';
+  spinner.style.height = '40px';
+  spinner.style.border = '4px solid #f3f3f3';
+  spinner.style.borderTop = '4px solid #3498db';
+  spinner.style.borderRadius = '50%';
+  spinner.style.animation = 'spin 1s linear infinite';
+  spinner.style.margin = '0 auto 15px';
+  
+  const text = document.createElement('p');
+  text.textContent = `正在预览 ${fileName}...`;
+  text.style.margin = '0 0 10px 0';
+  
+  const subText = document.createElement('p');
+  subText.textContent = '请稍候，预览可能需要几秒钟';
+  subText.style.fontSize = '12px';
+  subText.style.color = '#666';
+  subText.style.margin = '0';
+  
+  // 添加旋转动画样式
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  content.appendChild(spinner);
+  content.appendChild(text);
+  content.appendChild(subText);
+  modal.appendChild(content);
+  
   document.body.appendChild(modal);
   return modal;
 };
@@ -1031,6 +1262,19 @@ const deleteMaterial = async (material) => {
 // 修改 onMounted 加载文件列表
 onMounted(() => {
   loadMaterials();
+  
+  // 页面加载动画
+  setTimeout(() => {
+    pageLoaded.value = true;
+  }, 100);
+  
+  // 为资料卡片添加进入动画延迟
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.material-card');
+    cards.forEach((card, index) => {
+      card.style.setProperty('--animation-delay', `${index * 0.1}s`);
+    });
+  }, 200);
 });
 
 const loadMaterials = async () => {
@@ -1159,6 +1403,32 @@ const handleAiSearch = async () => {
   }
 }
 
+// 卡片悬停事件处理
+const handleCardHover = (material, isHovering) => {
+  hoveredCard.value = isHovering ? material.id : null;
+};
+
+// 按钮点击涟漪效果
+const createRippleEffect = (event) => {
+  const button = event.currentTarget;
+  const ripple = document.createElement('span');
+  const rect = button.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  const x = event.clientX - rect.left - size / 2;
+  const y = event.clientY - rect.top - size / 2;
+  
+  ripple.style.width = ripple.style.height = size + 'px';
+  ripple.style.left = x + 'px';
+  ripple.style.top = y + 'px';
+  ripple.classList.add('ripple');
+  
+  button.appendChild(ripple);
+  
+  setTimeout(() => {
+    ripple.remove();
+  }, 600);
+};
+
 // 辅助函数：加载外部脚本
 const loadScript = (url) => {
   return new Promise((resolve, reject) => {
@@ -1182,15 +1452,16 @@ const loadScript = (url) => {
   flex-direction: column;
   height: 100vh;
   padding: 20px;
-  background-color: #f5f7fa;
+  background-color: rgba(245, 247, 250, 0.85);
 }
 
 .search-section {
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.9);
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
+  backdrop-filter: blur(10px);
 }
 
 .search-bar {
@@ -1249,11 +1520,12 @@ const loadScript = (url) => {
 
 .material-library {
   flex: 1;
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.9);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   padding: 20px;
   overflow-y: auto;
+  backdrop-filter: blur(10px);
 }
 
 .library-header {
@@ -1288,13 +1560,15 @@ const loadScript = (url) => {
 }
 
 .material-card {
-  border: 1px solid #eee;
+  border: 1px solid rgba(238, 238, 238, 0.8);
   border-radius: 6px;
   padding: 15px;
   display: flex;
   gap: 15px;
   cursor: pointer;
   transition: all 0.2s;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(5px);
 }
 
 .material-card:hover {
@@ -1305,7 +1579,7 @@ const loadScript = (url) => {
 .material-icon {
   width: 50px;
   height: 50px;
-  background-color: #f0f4ff;
+  background-color: rgba(240, 244, 255, 0.8);
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -1431,7 +1705,7 @@ const loadScript = (url) => {
 }
 
 .upload-modal {
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.95);
   border-radius: 8px;
   width: 90%;
   max-width: 600px;
@@ -1439,6 +1713,7 @@ const loadScript = (url) => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  backdrop-filter: blur(15px);
 }
 
 .modal-header {
@@ -1575,10 +1850,11 @@ const loadScript = (url) => {
 
 .ai-search-section {
   margin-top: 20px;
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.9);
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .ai-search-box {
@@ -1698,7 +1974,7 @@ const loadScript = (url) => {
 }
 
 .file-preview-modal .modal-content {
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.95);
   padding: 20px;
   border-radius: 8px;
   width: 90%;
@@ -1706,6 +1982,7 @@ const loadScript = (url) => {
   max-height: 90vh;
   overflow: auto;
   position: relative;
+  backdrop-filter: blur(15px);
 }
 
 .file-preview-modal .modal-content h3 {
@@ -1757,6 +2034,76 @@ const loadScript = (url) => {
 .download-link:hover {
   background-color: #3a5ce4;
 }
+
+/* Word文档容器样式 */
+.doc-container {
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', Arial, sans-serif !important;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.doc-container h1, .doc-container h2, .doc-container h3, .doc-container h4, .doc-container h5, .doc-container h6 {
+  font-weight: bold;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+.doc-container p {
+  margin-bottom: 12px;
+  text-align: justify;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+.doc-container br {
+  line-height: 1.5;
+}
+
+/* 处理特殊字符显示 */
+.doc-container {
+  unicode-bidi: embed;
+  direction: ltr;
+}
+
+/* 确保中文字符正确显示 */
+.doc-container * {
+  font-variant-ligatures: none;
+  text-rendering: geometricPrecision;
+}
+
+/* Word转图片预览样式 */
+.doc-container img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 10px auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+}
+
+.doc-container img:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 页面分隔样式 */
+.doc-container div[style*="page-break-after"] {
+  border-bottom: 2px dashed #e0e0e0;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+
+.doc-container div[style*="page-break-after"]:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
 .office-preview-notice {
   text-align: center;
   padding: 20px;
@@ -1766,6 +2113,255 @@ const loadScript = (url) => {
   margin-bottom: 15px;
   font-size: 16px;
   color: #666;
+}
+
+/* 页面加载动画 */
+.material-container {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s ease;
+}
+
+.material-container.page-loaded {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 卡片进入和悬停动画 */
+.material-card {
+  opacity: 0;
+  transform: translateY(30px) scale(0.95);
+  animation: cardSlideIn 0.6s ease forwards;
+  animation-delay: var(--animation-delay, 0s);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes cardSlideIn {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.material-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.material-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.material-card:hover::before {
+  left: 100%;
+}
+
+/* 图标发光效果 */
+.material-icon {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.icon-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle, rgba(74, 144, 226, 0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.3s ease;
+  pointer-events: none;
+}
+
+.material-card:hover .icon-glow {
+  transform: translate(-50%, -50%) scale(3);
+}
+
+/* 按钮涟漪效果 */
+.action-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.action-btn:active {
+  transform: scale(0.95);
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(0);
+  animation: rippleEffect 0.6s linear;
+  pointer-events: none;
+}
+
+@keyframes rippleEffect {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* 搜索按钮动画 */
+.search-btn {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.search-btn.searching {
+  background: linear-gradient(-45deg, #4a90e2, #357abd, #4a90e2, #357abd);
+  background-size: 400% 400%;
+  animation: searchGradient 1.5s ease infinite;
+}
+
+@keyframes searchGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.search-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.search-btn.searching svg {
+  animation: searchSpin 1s linear infinite;
+}
+
+@keyframes searchSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 上传按钮增强动画 */
+.upload-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.upload-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(74, 144, 226, 0.3);
+}
+
+.upload-icon-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.upload-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  background: radial-gradient(circle, rgba(74, 144, 226, 0.4) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.3s ease;
+  pointer-events: none;
+}
+
+.upload-btn:hover .upload-glow {
+  transform: translate(-50%, -50%) scale(2);
+}
+
+.upload-particles {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.upload-particles .particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #4a90e2;
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.upload-particles .particle:nth-child(1) {
+  top: 20%;
+  left: 20%;
+}
+
+.upload-particles .particle:nth-child(2) {
+  top: 60%;
+  left: 70%;
+}
+
+.upload-particles .particle:nth-child(3) {
+  top: 40%;
+  left: 50%;
+}
+
+.upload-btn:hover .upload-particles .particle {
+  animation: particleFloat 2s ease-in-out infinite;
+}
+
+.upload-btn:hover .upload-particles .particle:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.upload-btn:hover .upload-particles .particle:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+@keyframes particleFloat {
+  0%, 100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-20px);
+  }
+}
+
+/* 微交互动画 */
+.material-info h3 {
+  transition: color 0.2s ease;
+}
+
+.material-card:hover .material-info h3 {
+  color: #4a90e2;
+}
+
+.material-actions button {
+  transition: all 0.2s ease;
+}
+
+.material-actions button:hover {
+  transform: scale(1.1);
+}
+
+/* 加载动画优化 */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* 添加上传进度条样式 */

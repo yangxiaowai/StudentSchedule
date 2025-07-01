@@ -1,7 +1,6 @@
 package com.example.learning.learning_habit_plan_backend.controller;
 
 import com.example.learning.learning_habit_plan_backend.dto.FileUploadResponse;
-import com.example.learning.learning_habit_plan_backend.dto.FileUploadResponse;
 import com.example.learning.learning_habit_plan_backend.entity.LearningMaterial;
 import com.example.learning.learning_habit_plan_backend.repository.LearningMaterialRepository;
 import com.example.learning.learning_habit_plan_backend.service.FileStorageService;

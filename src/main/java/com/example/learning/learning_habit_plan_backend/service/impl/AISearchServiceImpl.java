@@ -61,7 +61,7 @@ public class AISearchServiceImpl implements AISearchService {
 
     private String buildPrompt(String query) {
         return String.format(
-                "你是一个学习资源推荐专家，请根据用户的学习主题推荐2个最相关的优质学习网站。要求：1. 必须是知名、权威的学习平台 2. 包含完整的网站名称和可访问的URL 3. 对每个网站提供50字左右的简要说明，突出其特点和优势 4. 返回格式必须为严格的JSON数组，每个对象包含title、url和description字段。用户的学习主题是：%s",
+                "你是一个学习资源推荐专家，请根据用户的学习主题推荐2个最相关的中文优质学习网站。要求：1. 必须是知名、权威的学习平台，进入用户想要的具体资源的网页，而不是主页 2. 包含完整的网站名称和可访问的URL 3. 对每个网站提供50字左右的简要说明，突出其特点和优势 4. 返回格式必须为严格的JSON数组，每个对象包含title、url和description字段。用户的学习主题是：%s",
                 query
         ).replace("\n", " "); // 移除换行符
     }
