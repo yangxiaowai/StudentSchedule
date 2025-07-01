@@ -178,6 +178,44 @@ public ResponseEntity<?> deleteTask(@PathVariable Long id) {
     }
 }
 
+@PutMapping("/{id}/progress")
+public ResponseEntity<?> updateTaskProgress(@PathVariable Long id, @RequestBody ProgressUpdateRequest request) {
+    try {
+        Task task = taskService.findById(id);
+        if (task == null) {
+            ErrorResponse errorResponse = new ErrorResponse("任务不存在", "找不到ID为 " + id + " 的任务");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+        
+        task.setProgress(request.getProgress());
+        
+        // 如果进度达到100%，自动标记为已完成
+        if (request.getProgress() != null && request.getProgress() >= 100) {
+            task.setCompleted(true);
+        }
+        
+        Task updated = taskService.save(task);
+        return ResponseEntity.ok(updated);
+    } catch (Exception e) {
+        e.printStackTrace();
+        ErrorResponse errorResponse = new ErrorResponse("更新任务进度失败", e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+}
+
+// 进度更新请求的内部类
+public static class ProgressUpdateRequest {
+    private Integer progress;
+    
+    public Integer getProgress() {
+        return progress;
+    }
+    
+    public void setProgress(Integer progress) {
+        this.progress = progress;
+    }
+}
+
 @PostMapping("/upload")
 public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
     try {

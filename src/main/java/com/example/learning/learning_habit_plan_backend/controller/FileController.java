@@ -66,12 +66,30 @@ public class FileController {
     }
 
     @GetMapping("/download")
-    public ResponseEntity<byte[]> downloadFile(@RequestParam String fileName) {
-        byte[] fileContent = fileStorageService.loadFileAsResource(fileName);
+    public ResponseEntity<?> downloadFile(@RequestParam String fileName) {
+        try {
+            byte[] fileContent = fileStorageService.loadFileAsResource(fileName);
 
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-                .body(fileContent);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .body(fileContent);
+        } catch (RuntimeException e) {
+            // 根据异常消息返回适当的HTTP状态码
+            String errorMessage = e.getMessage();
+            if (errorMessage.contains("未提供有效的认证令牌") || errorMessage.contains("无效的认证令牌")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "认证失败", "message", errorMessage));
+            } else if (errorMessage.contains("令牌已过期")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "令牌已过期", "message", "请重新登录"));
+            } else if (errorMessage.contains("文件不存在") || errorMessage.contains("无权限访问")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "文件不存在", "message", errorMessage));
+            } else {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", "服务器内部错误", "message", errorMessage));
+            }
+        }
     }
 }

@@ -31,6 +31,7 @@ com\example\learning\learning_habit_plan_backend\controller\FilePreviewControlle
 com\example\learning\learning_habit_plan_backend\service\AISearchService.class
 com\example\learning\learning_habit_plan_backend\service\impl\VerificationCodeServiceImpl.class
 com\example\learning\learning_habit_plan_backend\controller\UserController.class
+com\example\learning\learning_habit_plan_backend\service\impl\FilePreviewServiceImpl$1.class
 com\example\learning\learning_habit_plan_backend\service\impl\UserDetailsServiceImpl.class
 com\example\learning\learning_habit_plan_backend\service\impl\AISearchServiceImpl.class
 com\example\learning\learning_habit_plan_backend\config\CorsConfig.class
