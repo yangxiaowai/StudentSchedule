@@ -1,5 +1,5 @@
 <template>
-  <div class="material-container" :class="{ 'page-loaded': pageLoaded }">
+  <div class="material-container data-integration-container" :class="{ 'page-loaded': pageLoaded }">
     <!-- 顶部搜索栏 -->
     <div class="search-section">
       <div class="search-bar">
@@ -247,7 +247,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+// 定义props
+// Props定义（如果需要的话可以在这里添加其他props）
+// const props = defineProps({})
 
 // 搜索相关状态
 const searchQuery = ref('')
@@ -656,6 +660,7 @@ const previewPdfFile = async (previewData) => {
       
       // 当前页码
       let currentPage = 0;
+      let maxPageReached = 0; // 记录用户浏览过的最大页码
       
       // 显示指定页面
       const showPage = (pageIndex) => {
@@ -675,10 +680,34 @@ const previewPdfFile = async (previewData) => {
         // 更新按钮状态
         prevBtn.disabled = pageIndex === 0;
         nextBtn.disabled = pageIndex === pageImages.length - 1;
+        
+        // 更新最大浏览页码
+        if (pageIndex > maxPageReached) {
+          maxPageReached = pageIndex;
+          // 计算进度百分比（基于浏览的页数）
+          const progress = Math.round(((maxPageReached + 1) / pageImages.length) * 100);
+          console.log(`PDF阅读进度: ${progress}% (已浏览 ${maxPageReached + 1}/${pageImages.length} 页)`);
+          // 更新任务进度（仅在有任务ID时）
+          if (currentTaskId) {
+            updateTaskProgress(currentTaskId, progress);
+          } else {
+            console.log(`PDF阅读进度: ${progress}% (已浏览 ${maxPageReached + 1}/${pageImages.length} 页) - 无关联任务`);
+          }
+        }
       };
       
       // 显示第一页
       showPage(currentPage);
+      
+      // 初始化时设置第一页的进度
+      maxPageReached = 0;
+      const initialProgress = Math.round(((maxPageReached + 1) / pageImages.length) * 100);
+      console.log(`PDF初始进度: ${initialProgress}% (已浏览 ${maxPageReached + 1}/${pageImages.length} 页)`);
+      if (currentTaskId) {
+        updateTaskProgress(currentTaskId, initialProgress);
+      } else {
+        console.log('PDF预览 - 无关联任务，仅记录阅读进度');
+      }
       
       // 绑定按钮事件
       prevBtn.addEventListener('click', () => {
@@ -702,6 +731,14 @@ const previewPdfFile = async (previewData) => {
       img.style.maxWidth = '100%';
       img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
       pdfContainer.appendChild(img);
+      
+      // 单页PDF直接设置为100%完成
+      if (currentTaskId) {
+        console.log('DataIntegration: 单页PDF，设置进度为100%');
+        updateTaskProgress(currentTaskId, 100);
+      } else {
+        console.log('DataIntegration: 单页PDF预览完成 - 无关联任务');
+      }
     }
     
   } catch (error) {
@@ -1275,6 +1312,75 @@ onMounted(() => {
       card.style.setProperty('--animation-delay', `${index * 0.1}s`);
     });
   }, 200);
+  
+  // 监听来自TaskManager的文件预览事件
+  const handleTaskFilePreview = async (event) => {
+    console.log('DataIntegration: 接收到previewTaskFile事件', event.detail);
+    const { fileName, originalFileName, taskName, fileUrl, taskId } = event.detail;
+    
+    // 确保资料库数据已加载
+    if (materials.value.length === 0) {
+      console.log('DataIntegration: 资料库数据未加载，开始加载...');
+      await loadMaterials();
+    }
+    
+    // 设置当前任务ID用于进度更新
+    currentTaskId = taskId;
+    
+    console.log('DataIntegration: 当前资料库文件数量:', materials.value.length);
+    console.log('DataIntegration: 查找文件:', fileName, '原始文件名:', originalFileName);
+    console.log('DataIntegration: 关联任务ID:', taskId);
+    
+    // 查找对应的文件（支持多种匹配方式，优先使用原始文件名）
+    const material = materials.value.find(m => {
+      // 优先匹配原始文件名
+      if (originalFileName) {
+        const originalMatch = m.name === originalFileName || 
+                            m.fileName === originalFileName ||
+                            m.name.includes(originalFileName) ||
+                            originalFileName.includes(m.name);
+        if (originalMatch) {
+          console.log('DataIntegration: 通过原始文件名找到匹配文件:', m);
+          return true;
+        }
+      }
+      
+      // 如果原始文件名匹配失败，使用当前文件名匹配
+      const currentMatch = m.name === fileName || 
+             m.fileName === fileName ||
+             m.name.includes(fileName) ||
+             fileName.includes(m.name);
+      if (currentMatch) {
+        console.log('DataIntegration: 通过当前文件名找到匹配文件:', m);
+      }
+      return currentMatch;
+    });
+    
+    if (material) {
+      console.log('DataIntegration: 准备预览文件:', material.name);
+      // 延迟一下确保页面完全加载
+      setTimeout(() => {
+        console.log(`DataIntegration: 正在预览文件: ${material.name}`);
+        openMaterial(material);
+      }, 200);
+    } else {
+      // 如果没找到，显示详细的提示信息
+      const availableFiles = materials.value.map(m => m.name || m.fileName).join('\n- ');
+      console.log('DataIntegration: 未找到匹配文件，可用文件:', availableFiles);
+      const searchInfo = originalFileName ? `${fileName} (原始名称: ${originalFileName})` : fileName;
+      alert(`未在资料库中找到文件: ${searchInfo}\n\n当前资料库中的文件:\n- ${availableFiles}\n\n提示：请确保文件已上传到资料库，或检查文件名是否匹配。`);
+    }
+  };
+  
+  // 添加事件监听器
+  window.addEventListener('previewTaskFile', handleTaskFilePreview);
+  console.log('DataIntegration: 事件监听器已添加');
+  
+  // 组件卸载时移除事件监听器
+  onUnmounted(() => {
+    window.removeEventListener('previewTaskFile', handleTaskFilePreview);
+    console.log('DataIntegration: 事件监听器已移除');
+  });
 });
 
 const loadMaterials = async () => {
@@ -1356,7 +1462,50 @@ const getSubjectIcon = (subject) => {
 const aiSearchQuery = ref('')
 const aiResults = ref([])
 const aiLoading = ref(false)
-const aiError = ref(null)
+const aiError = ref('')
+
+// 当前关联的任务ID（用于更新阅读进度）
+let currentTaskId = null;
+
+// 更新任务进度函数
+const updateTaskProgress = async (taskId, progress) => {
+  if (!taskId) {
+    console.log('DataIntegration: 无任务ID，跳过进度更新');
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('accessToken');
+    console.log(`DataIntegration: 准备更新任务 ${taskId} 进度为 ${progress}%`);
+    console.log(`DataIntegration: 使用token: ${token ? '已获取' : '未获取'}`);
+    
+    const response = await fetch(`/api/tasks/${taskId}/progress`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ progress })
+    });
+    
+    console.log(`DataIntegration: API响应状态: ${response.status}`);
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`DataIntegration: 任务 ${taskId} 进度已更新为 ${progress}%`, result);
+      // 通知TaskManager更新本地数据
+      const progressUpdateEvent = new CustomEvent('taskProgressUpdated', {
+        detail: { taskId, progress }
+      });
+      window.dispatchEvent(progressUpdateEvent);
+    } else {
+      const errorText = await response.text();
+      console.error('DataIntegration: 更新任务进度失败:', response.status, response.statusText, errorText);
+    }
+  } catch (error) {
+     console.error('DataIntegration: 更新任务进度网络错误:', error);
+   }
+ }
 
 // AI搜索方法
 const handleAiSearch = async () => {
