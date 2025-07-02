@@ -6,13 +6,22 @@
         <button @click="showModal = true">
           <i class="fas fa-plus"></i> 添加任务
         </button>
-        <button 
-          v-if="selectedTasks.length > 0" 
-          @click="goToAnalysis" 
-          class="analysis-btn"
-        >
-          <i class="fas fa-chart-line"></i> 分析选中任务 ({{ selectedTasks.length }})
-        </button>
+        <!-- 修改为批量操作按钮组 -->
+        <div v-if="selectedTasks.length > 0" class="batch-operations">
+          <span class="selected-count">已选择 {{ selectedTasks.length }} 个任务</span>
+          <button 
+            @click="goToAnalysis" 
+            class="analysis-btn"
+          >
+            <i class="fas fa-chart-line"></i> 分析选中任务
+          </button>
+          <button 
+            @click="batchDeleteTasks" 
+            class="delete-btn"
+          >
+            <i class="fas fa-trash-alt"></i> 批量删除
+          </button>
+        </div>
       </div>
     </div>
 
@@ -50,8 +59,8 @@
               <th>DDL管理</th>
               <th>进度</th>
               <th>附件</th>
-              <th>操作</th>
-              <th>选择分析</th>
+              <th>编辑</th>
+              <th>批量操作</th>
             </tr>
           </thead>
           <tbody>
@@ -1467,6 +1476,58 @@ const triggerTestDdlAlert = () => {
   }
 }
 
+// 添加批量删除函数
+const batchDeleteTasks = async () => {
+  if (selectedTasks.value.length === 0) {
+    alert('请先选择要删除的任务')
+    return
+  }
+  
+  const taskNames = selectedTasks.value.map(task => task.name).join('、')
+  if (!confirm(`确定要删除以下 ${selectedTasks.value.length} 个任务吗？\n\n${taskNames}`)) {
+    return
+  }
+  
+  try {
+    const token = localStorage.getItem('accessToken')
+    const deletePromises = selectedTasks.value.map(task => 
+      fetch(`http://localhost:8080/api/tasks/${task.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+    )
+    
+    // 等待所有删除请求完成
+    const results = await Promise.allSettled(deletePromises)
+    
+    // 检查删除结果
+    const failedTasks = []
+    results.forEach((result, index) => {
+      if (result.status === 'rejected' || !result.value.ok) {
+        failedTasks.push(selectedTasks.value[index].name)
+      }
+    })
+    
+    if (failedTasks.length > 0) {
+      alert(`以下任务删除失败：${failedTasks.join('、')}`)
+    } else {
+      alert(`成功删除 ${selectedTasks.value.length} 个任务`)
+    }
+    
+    // 清空选中的任务
+    selectedTasks.value = []
+    
+    // 重新获取任务列表
+    await fetchTasks()
+    
+  } catch (error) {
+    console.error('批量删除任务失败:', error)
+    alert('批量删除失败：' + error.message)
+  }
+}
+
 // 跳转到AI分析页面
 const goToAnalysis = () => {
   if (selectedTasks.value.length === 0) {
@@ -2480,6 +2541,65 @@ input[type="file"]:hover {
 .btn-primary:hover {
   background: linear-gradient(135deg, #0056b3, #004085);
   transform: translateY(-2px);
+}
+
+/* 批量操作样式 */
+.batch-operations {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.selected-count {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid #bbdefb;
+}
+
+.delete-btn {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 120px;
+}
+
+.delete-btn:hover {
+  background: linear-gradient(135deg, #d32f2f, #c62828);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .batch-operations {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  
+  .selected-count {
+    text-align: center;
+  }
+  
+  .analysis-btn,
+  .delete-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* 任务高亮闪烁效果 */
