@@ -26,7 +26,7 @@ public class FileController {
 
     private final FileStorageService fileStorageService;
     private final LearningMaterialRepository materialRepository;
-    
+
     @Autowired
     private UserService userService;
 
@@ -83,7 +83,7 @@ public class FileController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
                 .body(fileContent);
     }
-    
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getUserFiles(@PathVariable Long userId) {
         try {
@@ -91,19 +91,19 @@ public class FileController {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String username = authentication.getName();
             User currentUser = userService.findByUsername(username);
-            
+
             if (currentUser == null) {
                 ErrorResponse errorResponse = new ErrorResponse("用户未登录", "请先登录后再查看文件");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
             }
-            
+
             // 验证目标用户是否存在
             User targetUser = userService.findById(userId);
             if (targetUser == null) {
                 ErrorResponse errorResponse = new ErrorResponse("用户不存在", "找不到ID为" + userId + "的用户");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
             }
-            
+
             // 获取指定用户的文件
             List<FileUploadResponse> files = fileStorageService.getFilesByUserId(userId);
             return ResponseEntity.ok(files);

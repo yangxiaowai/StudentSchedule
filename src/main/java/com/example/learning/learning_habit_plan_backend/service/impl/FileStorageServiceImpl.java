@@ -242,12 +242,12 @@ public class FileStorageServiceImpl implements FileStorageService {
     public List<LearningMaterial> getMaterialsByUserIds(List<Long> userIds) {
         return materialRepository.findByUserIdIn(userIds);
     }
-    
+
     @Override
     public List<LearningMaterial> getMaterialsByUserIdsAndSubject(List<Long> userIds, String subject) {
         return materialRepository.findByUserIdInAndSubject(userIds, subject);
     }
-    
+
     @Override
     public List<FileUploadResponse> getFilesByUserId(Long userId) {
         try {

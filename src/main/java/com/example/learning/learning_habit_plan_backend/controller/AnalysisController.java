@@ -1,12 +1,16 @@
 package com.example.learning.learning_habit_plan_backend.controller;
 
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -28,28 +32,96 @@ public class AnalysisController {
     private TaskService taskService;
 
     @PostMapping("/tasks")
-    public Map<String, Object> analyzeTasks(@RequestBody List<Long> taskIds) {
-        // 1. 查询所有任务
-        List<Task> tasks = taskService.getTasksByIds(taskIds);
-
-        // 2. 聚合数据
-        List<String> subjectNames = Arrays.asList("语文", "数学", "英语", "物理", "化学");
-        List<String> dayNames = Arrays.asList("周一", "周二", "周三", "周四", "周五", "周六", "周日");
-
-        // 统计每个学科的平均完成度
-        Map<String, List<Integer>> subjectProgressMap = new HashMap<>();
-        for (String subject : subjectNames) {
-            subjectProgressMap.put(subject, new ArrayList<>());
-        }
-        for (Task t : tasks) {
-            if (subjectProgressMap.containsKey(t.getSubject()) && t.getProgress() != null) {
-                subjectProgressMap.get(t.getSubject()).add(t.getProgress());
+    public Map<String, Object> analyzeTasks(@RequestBody List<Object> rawTaskIds) {
+        System.out.println("收到任务分析请求，原始任务IDs: " + rawTaskIds);
+        System.out.println("原始任务ID类型: " + (rawTaskIds != null ? rawTaskIds.getClass().getName() : "null"));
+        
+        // 将任务ID转换为Long类型
+        List<Long> taskIds = new ArrayList<>();
+        if (rawTaskIds != null && !rawTaskIds.isEmpty()) {
+            for (Object rawId : rawTaskIds) {
+                try {
+                    if (rawId instanceof Integer) {
+                        taskIds.add(((Integer) rawId).longValue());
+                    } else if (rawId instanceof Long) {
+                        taskIds.add((Long) rawId);
+                    } else if (rawId instanceof String) {
+                        taskIds.add(Long.parseLong((String) rawId));
+                    } else if (rawId instanceof Number) {
+                        taskIds.add(((Number) rawId).longValue());
+                    } else {
+                        System.out.println("无法处理的任务ID类型: " + (rawId != null ? rawId.getClass().getName() : "null") + ", 值: " + rawId);
+                    }
+                } catch (Exception e) {
+                    System.out.println("转换任务ID时出错: " + e.getMessage() + ", 原始值: " + rawId);
+                }
             }
         }
+        
+        System.out.println("处理后的任务IDs: " + taskIds);
+        
+        if (taskIds.isEmpty()) {
+            System.out.println("警告: 没有有效的任务ID");
+            // 返回空数据
+            Map<String, Object> emptyResult = new HashMap<>();
+            emptyResult.put("subjectData", new ArrayList<>());
+            emptyResult.put("dayData", new ArrayList<>());
+            emptyResult.put("planSubjects", new ArrayList<>());
+            emptyResult.put("planDays", new ArrayList<>());
+            emptyResult.put("subjectNames", new ArrayList<>());
+            emptyResult.put("dayNames", new ArrayList<>());
+            emptyResult.put("aiSuggestions", "没有找到有效的任务数据进行分析");
+            return emptyResult;
+        }
+        
+        // 1. 查询所有任务
+        List<Task> tasks = taskService.getTasksByIds(taskIds);
+        System.out.println("查询到的任务数量: " + tasks.size());
+        
+        if (tasks.isEmpty()) {
+            System.out.println("警告: 未查询到任何任务数据");
+            // 返回空数据
+            Map<String, Object> emptyResult = new HashMap<>();
+            emptyResult.put("subjectData", new ArrayList<>());
+            emptyResult.put("dayData", new ArrayList<>());
+            emptyResult.put("planSubjects", new ArrayList<>());
+            emptyResult.put("planDays", new ArrayList<>());
+            emptyResult.put("subjectNames", new ArrayList<>());
+            emptyResult.put("dayNames", new ArrayList<>());
+            emptyResult.put("aiSuggestions", "数据库中未找到对应的任务数据");
+            return emptyResult;
+        } else {
+            System.out.println("第一个任务详情: " + tasks.get(0));
+        }
+
+        // 2. 聚合数据
+        List<String> dayNames = Arrays.asList("周一", "周二", "周三", "周四", "周五", "周六", "周日");
+
+        // 动态获取实际任务中的学科
+        Map<String, List<Integer>> subjectProgressMap = new HashMap<>();
+        for (Task t : tasks) {
+            if (t.getSubject() != null && t.getProgress() != null) {
+                subjectProgressMap.computeIfAbsent(t.getSubject(), k -> new ArrayList<>()).add(t.getProgress());
+            }
+        }
+        
+        // 获取学科名称列表（按字母顺序排序以保持一致性）
+        List<String> subjectNames = subjectProgressMap.keySet().stream()
+                .sorted()
+                .toList();
+        
+        // 计算每个学科的加权平均完成度（基于任务数量）
         List<Integer> subjectData = subjectNames.stream()
                 .map(s -> {
                     List<Integer> progresses = subjectProgressMap.get(s);
-                    return progresses.isEmpty() ? 0 : (int) progresses.stream().mapToInt(i -> i).average().orElse(0);
+                    if (progresses.isEmpty()) return 0;
+                    
+                    // 计算加权平均：每个任务的完成度 * (100/总任务数)
+                    double weightPerTask = 100.0 / progresses.size();
+                    double weightedSum = progresses.stream()
+                            .mapToDouble(progress -> (progress / 100.0) * weightPerTask)
+                            .sum();
+                    return (int) Math.round(weightedSum);
                 })
                 .toList();
 
@@ -68,13 +140,57 @@ public class AnalysisController {
         List<Integer> dayData = dayNames.stream()
                 .map(d -> {
                     List<Integer> progresses = dayProgressMap.get(d);
-                    return progresses.isEmpty() ? 0 : (int) progresses.stream().mapToInt(i -> i).average().orElse(0);
+                    if (progresses.isEmpty()) return 0;
+                    
+                    // 计算加权平均：每个任务的完成度 * (100/总任务数)
+                    double weightPerTask = 100.0 / progresses.size();
+                    double weightedSum = progresses.stream()
+                            .mapToDouble(progress -> (progress / 100.0) * weightPerTask)
+                            .sum();
+                    return (int) Math.round(weightedSum);
                 })
                 .toList();
 
-        // 计划数据（可根据实际业务调整，这里用固定值）
-        List<Integer> planSubjects = Arrays.asList(80, 80, 85, 75, 70);
-        List<Integer> planDays = Arrays.asList(85, 80, 85, 80, 75, 70, 90);
+        // 计划数据（根据用户需求修改）
+        // 所有学科的计划完成度都设为100%
+        List<Integer> planSubjects = subjectNames.stream()
+                .map(subject -> 100) // 所有学科预设完成度为100%
+                .toList();
+        
+        // 每日计划完成度根据该天需要完成的任务的实际持续天数计算
+        // 每天的目标完成度 = 该天所有任务的(100/(end_time-start_time))之和
+        Map<String, Double> dayPlanMap = new HashMap<>();
+        for (String day : dayNames) {
+            dayPlanMap.put(day, 0.0);
+        }
+        
+        // 计算每个任务对应天的计划完成度贡献
+        for (Task t : tasks) {
+            if (t.getStartTime() != null && t.getEndTime() != null && t.getSubject() != null) {
+                // 计算任务持续天数
+                 long daysBetween = ChronoUnit.DAYS.between(
+                     t.getStartTime().toLocalDate(), 
+                     t.getEndTime().toLocalDate()
+                 ) + 1; // +1 因为包含开始和结束日期
+                
+                if (daysBetween > 0) {
+                    double taskDailyContribution = 100.0 / daysBetween;
+                    
+                    // 为任务持续期间的每一天添加计划完成度
+                    for (long i = 0; i < daysBetween; i++) {
+                        java.time.LocalDate currentDate = t.getStartTime().toLocalDate().plusDays(i);
+                        int dayOfWeek = currentDate.getDayOfWeek().getValue(); // 1=Monday
+                        String dayName = dayNames.get(dayOfWeek - 1);
+                        dayPlanMap.put(dayName, dayPlanMap.get(dayName) + taskDailyContribution);
+                    }
+                }
+            }
+        }
+        
+        // 转换为整数列表
+        List<Integer> planDays = dayNames.stream()
+                .map(day -> (int) Math.round(dayPlanMap.get(day)))
+                .toList();
 
         // 3. 组织prompt
         String prompt = String.format(
@@ -94,6 +210,8 @@ public class AnalysisController {
         result.put("subjectNames", subjectNames);
         result.put("dayNames", dayNames);
         result.put("suggestion", suggestion);
+        
+        System.out.println("返回分析结果: " + result);
         return result;
     }
 
@@ -178,14 +296,63 @@ public class AnalysisController {
         if (avgProgress < 70) {
             suggestions.add(createSuggestion(
                     "📚", "提升学习效率",
-                    "您的平均完成率较低，建议制定更详细的学习计划，设置小目标逐步提升。",
+                    "您的平均完成率较低（" + Math.round(avgProgress) + "%），建议采取以下措施提升效率：\n" +
+                    "1. 制定更详细的学习计划，将大任务分解为每天可完成的小目标\n" +
+                    "2. 使用番茄工作法：25分钟专注学习，5分钟短暂休息\n" +
+                    "3. 创建学习清单，每完成一项及时打勾，增强成就感\n" +
+                    "4. 找到适合自己的学习环境，减少外界干扰\n" +
+                    "5. 每周末回顾学习进度，调整下周计划",
                     "high"
+            ));
+        } else if (avgProgress < 90) {
+            suggestions.add(createSuggestion(
+                    "📈", "巩固学习成果",
+                    "您的平均完成率良好（" + Math.round(avgProgress) + "%），建议采取以下措施进一步提升：\n" +
+                    "1. 对已学知识进行定期复习，建立知识连接\n" +
+                    "2. 尝试费曼学习法：向他人解释所学内容，找出知识盲点\n" +
+                    "3. 建立学习激励机制，每达成一个目标给予自己适当奖励\n" +
+                    "4. 加入学习小组或找学习伙伴，相互监督和讨论\n" +
+                    "5. 尝试不同的学习方法，找出最适合自己的方式",
+                    "medium"
+            ));
+        } else {
+            suggestions.add(createSuggestion(
+                    "🏆", "卓越学习策略",
+                    "您的平均完成率非常出色（" + Math.round(avgProgress) + "%），建议采取以下措施保持并超越：\n" +
+                    "1. 挑战更高难度的学习目标，拓展知识边界\n" +
+                    "2. 尝试教授他人，巩固自己的知识体系\n" +
+                    "3. 探索知识应用场景，将理论与实践相结合\n" +
+                    "4. 建立个人知识管理系统，形成知识网络\n" +
+                    "5. 定期反思学习方法，持续优化学习策略",
+                    "medium"
             ));
         }
 
         // 基于学科分布的建议
         Map<String, Long> subjectCount = new HashMap<>();
-        tasks.forEach(t -> subjectCount.merge(t.getSubject(), 1L, Long::sum));
+        Map<String, Double> subjectProgress = new HashMap<>();
+        
+        tasks.forEach(t -> {
+            subjectCount.merge(t.getSubject(), 1L, Long::sum);
+            subjectProgress.merge(t.getSubject(), t.getProgress() != null ? t.getProgress().doubleValue() : 0.0, Double::sum);
+        });
+        
+        // 计算每个学科的平均进度
+        Map<String, Double> avgSubjectProgress = new HashMap<>();
+        subjectProgress.forEach((subject, totalProgress) -> {
+            avgSubjectProgress.put(subject, totalProgress / subjectCount.get(subject));
+        });
+        
+        // 找出进度最高和最低的学科
+        String highestSubject = avgSubjectProgress.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("未知");
+                
+        String lowestSubject = avgSubjectProgress.entrySet().stream()
+                .min(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("未知");
 
         String mostFrequentSubject = subjectCount.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
@@ -193,16 +360,57 @@ public class AnalysisController {
                 .orElse("未知");
 
         suggestions.add(createSuggestion(
-                "🎯", "学科平衡建议",
-                String.format("您在%s上投入较多时间，建议适当平衡其他学科的学习。", mostFrequentSubject),
-                "medium"
+                "🎯", "学科平衡策略",
+                String.format("您在%s上投入较多时间，%s的完成度最高（%.1f%%），而%s的完成度最低（%.1f%%）。建议：\n" +
+                "1. 为%s制定更详细的学习计划，找出学习障碍\n" +
+                "2. 分析%s的高效学习方法，应用到其他学科\n" +
+                "3. 每周为各学科设定明确的学时分配比例\n" +
+                "4. 使用交叉学习法，不同学科穿插学习，保持注意力\n" +
+                "5. 建立学科关联图，寻找不同学科间的知识联系", 
+                mostFrequentSubject, 
+                highestSubject, avgSubjectProgress.get(highestSubject),
+                lowestSubject, avgSubjectProgress.get(lowestSubject),
+                lowestSubject, highestSubject),
+                "high"
         ));
 
         // 基于时间分布的建议
         suggestions.add(createSuggestion(
-                "⏰", "时间管理优化",
-                "建议在学习效率最高的时段安排重要任务，提升整体学习效果。",
+                "⏰", "时间管理精进",
+                "高效的时间管理是学习成功的关键，建议采取以下策略：\n" +
+                "1. 使用时间块技术：将每天划分为2-3小时的学习块，每块专注一个主题\n" +
+                "2. 建立晨间/晚间仪式：每天固定时间规划/回顾学习内容\n" +
+                "3. 识别个人高效时段：记录一周内不同时段的学习效率，在高效时段安排重要任务\n" +
+                "4. 设置缓冲时间：在任务间预留15-30分钟的缓冲，避免时间压力\n" +
+                "5. 使用数字工具：尝试Forest、Todoist等应用辅助时间管理\n" +
+                "6. 实践80/20法则：识别产出80%结果的20%关键任务，优先处理",
                 "medium"
+        ));
+        
+        // 学习方法建议
+        suggestions.add(createSuggestion(
+                "🧠", "高效学习方法",
+                "根据认知科学研究，以下学习方法可显著提升学习效果：\n" +
+                "1. 间隔重复：不要一次性学完所有内容，而是按间隔时间表复习\n" +
+                "2. 主动检索：合上书本尝试回忆知识点，强化记忆\n" +
+                "3. 思维导图：为每个学科创建思维导图，建立知识框架\n" +
+                "4. 深度加工：将新知识与已有知识建立联系，形成个人理解\n" +
+                "5. 多感官学习：结合视觉、听觉、动觉等多种感官学习同一内容\n" +
+                "6. 教学相长：尝试向他人解释复杂概念，巩固理解",
+                "medium"
+        ));
+        
+        // 学习环境优化
+        suggestions.add(createSuggestion(
+                "🏡", "学习环境优化",
+                "学习环境对学习效率有显著影响，建议：\n" +
+                "1. 创建专属学习空间：固定的学习场所能触发学习状态\n" +
+                "2. 减少数字干扰：学习时开启手机勿扰模式，使用网页屏蔽工具\n" +
+                "3. 环境声音控制：根据个人偏好选择安静环境或白噪音背景\n" +
+                "4. 光线调节：确保充足自然光或使用色温适宜的照明\n" +
+                "5. 桌面整理：保持学习区域整洁，只放置当前需要的材料\n" +
+                "6. 姿势与舒适度：选择符合人体工学的座椅，定时起身活动",
+                "low"
         ));
 
         return suggestions;
