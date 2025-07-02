@@ -21,6 +21,9 @@ public class Task {
     private Integer progress;     // 任务完成进度（0-100）
     private Boolean completed;    // 任务是否完成
 
+    @Column(name = "user_id", nullable = false)
+    private Long userId;          // 用户ID
+
     private String contentType;   // 内容类型
     private String remark;        // 备注
     private String fileUrl;       // 上传文件的访问路径或URL
@@ -111,6 +114,14 @@ public class Task {
 
     public void setFileName(String fileName) {
         this.fileName = fileName;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
 }

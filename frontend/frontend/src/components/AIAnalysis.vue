@@ -181,7 +181,7 @@ async function generateSmartSuggestions() {
   error.value.show = false
   
   try {
-    const { data } = await axios.post('/api/analysis/smart-suggestions', {
+    const { data } = await axios.post('http://localhost:8080/api/analysis/smart-suggestions', {
       taskIds: props.selectedTasks.map(t => t.id),
       efficiencyData: efficiencyData.value
     })
@@ -207,7 +207,7 @@ async function generatePersonalizedPlan() {
   error.value.show = false
 
   try {
-    const { data } = await axios.post('/api/analysis/personalized-plan', {
+    const { data } = await axios.post('http://localhost:8080/api/analysis/personalized-plan', {
       taskIds: props.selectedTasks.map(t => t.id),
       goals: learningGoals.value,
       patterns: studyPatterns.value
@@ -231,7 +231,7 @@ async function generateAIReport() {
   suggestionText.value = '正在生成AI建议...'
   
   try {
-    const { data } = await axios.post('/api/analysis/tasks', 
+    const { data } = await axios.post('http://localhost:8080/api/analysis/tasks', 
       props.selectedTasks.map(t => t.id)
     )
     

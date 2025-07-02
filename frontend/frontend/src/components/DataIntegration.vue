@@ -1,7 +1,7 @@
 <template>
   <div class="material-container">
-    <!-- 顶部搜索栏 -->
-    <div class="search-section">
+    <!-- 顶部搜索栏 - 只读模式下隐藏 -->
+    <div v-if="!isReadOnly" class="search-section">
       <div class="search-bar">
         <input
             v-model="searchQuery"
@@ -51,17 +51,24 @@
     <!-- 资料库展示区域 -->
     <div class="material-library">
       <div class="library-header">
-        <h2>我的资料库</h2>
-        <div class="sort-options">
-          <span>排序方式：</span>
-          <select v-model="sortOption">
-            <option value="time-desc">最近上传</option>
-            <option value="time-asc">最早上传</option>
-            <option value="name-asc">名称(A-Z)</option>
-            <option value="name-desc">名称(Z-A)</option>
-            <option value="subject-asc">学科(A-Z)</option>
-            <option value="subject-desc">学科(Z-A)</option>
-          </select>
+        <div v-if="!isReadOnly" class="normal-header">
+          <h2>我的资料库</h2>
+          <div class="sort-options">
+            <span>排序方式：</span>
+            <select v-model="sortOption">
+              <option value="time-desc">最近上传</option>
+              <option value="time-asc">最早上传</option>
+              <option value="name-asc">名称(A-Z)</option>
+              <option value="name-desc">名称(Z-A)</option>
+              <option value="subject-asc">学科(A-Z)</option>
+              <option value="subject-desc">学科(Z-A)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div v-else class="readonly-header">
+          <h2>{{ targetUserName }}的资料库</h2>
+          <div class="readonly-badge">只读模式</div>
         </div>
       </div>
 
@@ -89,12 +96,13 @@
                 <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
               </svg>
             </button>
-            <button @click.stop="deleteMaterial(material)">
+            <button v-if="!isReadOnly" @click.stop="deleteMaterial(material)">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
                 <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
               </svg>
             </button>
+            <span v-else class="read-only-text">只读模式</span>
           </div>
         </div>
 
@@ -108,7 +116,7 @@
     </div>
 
     <!-- 底部上传按钮 -->
-    <div class="upload-section">
+    <div v-if="!isReadOnly" class="upload-section">
       <button class="upload-btn" @click="showUploadModal = true">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
           <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
@@ -188,8 +196,8 @@
       </div>
     </div>
   </div>
-  <!-- AI学习资源检索 -->
-  <div class="ai-search-section">
+  <!-- AI学习资源检索 - 只读模式下隐藏 -->
+  <div v-if="!isReadOnly" class="ai-search-section">
     <div class="ai-search-box">
       <input
           v-model="aiSearchQuery"
@@ -228,7 +236,39 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
+
+// 路由和只读模式处理
+const route = useRoute()
+const isReadOnly = ref(false)
+const targetUserId = ref(null)
+const targetUserName = ref('')
+
+// 检查是否为只读模式的函数
+const checkReadOnlyMode = () => {
+  console.log('检查只读模式，路由参数:', route.query)
+  if ((route.query.userId || route.query.targetUserId) && (route.query.readOnly === 'true' || route.query.readonly === 'true')) {
+    isReadOnly.value = true
+    targetUserId.value = route.query.userId || route.query.targetUserId
+    targetUserName.value = route.query.userName || route.query.targetUserName || '用户'
+    console.log('设置为只读模式:', { isReadOnly: isReadOnly.value, targetUserId: targetUserId.value, targetUserName: targetUserName.value })
+  } else {
+    isReadOnly.value = false
+    targetUserId.value = null
+    targetUserName.value = ''
+    console.log('设置为正常模式')
+  }
+}
+
+// 初始检查
+checkReadOnlyMode()
+
+// 监听路由变化
+watch(() => route.query, () => {
+  checkReadOnlyMode()
+  loadMaterials()
+}, { immediate: false })
 
 // 搜索相关状态
 const searchQuery = ref('')
@@ -766,7 +806,14 @@ onMounted(() => {
 const loadMaterials = async () => {
   try {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch('/api/files/list', {
+    let url = '/api/files/list';
+    
+    // 如果是只读模式，获取指定用户的资料
+    if (isReadOnly.value && targetUserId.value) {
+      url = `/api/files/user/${targetUserId.value}`;
+    }
+    
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -1522,6 +1569,45 @@ const loadScript = (url) => {
   color: #ff4d4f;
   margin-top: 10px;
   font-size: 14px;
+}
+
+/* 只读模式样式 */
+.read-only-text {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.readonly-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.readonly-badge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #bbdefb;
+}
+
+.normal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.normal-header h2 {
+  margin: 0;
 }
 
 </style>

@@ -238,6 +238,37 @@ public class FileStorageServiceImpl implements FileStorageService {
         }
     }
 
+    @Override
+    public List<LearningMaterial> getMaterialsByUserIds(List<Long> userIds) {
+        return materialRepository.findByUserIdIn(userIds);
+    }
+    
+    @Override
+    public List<LearningMaterial> getMaterialsByUserIdsAndSubject(List<Long> userIds, String subject) {
+        return materialRepository.findByUserIdInAndSubject(userIds, subject);
+    }
+    
+    @Override
+    public List<FileUploadResponse> getFilesByUserId(Long userId) {
+        try {
+            List<LearningMaterial> materials = materialRepository.findByUserId(userId);
+            return materials.stream().map(material -> {
+                FileUploadResponse response = new FileUploadResponse();
+                response.setId(material.getId());
+                response.setFileName(material.getFileName());
+                response.setFileDownloadUri("/api/files/download?fileName=" + material.getFileName());
+                response.setFileType(material.getFileType());
+                response.setSize(material.getFileSize());
+                response.setSubject(material.getSubject());
+                response.setContentType(material.getContentType());
+                response.setUploadTime(material.getUploadTime().toString());
+                return response;
+            }).collect(java.util.stream.Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException("获取用户文件失败: " + e.getMessage(), e);
+        }
+    }
+
     private Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {

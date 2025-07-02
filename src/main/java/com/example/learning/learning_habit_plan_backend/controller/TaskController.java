@@ -1,13 +1,17 @@
 package com.example.learning.learning_habit_plan_backend.controller;
 
 import com.example.learning.learning_habit_plan_backend.entity.Task;
+import com.example.learning.learning_habit_plan_backend.entity.User;
 import com.example.learning.learning_habit_plan_backend.service.TaskService;
+import com.example.learning.learning_habit_plan_backend.service.UserService;
 // 添加以下两行导入
 import com.example.learning.learning_habit_plan_backend.service.FileStorageService;
 import com.example.learning.learning_habit_plan_backend.dto.FileUploadResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +29,9 @@ public class TaskController {
 
     @Autowired
     private TaskService taskService;
+    
+    @Autowired
+    private UserService userService;
     
     // 添加FileStorageService依赖
     @Autowired
@@ -46,6 +53,16 @@ public class TaskController {
             @RequestParam(value = "fileUrl", required = false) String fileUrl
     ) {
         try {
+            // 获取当前登录用户
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            User currentUser = userService.findByUsername(username);
+            
+            if (currentUser == null) {
+                ErrorResponse errorResponse = new ErrorResponse("用户未登录", "请先登录后再创建任务");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+            }
+            
             Task task = new Task();
             task.setName(name);
             task.setSubject(subject);
@@ -55,6 +72,8 @@ public class TaskController {
             task.setRemark(remark);
             task.setProgress(progress);
             task.setCompleted(isCompleted);
+            // 设置用户ID
+            task.setUserId(currentUser.getId());
 
             // 处理文件信息 - 修改这部分逻辑
             if (file != null && !file.isEmpty()) {
@@ -98,13 +117,25 @@ private String saveUploadedFile(MultipartFile file) throws IOException {
 }
 
 @GetMapping
-public ResponseEntity<List<Task>> getAllTasks() {
+public ResponseEntity<?> getAllTasks() {
     try {
-        List<Task> tasks = taskService.getAll();
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User currentUser = userService.findByUsername(username);
+        
+        if (currentUser == null) {
+            ErrorResponse errorResponse = new ErrorResponse("用户未登录", "请先登录后再查看任务");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        }
+        
+        // 只获取当前用户的任务
+        List<Task> tasks = taskService.getTasksByUserId(currentUser.getId());
         return ResponseEntity.ok(tasks);
     } catch (Exception e) {
         e.printStackTrace();
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        ErrorResponse errorResponse = new ErrorResponse("获取任务失败", e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 }
 
@@ -125,10 +156,26 @@ public ResponseEntity<?> updateTask(
         @RequestParam(value = "fileUrl", required = false) String fileUrl
 ) {
     try {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User currentUser = userService.findByUsername(username);
+        
+        if (currentUser == null) {
+            ErrorResponse errorResponse = new ErrorResponse("用户未登录", "请先登录后再更新任务");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        }
+        
         Task task = taskService.findById(id);
         if (task == null) {
             ErrorResponse errorResponse = new ErrorResponse("任务不存在", "找不到ID为" + id + "的任务");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+        
+        // 验证用户权限，只允许用户更新自己的任务
+        if (!task.getUserId().equals(currentUser.getId())) {
+            ErrorResponse errorResponse = new ErrorResponse("权限不足", "您只能更新自己的任务");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
         }
         
         task.setName(name);
@@ -170,6 +217,28 @@ public ResponseEntity<?> updateTask(
 @DeleteMapping("/{id}")
 public ResponseEntity<?> deleteTask(@PathVariable Long id) {
     try {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User currentUser = userService.findByUsername(username);
+        
+        if (currentUser == null) {
+            ErrorResponse errorResponse = new ErrorResponse("用户未登录", "请先登录后再删除任务");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        }
+        
+        Task task = taskService.findById(id);
+        if (task == null) {
+            ErrorResponse errorResponse = new ErrorResponse("任务不存在", "找不到ID为" + id + "的任务");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+        
+        // 验证用户权限，只允许用户删除自己的任务
+        if (!task.getUserId().equals(currentUser.getId())) {
+            ErrorResponse errorResponse = new ErrorResponse("权限不足", "您只能删除自己的任务");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+        }
+        
         taskService.deleteById(id);
         return ResponseEntity.ok().build();
     } catch (Exception e) {
@@ -199,6 +268,36 @@ public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile fil
     } catch (IOException e) {
         e.printStackTrace();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("上传失败");
+    }
+}
+
+@GetMapping("/user/{userId}")
+public ResponseEntity<?> getUserTasks(@PathVariable Long userId) {
+    try {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User currentUser = userService.findByUsername(username);
+        
+        if (currentUser == null) {
+            ErrorResponse errorResponse = new ErrorResponse("用户未登录", "请先登录后再查看任务");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        }
+        
+        // 验证目标用户是否存在
+        User targetUser = userService.findById(userId);
+        if (targetUser == null) {
+            ErrorResponse errorResponse = new ErrorResponse("用户不存在", "找不到ID为" + userId + "的用户");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+        
+        // 获取指定用户的任务
+        List<Task> tasks = taskService.getTasksByUserId(userId);
+        return ResponseEntity.ok(tasks);
+    } catch (Exception e) {
+        e.printStackTrace();
+        ErrorResponse errorResponse = new ErrorResponse("获取任务失败", e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 }
 

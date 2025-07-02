@@ -1,9 +1,16 @@
 <template>
   <div class="task-manager">
-    <h2>任务管理</h2>
-    <button @click="showModal = true">
-      <i class="fas fa-plus"></i> 添加任务
-    </button>
+    <div v-if="!isReadOnly" class="task-manager-header">
+      <h2>任务管理</h2>
+      <button @click="showModal = true">
+        <i class="fas fa-plus"></i> 添加任务
+      </button>
+    </div>
+    
+    <div v-else class="readonly-header">
+      <h2>{{ targetUserName }}的任务</h2>
+      <div class="readonly-badge">只读模式</div>
+    </div>
 
     <div class="table-container">
         <table>
@@ -36,13 +43,16 @@
                 </button>
                 <span v-else class="no-file">无附件</span>
               </td>
-              <td class="actions-cell">
+              <td class="actions-cell" v-if="!isReadOnly">
                 <button class="icon-button edit" title="编辑" @click="editTask(task)">
                   <i class="fas fa-edit"></i>
                 </button>
                 <button class="icon-button delete" title="删除" @click="deleteTask(task.id)">
                   <i class="fas fa-trash-alt"></i>
                 </button>
+              </td>
+              <td class="actions-cell" v-else>
+                <span class="read-only-text">只读模式</span>
               </td>
             </tr>
           </tbody>
@@ -183,8 +193,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { uploadForTask } from '@/utils/fileUpload'
 
 function formatDateTime(dateStr) {
@@ -198,6 +208,37 @@ function formatDateTime(dateStr) {
     minute: '2-digit'
   })
 }
+
+// 路由和只读模式处理
+const route = useRoute()
+const isReadOnly = ref(false)
+const targetUserId = ref(null)
+const targetUserName = ref('')
+
+// 检查是否为只读模式的函数
+const checkReadOnlyMode = () => {
+  console.log('检查只读模式，路由参数:', route.query)
+  if ((route.query.userId || route.query.targetUserId) && (route.query.readOnly === 'true' || route.query.readonly === 'true')) {
+    isReadOnly.value = true
+    targetUserId.value = route.query.userId || route.query.targetUserId
+    targetUserName.value = route.query.userName || route.query.targetUserName || '用户'
+    console.log('设置为只读模式:', { isReadOnly: isReadOnly.value, targetUserId: targetUserId.value, targetUserName: targetUserName.value })
+  } else {
+    isReadOnly.value = false
+    targetUserId.value = null
+    targetUserName.value = ''
+    console.log('设置为正常模式')
+  }
+}
+
+// 初始检查
+checkReadOnlyMode()
+
+// 监听路由变化
+watch(() => route.query, () => {
+  checkReadOnlyMode()
+  fetchTasks()
+}, { immediate: false })
 
 onMounted(() => {
   fetchTasks()
@@ -258,7 +299,14 @@ const validateForm = () => {
 async function fetchTasks() {
   try {
     const token = localStorage.getItem('accessToken')
-    const response = await fetch('http://localhost:8080/api/tasks', {
+    let url = 'http://localhost:8080/api/tasks'
+    
+    // 如果是只读模式，获取指定用户的任务
+    if (isReadOnly.value && targetUserId.value) {
+      url = `http://localhost:8080/api/tasks/user/${targetUserId.value}`
+    }
+    
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -513,9 +561,33 @@ const removeUploadedFile = () => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
+.task-manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.readonly-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 1.5rem;
+}
+
+.readonly-badge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #bbdefb;
+}
+
 .task-manager h2 {
   color: #2c3e50;
-  margin-bottom: 1.5rem;
+  margin: 0;
   font-size: 1.8rem;
   font-weight: 600;
 }
@@ -935,5 +1007,15 @@ td:nth-child(6)::before {
   background: #4CAF50;
   border-radius: 2px;
   z-index: 1;
+}
+
+.read-only-text {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
 }
 </style>
