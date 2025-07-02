@@ -733,7 +733,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                 
                 // 如果幻灯片数量被限制，记录信息
                 if (totalSlides > maxSlides) {
-                    logger.info("PPT文件 {} 包含 {} 张幻灯片，仅预览前 {} 张", fileName, totalSlides, maxSlides);
+                    logger.info("PPT文件 " + fileName + " 包含 " + totalSlides + " 张幻灯片，仅预览前 " + maxSlides + " 张");
                 }
                 
             } finally {
