@@ -16,6 +16,27 @@
       </div>
     </div>
 
+    <!-- DDL提醒弹窗 -->
+    <div v-if="showDdlAlert" class="ddl-alert-modal" @click.self="closeDdlAlert">
+      <div class="ddl-alert-content">
+        <div class="ddl-alert-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3>⏰ DDL提醒</h3>
+        <p class="ddl-alert-message">{{ ddlAlertMessage }}</p>
+        <div class="ddl-alert-buttons">
+          <button class="btn-secondary" @click="closeDdlAlert">
+            <i class="fas fa-check"></i>
+            知道啦
+          </button>
+          <button class="btn-primary" @click="goToTask">
+            <i class="fas fa-eye"></i>
+            带我去看看
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="table-container">
         <table>
           <thead>
@@ -26,6 +47,7 @@
               <th>内容类型</th>
               <th>开始时间</th>
               <th>结束时间</th>
+              <th>DDL管理</th>
               <th>进度</th>
               <th>附件</th>
               <th>操作</th>
@@ -33,13 +55,30 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="task in tasks" :key="task.id">
+            <tr v-for="task in sortedTasks" :key="task.id" :class="getTaskRowClass(task)" :data-task-id="task.id">
               <td>{{ task.name }}</td>
               <td>{{ task.subject }}</td>
               <td>{{ task.content }}</td>
               <td>{{ getContentTypeLabel(task.contentType || task.type) }}</td>
               <td>{{ formatDateTime(task.startTime) || '未设置' }}</td>
               <td>{{ formatDateTime(task.endTime) || '未设置' }}</td>
+              <td class="ddl-cell">
+                <div class="ddl-container">
+                  <div class="clock-icon" :class="{ 'ticking': !isTaskExpired(task) }">
+                    <i class="fas fa-clock"></i>
+                  </div>
+                  <div class="ddl-info">
+                    <div class="time-remaining" :class="getTimeRemainingClass(task)">
+                      {{ getTimeRemaining(task) }}
+                    </div>
+                    <div class="status-indicator">
+                      <i v-if="isTaskCompleted(task)" class="fas fa-check completed-icon"></i>
+                      <i v-else-if="isTaskExpired(task)" class="fas fa-times expired-icon"></i>
+                      <i v-else class="fas fa-hourglass-half pending-icon"></i>
+                    </div>
+                  </div>
+                </div>
+              </td>
               <td class="progress-cell">
                 <div class="progress-container">
                   <div class="progress-bar">
@@ -216,13 +255,23 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { uploadForTask } from '@/utils/fileUpload'
 
 function formatDateTime(dateStr) {
   if (!dateStr) return ''
-  const date = new Date(dateStr)
+  
+  // 创建Date对象时，如果字符串不包含时区信息，会被当作本地时间
+  let date
+  if (dateStr.includes('T') && !dateStr.includes('Z') && !dateStr.includes('+')) {
+    // 如果是YYYY-MM-DDTHH:mm格式且没有时区标识，当作本地时间处理
+    date = new Date(dateStr)
+  } else {
+    // 如果包含时区信息，需要转换为本地时间
+    date = new Date(dateStr)
+  }
+  
   return date.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
@@ -230,6 +279,40 @@ function formatDateTime(dateStr) {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// 添加时间格式化辅助函数
+function formatTimeForServer(timeStr) {
+  if (!timeStr) return ''
+  // 确保时间格式正确，添加秒数
+  return timeStr.includes(':') ? timeStr + (timeStr.split(':').length === 2 ? ':00' : '') : timeStr
+}
+
+function formatTimeForEdit(timeStr) {
+  if (!timeStr) return ''
+  
+  let date
+  if (timeStr.includes('T')) {
+    // 如果已经是ISO格式
+    date = new Date(timeStr)
+  } else {
+    // 如果是其他格式，尝试解析
+    date = new Date(timeStr)
+  }
+  
+  // 确保日期有效
+  if (isNaN(date.getTime())) {
+    return ''
+  }
+  
+  // 获取本地时间组件
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
 // 将内容类型英文值转换为中文显示
@@ -245,29 +328,81 @@ function getContentTypeLabel(type) {
 }
 
 const router = useRouter()
+const isComponentMounted = ref(false)
+
+// 监听来自DataIntegration的进度更新事件
+const handleProgressUpdate = (event) => {
+  const { taskId, progress } = event.detail
+  console.log('TaskManager: 接收到进度更新事件', { taskId, progress })
+  
+  // 更新本地任务数据
+  const taskIndex = tasks.value.findIndex(t => t.id === taskId)
+  if (taskIndex !== -1) {
+    tasks.value[taskIndex].progress = progress
+    console.log(`TaskManager: 本地任务 ${taskId} 进度已更新为 ${progress}%`)
+  }
+}
 
 onMounted(() => {
+  isComponentMounted.value = true
   fetchTasks()
-  
-  // 监听来自DataIntegration的进度更新事件
-  const handleProgressUpdate = (event) => {
-    const { taskId, progress } = event.detail
-    console.log('TaskManager: 接收到进度更新事件', { taskId, progress })
-    
-    // 更新本地任务数据
-    const taskIndex = tasks.value.findIndex(t => t.id === taskId)
-    if (taskIndex !== -1) {
-      tasks.value[taskIndex].progress = progress
-      console.log(`TaskManager: 本地任务 ${taskId} 进度已更新为 ${progress}%`)
-    }
-  }
-  
+  startDdlCheck()
   window.addEventListener('taskProgressUpdated', handleProgressUpdate)
+  
+  // 每分钟更新一次倒计时显示
+  setInterval(() => {
+    if (isComponentMounted.value) {
+      // 触发响应式更新
+      tasks.value = [...tasks.value]
+    }
+  }, 60000)
+  
+  // 开发环境下添加测试功能
+  if (process.env.NODE_ENV === 'development') {
+    // 添加全局测试函数
+    window.testDdlAlert = triggerTestDdlAlert
+    console.log('开发模式：可使用 window.testDdlAlert() 测试DDL提醒功能')
+  }
+})
+
+// 组件卸载时清理定时器
+onBeforeUnmount(() => {
+  isComponentMounted.value = false
+  stopDdlCheck()
+  window.removeEventListener('taskProgressUpdated', handleProgressUpdate)
+  // 关闭任何打开的DDL提醒弹窗
+  showDdlAlert.value = false
+  currentAlertTask.value = null
 })
 
 const showModal = ref(false)
 const isEditing = ref(false)
 const tasks = ref([])
+const showDdlAlert = ref(false)
+const ddlAlertMessage = ref('')
+const currentAlertTask = ref(null)
+const ddlCheckInterval = ref(null)
+const notifiedTasks = ref(new Set()) // 记录已提醒过的任务，避免重复提醒
+
+// 计算属性：排序后的任务列表
+const sortedTasks = computed(() => {
+  const now = new Date()
+  
+  return [...tasks.value].sort((a, b) => {
+    const aExpired = isTaskExpired(a)
+    const bExpired = isTaskExpired(b)
+    
+    // 未过期的任务排在前面
+    if (aExpired && !bExpired) return 1
+    if (!aExpired && bExpired) return -1
+    
+    // 如果都过期或都未过期，按截止时间排序
+    const aEndTime = new Date(a.endTime)
+    const bEndTime = new Date(b.endTime)
+    
+    return aEndTime - bEndTime
+  })
+})
 const selectedTasks = ref([])
 const newTask = ref({
   name: '',
@@ -348,8 +483,9 @@ async function addTask() {
     name: newTask.value.name.trim(),
     subject: newTask.value.subject,
     content: newTask.value.content.trim(),
-    startTime: newTask.value.startTime ? new Date(newTask.value.startTime).toISOString().slice(0, 16) : '',
-    endTime: newTask.value.endTime ? new Date(newTask.value.endTime).toISOString().slice(0, 16) : '',
+    // 使用新的时间格式化函数
+    startTime: formatTimeForServer(newTask.value.startTime),
+    endTime: formatTimeForServer(newTask.value.endTime),
     type: newTask.value.type || '',
     remark: newTask.value.remark?.trim() || '',
     progress: newTask.value.progress || 0,
@@ -451,11 +587,11 @@ function resetForm() {
 
 function editTask(task) {
   isEditing.value = true
-  // 格式化日期时间为本地格式
+  // 使用新的时间格式化函数
   const formattedTask = {
     ...task,
-    startTime: task.startTime ? new Date(task.startTime).toISOString().slice(0, 16) : '',
-    endTime: task.endTime ? new Date(task.endTime).toISOString().slice(0, 16) : ''
+    startTime: formatTimeForEdit(task.startTime),
+    endTime: formatTimeForEdit(task.endTime)
   }
   Object.assign(newTask.value, formattedTask)
   
@@ -1095,6 +1231,242 @@ const previewImageFile = async (previewData) => {
   content.appendChild(img)
 }
 
+// DDL管理相关函数
+const isTaskCompleted = (task) => {
+  return task.completed || (task.progress && task.progress >= 100)
+}
+
+const isTaskExpired = (task) => {
+  if (!task.endTime) return false
+  return new Date() > new Date(task.endTime)
+}
+
+const getTimeRemaining = (task) => {
+  if (!task.endTime) return '无截止时间'
+  
+  const now = new Date()
+  const endTime = new Date(task.endTime)
+  const diff = endTime - now
+  
+  if (diff <= 0) {
+    return isTaskCompleted(task) ? '已完成' : '已过期'
+  }
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  
+  if (days > 0) {
+    return `${days}天${hours}小时`
+  } else if (hours > 0) {
+    return `${hours}小时${minutes}分钟`
+  } else {
+    return `${minutes}分钟`
+  }
+}
+
+const getTimeRemainingClass = (task) => {
+  if (!task.endTime) return 'no-deadline'
+  
+  const now = new Date()
+  const endTime = new Date(task.endTime)
+  const diff = endTime - now
+  
+  if (diff <= 0) {
+    return isTaskCompleted(task) ? 'completed' : 'expired'
+  }
+  
+  const hours = diff / (1000 * 60 * 60)
+  
+  if (hours <= 24) return 'urgent'      // 24小时内
+  if (hours <= 72) return 'warning'     // 3天内
+  return 'normal'
+}
+
+const getTaskRowClass = (task) => {
+  const classes = []
+  
+  if (isTaskExpired(task)) {
+    classes.push('expired-task')
+    if (isTaskCompleted(task)) {
+      classes.push('completed-expired')
+    } else {
+      classes.push('failed-expired')
+    }
+  } else if (isTaskCompleted(task)) {
+    classes.push('completed-task')
+  }
+  
+  return classes.join(' ')
+}
+
+// 开始DDL检查
+const startDdlCheck = () => {
+  // 立即执行一次检查
+  checkDdlAlerts()
+  
+  // 设置定时器，每30秒检查一次
+  ddlCheckInterval.value = setInterval(() => {
+    checkDdlAlerts()
+  }, 30000)
+  
+  console.log('DDL检查已启动')
+}
+
+// 停止DDL检查
+const stopDdlCheck = () => {
+  if (ddlCheckInterval.value) {
+    clearInterval(ddlCheckInterval.value)
+    ddlCheckInterval.value = null
+    console.log('DDL检查已停止')
+  }
+}
+
+// 检查DDL提醒
+const checkDdlAlerts = () => {
+  // 检查组件是否仍然挂载
+  if (!isComponentMounted.value) {
+    console.log('组件已卸载，停止DDL检查')
+    return
+  }
+  
+  const now = new Date()
+  
+  for (const task of tasks.value) {
+    if (!task.endTime || isTaskCompleted(task)) {
+      continue // 跳过没有截止时间或已完成的任务
+    }
+    
+    const endTime = new Date(task.endTime)
+    const timeDiff = endTime.getTime() - now.getTime()
+    const minutesRemaining = Math.floor(timeDiff / (1000 * 60))
+    
+    // 修改检查逻辑：在一定范围内触发提醒
+    const shouldAlert = (
+      (minutesRemaining <= 60 && minutesRemaining > 55 && !notifiedTasks.value.has(`${task.id}-60`)) ||
+      (minutesRemaining <= 15 && minutesRemaining > 10 && !notifiedTasks.value.has(`${task.id}-15`))
+    ) && minutesRemaining > 0
+    
+    if (shouldAlert && isComponentMounted.value) {
+      const alertType = minutesRemaining <= 15 ? 15 : 60
+      showDdlAlertForTask(task, alertType)
+      notifiedTasks.value.add(`${task.id}-${alertType}`)
+      break // 一次只显示一个提醒
+    }
+  }
+}
+
+// 显示DDL提醒
+const showDdlAlertForTask = (task, alertType) => {
+  currentAlertTask.value = task
+  const timeText = alertType === 60 ? '一小时' : '15分钟'
+  ddlAlertMessage.value = `${task.name}任务仅剩${timeText}，请抓紧时间呦！`
+  showDdlAlert.value = true
+  
+  // 添加调试信息
+  console.log('DDL提醒触发:', {
+    taskName: task.name,
+    alertType: alertType,
+    endTime: task.endTime,
+    currentTime: new Date().toISOString()
+  })
+}
+
+// 关闭DDL提醒
+const closeDdlAlert = () => {
+  showDdlAlert.value = false
+  currentAlertTask.value = null
+  ddlAlertMessage.value = ''
+}
+
+// 前往查看任务
+const goToTask = async () => {
+  if (!currentAlertTask.value || !isComponentMounted.value) {
+    console.warn('没有当前提醒任务或组件已卸载')
+    closeDdlAlert()
+    return
+  }
+  
+  const task = currentAlertTask.value
+  console.log('前往查看任务:', task)
+  
+  try {
+    // 如果有文件，打开文件
+    if (task.fileUrl) {
+      console.log('打开任务文件:', task.fileUrl)
+      await openFile(task.fileUrl, task)
+    } else {
+      // 没有文件则高亮闪烁该任务
+      console.log('高亮显示任务:', task.id)
+      highlightTask(task)
+      
+      // 安全的滚动操作
+      nextTick(() => {
+        if (isComponentMounted.value) {
+          const taskRow = document.querySelector(`tr[data-task-id="${task.id}"]`)
+          if (taskRow && taskRow.parentNode) {
+            taskRow.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }
+      })
+    }
+  } catch (error) {
+    console.error('前往查看任务失败:', error)
+    if (isComponentMounted.value) {
+      alert('无法打开任务，请手动查看任务列表')
+    }
+  }
+  
+  closeDdlAlert()
+}
+
+// 高亮闪烁任务
+const highlightTask = (task) => {
+  // 检查组件是否仍然挂载
+  if (!isComponentMounted.value) {
+    console.log('组件已卸载，跳过高亮操作')
+    return
+  }
+  
+  // 使用nextTick确保DOM已更新
+  nextTick(() => {
+    if (!isComponentMounted.value) return
+    
+    const taskRow = document.querySelector(`tr[data-task-id="${task.id}"]`)
+    if (taskRow) {
+      // 移除可能存在的旧样式
+      taskRow.classList.remove('highlight-flash')
+      
+      // 强制重绘后添加新样式
+      setTimeout(() => {
+        if (isComponentMounted.value && taskRow.parentNode) {
+          taskRow.classList.add('highlight-flash')
+          
+          // 3秒后移除高亮效果
+          setTimeout(() => {
+            if (isComponentMounted.value && taskRow.parentNode) {
+              taskRow.classList.remove('highlight-flash')
+            }
+          }, 3000)
+        }
+      }, 10)
+      
+      console.log('任务高亮效果已应用:', task.id)
+    } else {
+      console.warn('未找到任务行元素:', task.id)
+    }
+  })
+}
+
+// 添加手动触发DDL检查的函数（用于测试）
+const triggerTestDdlAlert = () => {
+  if (tasks.value.length > 0) {
+    const testTask = tasks.value[0]
+    showDdlAlertForTask(testTask, 15)
+    console.log('测试DDL提醒已触发')
+  }
+}
+
 // 跳转到AI分析页面
 const goToAnalysis = () => {
   if (selectedTasks.value.length === 0) {
@@ -1159,7 +1531,7 @@ const goToAnalysis = () => {
 <style scoped>
 .task-manager {
   padding: 2rem;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   background: #f8f9fa;
   border-radius: 12px;
@@ -1272,15 +1644,15 @@ button:hover {
 
 .icon-button {
   background: transparent;
-  padding: 0.5rem;
+  padding: 0.25rem;
   border-radius: 4px;
   color: #6c757d;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .icon-button:hover {
@@ -1299,12 +1671,12 @@ button:hover {
 }
 
 .icon-button i {
-  font-size: 1rem;
+  font-size: 0.8rem;
 }
 
 .actions-cell {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.25rem;
   justify-content: flex-start;
   align-items: center;
 }
@@ -1316,6 +1688,7 @@ button:hover {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   background: white;
+  min-width: 1200px;
 }
 
 .progress-cell {
@@ -1335,25 +1708,95 @@ table {
   background: white;
   border-radius: 8px;
   overflow: hidden;
+  min-width: 1200px;
+  font-size: 0.9rem;
 }
 
 th {
   background: #f1f3f5;
   color: #495057;
   font-weight: 600;
-  padding: 1rem;
+  padding: 0.75rem 0.5rem;
   text-align: left;
   border-bottom: 2px solid #e9ecef;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 td {
-  padding: 1rem;
+  padding: 0.75rem 0.5rem;
   border-bottom: 1px solid #e9ecef;
   color: #495057;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 tr:hover {
   background: #f8f9fa;
+}
+
+/* 优化各列宽度，使其更紧凑 */
+th:nth-child(1), td:nth-child(1) { /* 任务名称 */
+  min-width: 120px;
+  max-width: 150px;
+}
+
+th:nth-child(2), td:nth-child(2) { /* 学科 */
+  min-width: 60px;
+  max-width: 80px;
+}
+
+th:nth-child(3), td:nth-child(3) { /* 内容 */
+  min-width: 150px;
+  max-width: 200px;
+  white-space: normal;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+th:nth-child(4), td:nth-child(4) { /* 内容类型 */
+  min-width: 70px;
+  max-width: 90px;
+}
+
+th:nth-child(5), td:nth-child(5) { /* 开始时间 */
+  min-width: 110px;
+  max-width: 130px;
+  font-size: 0.85rem;
+}
+
+th:nth-child(6), td:nth-child(6) { /* 结束时间 */
+  min-width: 110px;
+  max-width: 130px;
+  font-size: 0.85rem;
+}
+
+th:nth-child(7), td:nth-child(7) { /* DDL管理 */
+  min-width: 120px;
+  max-width: 140px;
+}
+
+th:nth-child(8), td:nth-child(8) { /* 进度 */
+  min-width: 100px;
+  max-width: 120px;
+}
+
+th:nth-child(9), td:nth-child(9) { /* 附件 */
+  min-width: 80px;
+  max-width: 100px;
+}
+
+th:nth-child(10), td:nth-child(10) { /* 操作 */
+  min-width: 80px;
+  max-width: 100px;
+}
+
+th:nth-child(11), td:nth-child(11) { /* 选择分析 */
+  min-width: 70px;
+  max-width: 90px;
+  text-align: center;
 }
 
 .select-cell {
@@ -1558,13 +2001,13 @@ input[type="file"]:hover {
 .icon-button.file {
   background: #17a2b8;
   color: white;
-  padding: 0.4rem 0.8rem;
+  padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  max-width: 120px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1620,16 +2063,127 @@ input[type="file"]:hover {
   transform: scale(1.1); /* 悬停时稍微放大 */
 }
 
+/* DDL管理样式 */
+.ddl-cell {
+  min-width: 120px;
+  padding: 0.5rem;
+}
+
+.ddl-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clock-icon {
+  font-size: 16px;
+  color: #666;
+}
+
+.clock-icon.ticking {
+  animation: tick 1s infinite;
+  color: #007bff;
+}
+
+@keyframes tick {
+  0%, 50% { transform: rotate(0deg); }
+  25% { transform: rotate(5deg); }
+  75% { transform: rotate(-5deg); }
+}
+
+.ddl-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.time-remaining {
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.time-remaining.normal {
+  color: #28a745;
+}
+
+.time-remaining.warning {
+  color: #ffc107;
+}
+
+.time-remaining.urgent {
+  color: #dc3545;
+  animation: blink 1s infinite;
+}
+
+.time-remaining.completed {
+  color: #28a745;
+}
+
+.time-remaining.expired {
+  color: #dc3545;
+}
+
+.time-remaining.no-deadline {
+  color: #6c757d;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.5; }
+}
+
+.status-indicator {
+  font-size: 12px;
+}
+
+.completed-icon {
+  color: #28a745;
+}
+
+.expired-icon {
+  color: #dc3545;
+}
+
+.pending-icon {
+  color: #ffc107;
+}
+
+/* 任务行样式 */
+.completed-task {
+  background-color: #f8fff8;
+  border-left: 4px solid #28a745;
+}
+
+.expired-task {
+  background-color: #fff8f8;
+  border-left: 4px solid #dc3545;
+}
+
+.completed-expired {
+  background-color: #f0f8f0;
+  border-left: 4px solid #28a745;
+}
+
+.failed-expired {
+  background-color: #fff0f0;
+  border-left: 4px solid #dc3545;
+}
+
+/* 过期任务透明度 */
+.expired-task {
+  opacity: 0.8;
+}
+
 /* 进度条样式 */
 .progress-cell {
-  padding: 1rem;
-  min-width: 140px;
+  padding: 0.5rem !important;
+  min-width: 100px;
 }
 
 .progress-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .progress-bar {
@@ -1670,8 +2224,8 @@ input[type="file"]:hover {
 .progress-text {
   font-weight: 600;
   color: #2c3e50;
-  font-size: 0.9rem;
-  min-width: 40px;
+  font-size: 0.8rem;
+  min-width: 35px;
   text-align: right;
 }
 /* 文件预览模态框样式 */
@@ -1819,6 +2373,134 @@ input[type="file"]:hover {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* DDL提醒弹窗样式 */
+.ddl-alert-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 1500; /* 降低z-index，确保不覆盖导航栏 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(4px);
+  /* 添加pointer-events控制，只在弹窗显示时阻止点击 */
+  pointer-events: auto;
+}
+
+.ddl-alert-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 450px;
+  text-align: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  animation: ddlAlertSlideIn 0.3s ease-out;
+  position: relative;
+  z-index: 1501; /* 相应调整内容区域的z-index */
+}
+
+@keyframes ddlAlertSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ddl-alert-icon {
+  font-size: 3rem;
+  color: #ff9800;
+  margin-bottom: 1rem;
+  animation: ddlIconPulse 1s infinite;
+}
+
+@keyframes ddlIconPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.ddl-alert-content h3 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.ddl-alert-message {
+  color: #555;
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+.ddl-alert-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.ddl-alert-buttons button {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #0056b3, #004085);
+  transform: translateY(-2px);
+}
+
+/* 任务高亮闪烁效果 */
+.highlight-flash {
+  animation: highlightFlash 1s ease-in-out 3; /* 增加闪烁次数 */
+  position: relative;
+  z-index: 10;
+}
+
+@keyframes highlightFlash {
+  0%, 100% {
+    background-color: transparent;
+    box-shadow: none;
+    transform: scale(1);
+  }
+  50% {
+    background-color: #fff3cd;
+    box-shadow: 0 0 25px rgba(255, 193, 7, 0.8);
+    border-left: 6px solid #ffc107;
+    transform: scale(1.02); /* 添加轻微缩放效果 */
+  }
 }
 
 </style>
