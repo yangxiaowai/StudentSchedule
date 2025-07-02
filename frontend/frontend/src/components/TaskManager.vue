@@ -23,6 +23,7 @@
               <th>任务名称</th>
               <th>学科</th>
               <th>内容</th>
+              <th>内容类型</th>
               <th>开始时间</th>
               <th>结束时间</th>
               <th>进度</th>
@@ -36,6 +37,7 @@
               <td>{{ task.name }}</td>
               <td>{{ task.subject }}</td>
               <td>{{ task.content }}</td>
+              <td>{{ getContentTypeLabel(task.contentType || task.type) }}</td>
               <td>{{ formatDateTime(task.startTime) || '未设置' }}</td>
               <td>{{ formatDateTime(task.endTime) || '未设置' }}</td>
               <td class="progress-cell">
@@ -228,6 +230,18 @@ function formatDateTime(dateStr) {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// 将内容类型英文值转换为中文显示
+function getContentTypeLabel(type) {
+  const typeMap = {
+    'textbook': '教材',
+    'notes': '笔记', 
+    'exam': '真题',
+    'exercise': '习题',
+    'ppt': '课件'
+  }
+  return typeMap[type] || type || '未设置'
 }
 
 const router = useRouter()
