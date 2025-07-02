@@ -11,12 +11,14 @@ import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -88,15 +90,7 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             // 生成唯一文件名
             String originalFileName = file.getOriginalFilename();
-            if (originalFileName == null || originalFileName.isEmpty()) {
-                throw new RuntimeException("文件名不能为空");
-            }
-            
-            String fileExtension = "";
-            int lastDotIndex = originalFileName.lastIndexOf(".");
-            if (lastDotIndex > 0) {
-                fileExtension = originalFileName.substring(lastDotIndex);
-            }
+            String fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
             String uniqueFileName = UUID.randomUUID() + fileExtension;
 
             // 保存文件
@@ -203,19 +197,11 @@ public class FileStorageServiceImpl implements FileStorageService {
             }
             
             // 根据文件名查找文件记录（fileName实际上是UUID格式的文件名）
-            // 使用更精确的查询方法，查找路径以fileName结尾的文件
-            List<LearningMaterial> materials = materialRepository.findByFilePathEndingWith(fileName);
-            
-            // 打印调试信息
-            System.out.println("删除文件: " + fileName);
-            System.out.println("找到匹配的文件数量: " + materials.size());
-            materials.forEach(m -> System.out.println("文件路径: " + m.getFilePath() + ", 用户ID: " + m.getUserId()));
-            
-            // 过滤出当前用户的文件
-            LearningMaterial material = materials.stream()
-                    .filter(m -> m.getUserId().equals(userId))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("文件不存在或无权限删除"));
+             List<LearningMaterial> materials = materialRepository.findByFilePathContaining(fileName);
+             LearningMaterial material = materials.stream()
+                     .filter(m -> m.getUserId().equals(userId))
+                     .findFirst()
+                     .orElseThrow(() -> new RuntimeException("文件不存在或无权限删除"));
             
             // 删除物理文件
             Path filePath = Paths.get(material.getFilePath());
@@ -233,48 +219,18 @@ public class FileStorageServiceImpl implements FileStorageService {
     @Override
     public byte[] loadFileAsResource(String fileName) {
         try {
-            // 从请求头获取JWT令牌
-            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-            String token = request.getHeader("Authorization");
-            
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            
-            if (token == null || token.isEmpty()) {
-                throw new RuntimeException("未提供有效的认证令牌");
-            }
-            
-            Long userId;
-            try {
-                userId = jwtUtil.getUserIdFromToken(token);
-            } catch (ExpiredJwtException e) {
-                throw new RuntimeException("令牌已过期，请重新登录", e);
-            } catch (JwtException | IllegalArgumentException e) {
-                throw new RuntimeException("无效的认证令牌", e);
-            }
-            
-            // 根据文件名查找文件（使用更精确的查询方法）
-            List<LearningMaterial> materials = materialRepository.findByFilePathEndingWith(fileName);
+            // 根据文件名查找文件
+            List<LearningMaterial> materials = materialRepository.findByFilePathContaining(fileName);
             if (materials.isEmpty()) {
                 throw new RuntimeException("文件不存在");
             }
             
-            // 过滤出当前用户的文件
-            LearningMaterial material = materials.stream()
-                    .filter(m -> m.getUserId().equals(userId))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("文件不存在或无权限访问"));
-            
+            LearningMaterial material = materials.get(0);
             Path filePath = Paths.get(material.getFilePath());
             
             if (!Files.exists(filePath)) {
                 throw new RuntimeException("文件不存在");
             }
-            
-            // 打印调试信息
-            System.out.println("加载文件: " + fileName);
-            System.out.println("文件路径: " + filePath);
             
             return Files.readAllBytes(filePath);
         } catch (Exception e) {
@@ -282,5 +238,50 @@ public class FileStorageServiceImpl implements FileStorageService {
         }
     }
 
+    @Override
+    public List<LearningMaterial> getMaterialsByUserIds(List<Long> userIds) {
+        return materialRepository.findByUserIdIn(userIds);
+    }
 
+    @Override
+    public List<LearningMaterial> getMaterialsByUserIdsAndSubject(List<Long> userIds, String subject) {
+        return materialRepository.findByUserIdInAndSubject(userIds, subject);
+    }
+
+    @Override
+    public List<FileUploadResponse> getFilesByUserId(Long userId) {
+        try {
+            List<LearningMaterial> materials = materialRepository.findByUserId(userId);
+            return materials.stream().map(material -> {
+                FileUploadResponse response = new FileUploadResponse();
+                response.setId(material.getId());
+                response.setFileName(material.getFileName());
+                response.setFileDownloadUri("/api/files/download?fileName=" + material.getFileName());
+                response.setFileType(material.getFileType());
+                response.setSize(material.getFileSize());
+                response.setSubject(material.getSubject());
+                response.setContentType(material.getContentType());
+                response.setUploadTime(material.getUploadTime().toString());
+                return response;
+            }).collect(java.util.stream.Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException("获取用户文件失败: " + e.getMessage(), e);
+        }
+    }
+
+    private Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("用户未认证");
+        }
+
+        // 获取JWT令牌
+        String token = (String) authentication.getCredentials();
+        if (token == null) {
+            throw new RuntimeException("无法获取用户令牌");
+        }
+
+        // 从令牌中获取用户ID
+        return jwtUtil.getUserIdFromToken(token);
+    }
 }

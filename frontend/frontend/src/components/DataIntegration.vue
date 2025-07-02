@@ -1,7 +1,7 @@
 <template>
-  <div class="material-container data-integration-container" :class="{ 'page-loaded': pageLoaded }">
-    <!-- 顶部搜索栏 -->
-    <div class="search-section">
+  <div class="material-container">
+    <!-- 顶部搜索栏 - 只读模式下隐藏 -->
+    <div v-if="!isReadOnly" class="search-section">
       <div class="search-bar">
         <input
             v-model="searchQuery"
@@ -9,16 +9,11 @@
             placeholder="输入关键词搜索资料..."
             @keyup.enter="handleSearch"
         />
-        <button class="search-btn" @click="handleSearch" :class="{ 'searching': isSearching }">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="search-icon">
+        <button @click="handleSearch">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
             <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
           </svg>
-          <span class="search-text">搜索</span>
-          <div class="search-loading">
-            <div class="loading-dot"></div>
-            <div class="loading-dot"></div>
-            <div class="loading-dot"></div>
-          </div>
+          搜索
         </button>
       </div>
 
@@ -56,33 +51,36 @@
     <!-- 资料库展示区域 -->
     <div class="material-library">
       <div class="library-header">
-        <h2>我的资料库</h2>
-        <div class="sort-options">
-          <span>排序方式：</span>
-          <select v-model="sortOption">
-            <option value="time-desc">最近上传</option>
-            <option value="time-asc">最早上传</option>
-            <option value="name-asc">名称(A-Z)</option>
-            <option value="name-desc">名称(Z-A)</option>
-            <option value="subject-asc">学科(A-Z)</option>
-            <option value="subject-desc">学科(Z-A)</option>
-          </select>
+        <div v-if="!isReadOnly" class="normal-header">
+          <h2>我的资料库</h2>
+          <div class="sort-options">
+            <span>排序方式：</span>
+            <select v-model="sortOption">
+              <option value="time-desc">最近上传</option>
+              <option value="time-asc">最早上传</option>
+              <option value="name-asc">名称(A-Z)</option>
+              <option value="name-desc">名称(Z-A)</option>
+              <option value="subject-asc">学科(A-Z)</option>
+              <option value="subject-desc">学科(Z-A)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div v-else class="readonly-header">
+          <h2>{{ targetUserName }}的资料库</h2>
+          <div class="readonly-badge">只读模式</div>
         </div>
       </div>
 
       <div class="material-grid">
         <div
-            v-for="(material, index) in filteredMaterials"
+            v-for="material in filteredMaterials"
             :key="material.id"
             class="material-card"
-            :style="{ '--animation-delay': index * 0.1 + 's' }"
             @click="openMaterial(material)"
-            @mouseenter="handleCardHover(material.id, true)"
-            @mouseleave="handleCardHover(material.id, false)"
         >
-          <div class="material-icon" :class="{ 'icon-hover': hoveredCard === material.id }">
+          <div class="material-icon">
             <span class="subject-icon">{{ getSubjectIcon(material.subject) }}</span>
-            <div class="icon-glow"></div>
           </div>
           <div class="material-info">
             <h3>{{ material.name }}</h3>
@@ -92,20 +90,19 @@
             </p>
           </div>
           <div class="material-actions">
-            <button class="action-btn download-btn" @click.stop="downloadMaterial(material); createRippleEffect($event)" title="下载文件">
+            <button @click.stop="downloadMaterial(material)">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                 <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
               </svg>
-              <span class="btn-ripple"></span>
             </button>
-            <button class="action-btn delete-btn" @click.stop="deleteMaterial(material); createRippleEffect($event)" title="删除文件">
+            <button v-if="!isReadOnly" @click.stop="deleteMaterial(material)">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
                 <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
               </svg>
-              <span class="btn-ripple"></span>
             </button>
+            <span v-else class="read-only-text">只读模式</span>
           </div>
         </div>
 
@@ -119,21 +116,13 @@
     </div>
 
     <!-- 底部上传按钮 -->
-    <div class="upload-section">
+    <div v-if="!isReadOnly" class="upload-section">
       <button class="upload-btn" @click="showUploadModal = true">
-        <div class="upload-icon-wrapper">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16" class="upload-icon">
-            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-            <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
-          </svg>
-          <div class="upload-glow"></div>
-        </div>
-        <span class="upload-text">上传资料</span>
-        <div class="upload-particles">
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+        </svg>
+        上传资料
       </button>
     </div>
 
@@ -207,8 +196,8 @@
       </div>
     </div>
   </div>
-  <!-- AI学习资源检索 -->
-  <div class="ai-search-section">
+  <!-- AI学习资源检索 - 只读模式下隐藏 -->
+  <div v-if="!isReadOnly" class="ai-search-section">
     <div class="ai-search-box">
       <input
           v-model="aiSearchQuery"
@@ -247,11 +236,39 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
-// 定义props
-// Props定义（如果需要的话可以在这里添加其他props）
-// const props = defineProps({})
+// 路由和只读模式处理
+const route = useRoute()
+const isReadOnly = ref(false)
+const targetUserId = ref(null)
+const targetUserName = ref('')
+
+// 检查是否为只读模式的函数
+const checkReadOnlyMode = () => {
+  console.log('检查只读模式，路由参数:', route.query)
+  if ((route.query.userId || route.query.targetUserId) && (route.query.readOnly === 'true' || route.query.readonly === 'true')) {
+    isReadOnly.value = true
+    targetUserId.value = route.query.userId || route.query.targetUserId
+    targetUserName.value = route.query.userName || route.query.targetUserName || '用户'
+    console.log('设置为只读模式:', { isReadOnly: isReadOnly.value, targetUserId: targetUserId.value, targetUserName: targetUserName.value })
+  } else {
+    isReadOnly.value = false
+    targetUserId.value = null
+    targetUserName.value = ''
+    console.log('设置为正常模式')
+  }
+}
+
+// 初始检查
+checkReadOnlyMode()
+
+// 监听路由变化
+watch(() => route.query, () => {
+  checkReadOnlyMode()
+  loadMaterials()
+}, { immediate: false })
 
 // 搜索相关状态
 const searchQuery = ref('')
@@ -269,11 +286,6 @@ const selectedFiles = ref([])
 const uploadSubject = ref('')
 const uploadType = ref('')
 const uploadProgress = ref(0)
-
-// 动画相关状态
-const pageLoaded = ref(false)
-const isSearching = ref(false)
-const hoveredCard = ref(null)
 
 // 学科和内容类型选项
 const subjects = ref([
@@ -345,60 +357,28 @@ const canUpload = computed(() => {
 })
 
 // 方法
-const handleSearch = async () => {
-  if (isSearching.value) return;
-  
-  isSearching.value = true;
-  console.log('搜索:', searchQuery.value);
-  
-  // 模拟搜索延迟
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  isSearching.value = false;
+const handleSearch = () => {
+  console.log('搜索:', searchQuery.value)
   // 实际项目中这里会调用API
 }
 
 const openMaterial = async (material) => {
-  // 显示加载提示
-  const loadingModal = createLoadingModal(material.fileName || material.name);
-  
   try {
     const token = localStorage.getItem('accessToken');
-    
-    // 添加超时控制
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
-    
-    const response = await fetch(`/api/preview/file/${material.id}`, {
+    const response = await fetch(`/api/preview/${material.id}`, {
       headers: {
         'Authorization': `Bearer ${token}`
-      },
-      signal: controller.signal
+      }
     });
-    
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
 
     const previewData = await response.json();
-    
-    // 关闭加载提示
-    document.body.removeChild(loadingModal);
 
     if (previewData.error) {
       throw new Error(previewData.error);
     }
 
-    // 检查fileType是否存在，如果不存在则从文件名中提取
-    if (!previewData.fileType) {
-      const fileExtension = material.fileName.split('.').pop();
-      previewData.fileType = fileExtension || 'unknown';
-    }
-
     // 根据文件类型调用不同的预览方法
-    switch (previewData.fileType.toLowerCase()) {
+    switch (previewData.fileType) {
       case 'txt':
         await previewTextFile(previewData);
         break;
@@ -411,127 +391,15 @@ const openMaterial = async (material) => {
       case 'pptx':
         await previewOfficeFile(previewData);
         break;
-      case 'xls':
-      case 'xlsx':
-        await previewExcelFile(previewData);
-        break;
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-      case 'gif':
-      case 'bmp':
-      case 'webp':
-        await previewImageFile(previewData);
-        break;
       default:
-        // 对于不支持的文件类型，提供下载选项
-        const modal = createModal(previewData.fileName);
-        const content = modal.querySelector('.modal-content');
-        content.innerHTML = `
-          <div style="text-align: center; padding: 20px;">
-            <div style="margin-bottom: 15px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-            </div>
-            <p style="margin-bottom: 15px;">不支持预览此文件类型 (${previewData.fileType})</p>
-            <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
-               target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
-              下载文件
-            </a>
-          </div>
-        `;
-        break;
+        throw new Error('不支持预览此文件类型');
     }
   } catch (error) {
-    // 关闭加载提示（如果还存在）
-    try {
-      if (loadingModal && loadingModal.parentNode) {
-        document.body.removeChild(loadingModal);
-      }
-    } catch (e) {}
-    
     console.error('预览失败:', error);
-    
-    // 显示友好的错误信息
-    let errorMessage = '预览失败';
-    if (error.name === 'AbortError') {
-      errorMessage = '预览超时，请检查网络连接或稍后重试';
-    } else if (error.message.includes('HTTP 404')) {
-      errorMessage = '文件不存在或已被删除';
-    } else if (error.message.includes('HTTP 413')) {
-      errorMessage = '文件过大，无法预览';
-    } else if (error.message.includes('HTTP 500')) {
-      errorMessage = '服务器错误，请稍后重试';
-    } else {
-      errorMessage = `预览失败: ${error.message}`;
-    }
-    
-    // 创建错误提示模态框
-    const errorModal = createModal('预览失败');
-    const content = errorModal.querySelector('.modal-content');
-    content.innerHTML = `
-      <div style="text-align: center; padding: 20px;">
-        <div style="margin-bottom: 15px;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="15" y1="9" x2="9" y2="15"></line>
-            <line x1="9" y1="9" x2="15" y2="15"></line>
-          </svg>
-        </div>
-        <p style="margin-bottom: 15px; color: #666;">${errorMessage}</p>
-        <a href="/api/files/download?fileName=${encodeURIComponent(material.fileName || material.name)}"
-           target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
-          下载文件
-        </a>
-      </div>
-    `;
+    alert(`预览失败: ${error.message}`);
   }
 };
 
-
-// 图片文件预览
-const previewImageFile = async (previewData) => {
-  try {
-    // 创建预览模态框
-    const modal = createModal(previewData.fileName);
-    const content = modal.querySelector('.modal-content');
-    
-    // 创建图片容器
-    const imageContainer = document.createElement('div');
-    imageContainer.style.textAlign = 'center';
-    imageContainer.style.padding = '10px';
-    content.appendChild(imageContainer);
-    
-    // 添加下载链接
-    const downloadLink = document.createElement('a');
-    downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
-    downloadLink.textContent = '下载原图';
-    downloadLink.target = '_blank';
-    downloadLink.style.display = 'inline-block';
-    downloadLink.style.marginBottom = '15px';
-    imageContainer.appendChild(downloadLink);
-    
-    // 创建图片元素
-    const img = document.createElement('img');
-    img.src = `data:image/${previewData.fileType};base64,${previewData.content}`;
-    img.style.maxWidth = '100%';
-    img.style.maxHeight = '80vh';
-    img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-    imageContainer.appendChild(img);
-    
-  } catch (error) {
-    console.error('图片预览失败:', error);
-    const modal = createModal(previewData.fileName);
-    modal.querySelector('.modal-content').innerHTML = `
-      <div style="text-align: center; padding: 20px;">
-        <p>图片预览失败: ${error.message}</p>
-        <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
-           target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
-          下载图片
-        </a>
-      </div>
-    `;
-  }
-};
 
 // 文本文件预览
 const previewTextFile = async (previewData) => {
@@ -581,7 +449,7 @@ const previewTextFile = async (previewData) => {
   const textContent = document.createElement('pre');
   textContent.style.whiteSpace = 'pre-wrap';
   textContent.style.fontFamily = 'monospace';
-  textContent.textContent = decodeURIComponent(escape(atob(previewData.content)));
+  textContent.textContent = atob(previewData.content);
 
   content.appendChild(header);
   content.appendChild(textContent);
@@ -594,153 +462,63 @@ const previewTextFile = async (previewData) => {
 // PDF文件预览（渲染所有页面）
 const previewPdfFile = async (previewData) => {
   try {
+    // 动态加载PDF.js库
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js');
+
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
     // 创建预览模态框
     const modal = createModal(previewData.fileName);
     const content = modal.querySelector('.modal-content');
-    
+
     // 创建PDF容器
     const pdfContainer = document.createElement('div');
     pdfContainer.className = 'pdf-container';
-    pdfContainer.style.textAlign = 'center';
     content.appendChild(pdfContainer);
-    
-    // 添加下载链接
-    const downloadLink = document.createElement('a');
-    downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
-    downloadLink.className = 'download-link';
-    downloadLink.textContent = '下载原文件';
-    downloadLink.target = '_blank';
-    downloadLink.style.display = 'inline-block';
-    downloadLink.style.marginTop = '15px';
-    downloadLink.style.marginBottom = '15px';
-    pdfContainer.appendChild(downloadLink);
-    
-    // 如果是多页面文档
-    if (previewData.multiPage) {
-      // 分割页面内容
-      const pageImages = previewData.content.split(',');
-      
-      // 创建页面导航
-      const pageNav = document.createElement('div');
-      pageNav.className = 'page-navigation';
-      pageNav.style.marginBottom = '15px';
-      pageNav.style.display = 'flex';
-      pageNav.style.justifyContent = 'center';
-      pageNav.style.gap = '10px';
-      
-      // 添加页面计数器
-      const pageCounter = document.createElement('div');
-      pageCounter.className = 'page-counter';
-      pageCounter.style.margin = '0 10px';
-      pageCounter.style.lineHeight = '30px';
-      
-      // 添加上一页按钮
-      const prevBtn = document.createElement('button');
-      prevBtn.textContent = '上一页';
-      prevBtn.style.padding = '5px 10px';
-      prevBtn.style.cursor = 'pointer';
-      
-      // 添加下一页按钮
-      const nextBtn = document.createElement('button');
-      nextBtn.textContent = '下一页';
-      nextBtn.style.padding = '5px 10px';
-      nextBtn.style.cursor = 'pointer';
-      
-      pageNav.appendChild(prevBtn);
-      pageNav.appendChild(pageCounter);
-      pageNav.appendChild(nextBtn);
-      pdfContainer.appendChild(pageNav);
-      
-      // 创建图片容器
-      const imageContainer = document.createElement('div');
-      imageContainer.className = 'pdf-image-container';
-      imageContainer.style.maxWidth = '100%';
-      imageContainer.style.margin = '0 auto';
-      pdfContainer.appendChild(imageContainer);
-      
-      // 当前页码
-      let currentPage = 0;
-      let maxPageReached = 0; // 记录用户浏览过的最大页码
-      
-      // 显示指定页面
-      const showPage = (pageIndex) => {
-        // 清空容器
-        imageContainer.innerHTML = '';
-        
-        // 更新页码显示
-        pageCounter.textContent = `第 ${pageIndex + 1} 页 / 共 ${pageImages.length} 页`;
-        
-        // 创建图片元素
-        const img = document.createElement('img');
-        img.src = `data:image/png;base64,${pageImages[pageIndex]}`;
-        img.style.maxWidth = '100%';
-        img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-        imageContainer.appendChild(img);
-        
-        // 更新按钮状态
-        prevBtn.disabled = pageIndex === 0;
-        nextBtn.disabled = pageIndex === pageImages.length - 1;
-        
-        // 更新最大浏览页码
-        if (pageIndex > maxPageReached) {
-          maxPageReached = pageIndex;
-          // 计算进度百分比（基于浏览的页数）
-          const progress = Math.round(((maxPageReached + 1) / pageImages.length) * 100);
-          console.log(`PDF阅读进度: ${progress}% (已浏览 ${maxPageReached + 1}/${pageImages.length} 页)`);
-          // 更新任务进度（仅在有任务ID时）
-          if (currentTaskId) {
-            updateTaskProgress(currentTaskId, progress);
-          } else {
-            console.log(`PDF阅读进度: ${progress}% (已浏览 ${maxPageReached + 1}/${pageImages.length} 页) - 无关联任务`);
-          }
-        }
-      };
-      
-      // 显示第一页
-      showPage(currentPage);
-      
-      // 初始化时设置第一页的进度
-      maxPageReached = 0;
-      const initialProgress = Math.round(((maxPageReached + 1) / pageImages.length) * 100);
-      console.log(`PDF初始进度: ${initialProgress}% (已浏览 ${maxPageReached + 1}/${pageImages.length} 页)`);
-      if (currentTaskId) {
-        updateTaskProgress(currentTaskId, initialProgress);
-      } else {
-        console.log('PDF预览 - 无关联任务，仅记录阅读进度');
+
+    // 加载PDF
+    const loadingTask = pdfjsLib.getDocument({
+      data: Uint8Array.from(atob(previewData.content), c => c.charCodeAt(0))
+    });
+
+    const pdf = await loadingTask.promise;
+
+    // 渲染所有页面
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 1.0 });
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // 添加页面分隔线（除第一页外）
+      if (i > 1) {
+        const divider = document.createElement('hr');
+        divider.style.margin = '20px 0';
+        pdfContainer.appendChild(divider);
       }
-      
-      // 绑定按钮事件
-      prevBtn.addEventListener('click', () => {
-        if (currentPage > 0) {
-          currentPage--;
-          showPage(currentPage);
-        }
-      });
-      
-      nextBtn.addEventListener('click', () => {
-        if (currentPage < pageImages.length - 1) {
-          currentPage++;
-          showPage(currentPage);
-        }
-      });
-      
-    } else {
-      // 单页PDF（兼容旧版本）
-      const img = document.createElement('img');
-      img.src = `data:image/png;base64,${previewData.content}`;
-      img.style.maxWidth = '100%';
-      img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-      pdfContainer.appendChild(img);
-      
-      // 单页PDF直接设置为100%完成
-      if (currentTaskId) {
-        console.log('DataIntegration: 单页PDF，设置进度为100%');
-        updateTaskProgress(currentTaskId, 100);
-      } else {
-        console.log('DataIntegration: 单页PDF预览完成 - 无关联任务');
-      }
+
+      // 添加页面标题
+      const pageHeader = document.createElement('div');
+      pageHeader.textContent = `第 ${i} 页`;
+      pageHeader.style.marginBottom = '10px';
+      pageHeader.style.fontWeight = 'bold';
+      pdfContainer.appendChild(pageHeader);
+
+      // 添加画布
+      pdfContainer.appendChild(canvas);
+
+      // 渲染页面
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise;
     }
-    
+
   } catch (error) {
     console.error('PDF渲染失败:', error);
     const modal = createModal(previewData.fileName);
@@ -758,371 +536,45 @@ const previewOfficeFile = async (previewData) => {
   try {
     const modal = createModal(previewData.fileName);
     const content = modal.querySelector('.modal-content');
-    
-    // 如果是PPT/PPTX且是多页面文档（使用新的预览方式）
-    if ((previewData.fileType === 'ppt' || previewData.fileType === 'pptx') && previewData.multiPage) {
-      // 创建PPT容器
-      const pptContainer = document.createElement('div');
-      pptContainer.className = 'ppt-container';
-      pptContainer.style.textAlign = 'center';
-      content.appendChild(pptContainer);
-      
-      // 添加下载链接
-      const downloadLink = document.createElement('a');
-      downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
-      downloadLink.className = 'download-link';
-      downloadLink.textContent = '下载原文件';
-      downloadLink.target = '_blank';
-      downloadLink.style.display = 'inline-block';
-      downloadLink.style.marginTop = '15px';
-      downloadLink.style.marginBottom = '15px';
-      pptContainer.appendChild(downloadLink);
-      
-      // 分割幻灯片内容
-      const slideImages = previewData.content.split(',');
-      
-      // 创建幻灯片导航
-      const slideNav = document.createElement('div');
-      slideNav.className = 'slide-navigation';
-      slideNav.style.marginBottom = '15px';
-      slideNav.style.display = 'flex';
-      slideNav.style.justifyContent = 'center';
-      slideNav.style.gap = '10px';
-      
-      // 添加幻灯片计数器
-      const slideCounter = document.createElement('div');
-      slideCounter.className = 'slide-counter';
-      slideCounter.style.margin = '0 10px';
-      slideCounter.style.lineHeight = '30px';
-      
-      // 添加上一页按钮
-      const prevBtn = document.createElement('button');
-      prevBtn.textContent = '上一页';
-      prevBtn.style.padding = '5px 10px';
-      prevBtn.style.cursor = 'pointer';
-      
-      // 添加下一页按钮
-      const nextBtn = document.createElement('button');
-      nextBtn.textContent = '下一页';
-      nextBtn.style.padding = '5px 10px';
-      nextBtn.style.cursor = 'pointer';
-      
-      slideNav.appendChild(prevBtn);
-      slideNav.appendChild(slideCounter);
-      slideNav.appendChild(nextBtn);
-      pptContainer.appendChild(slideNav);
-      
-      // 创建图片容器
-      const imageContainer = document.createElement('div');
-      imageContainer.className = 'ppt-image-container';
-      imageContainer.style.maxWidth = '100%';
-      imageContainer.style.margin = '0 auto';
-      pptContainer.appendChild(imageContainer);
-      
-      // 当前幻灯片索引
-      let currentSlide = 0;
-      
-      // 显示指定幻灯片
-      const showSlide = (slideIndex) => {
-        // 清空容器
-        imageContainer.innerHTML = '';
-        
-        // 更新幻灯片计数器
-        slideCounter.textContent = `第 ${slideIndex + 1} 页 / 共 ${slideImages.length} 页`;
-        
-        // 创建图片元素
-        const img = document.createElement('img');
-        img.src = `data:image/png;base64,${slideImages[slideIndex]}`;
-        img.style.maxWidth = '100%';
-        img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-        imageContainer.appendChild(img);
-        
-        // 更新按钮状态
-        prevBtn.disabled = slideIndex === 0;
-        nextBtn.disabled = slideIndex === slideImages.length - 1;
-      };
-      
-      // 显示第一页
-      showSlide(currentSlide);
-      
-      // 绑定按钮事件
-      prevBtn.addEventListener('click', () => {
-        if (currentSlide > 0) {
-          currentSlide--;
-          showSlide(currentSlide);
-        }
-      });
-      
-      nextBtn.addEventListener('click', () => {
-        if (currentSlide < slideImages.length - 1) {
-          currentSlide++;
-          showSlide(currentSlide);
-        }
-      });
-      
-    } else if ((previewData.fileType === 'doc' || previewData.fileType === 'docx') && previewData.multiPage) {
-      // 对于DOCX文件转换的多页面图片，使用图片轮播模式
-      const docContainer = document.createElement('div');
-      docContainer.className = 'doc-container';
-      docContainer.style.textAlign = 'center';
-      content.appendChild(docContainer);
-      
-      // 添加下载链接
-      const downloadLink = document.createElement('a');
-      downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
-      downloadLink.className = 'download-link';
-      downloadLink.textContent = '下载原文件';
-      downloadLink.target = '_blank';
-      downloadLink.style.display = 'inline-block';
-      downloadLink.style.marginTop = '15px';
-      downloadLink.style.marginBottom = '15px';
-      docContainer.appendChild(downloadLink);
-      
-      // 解码HTML内容并提取图片
-      let htmlContent;
-      try {
-        const binaryString = atob(previewData.content);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const decoder = new TextDecoder('utf-8');
-        htmlContent = decoder.decode(bytes);
-      } catch (error) {
-        htmlContent = decodeURIComponent(escape(atob(previewData.content)));
-      }
-      
-      // 从HTML中提取Base64图片数据
-      const imgRegex = /data:image\/png;base64,([^'"]+)/g;
-      const pageImages = [];
-      let match;
-      while ((match = imgRegex.exec(htmlContent)) !== null) {
-        pageImages.push(match[1]);
-      }
-      
-      if (pageImages.length > 0) {
-        // 创建页面导航
-        const slideNav = document.createElement('div');
-        slideNav.className = 'slide-navigation';
-        slideNav.style.marginBottom = '15px';
-        slideNav.style.display = 'flex';
-        slideNav.style.justifyContent = 'center';
-        slideNav.style.gap = '10px';
-        
-        // 添加页面计数器
-        const slideCounter = document.createElement('div');
-        slideCounter.className = 'slide-counter';
-        slideCounter.style.margin = '0 10px';
-        slideCounter.style.lineHeight = '30px';
-        
-        // 添加上一页按钮
-        const prevBtn = document.createElement('button');
-        prevBtn.textContent = '上一页';
-        prevBtn.style.padding = '5px 10px';
-        prevBtn.style.cursor = 'pointer';
-        
-        // 添加下一页按钮
-        const nextBtn = document.createElement('button');
-        nextBtn.textContent = '下一页';
-        nextBtn.style.padding = '5px 10px';
-        nextBtn.style.cursor = 'pointer';
-        
-        slideNav.appendChild(prevBtn);
-        slideNav.appendChild(slideCounter);
-        slideNav.appendChild(nextBtn);
-        docContainer.appendChild(slideNav);
-        
-        // 创建图片容器
-        const imageContainer = document.createElement('div');
-        imageContainer.className = 'doc-image-container';
-        imageContainer.style.maxWidth = '100%';
-        imageContainer.style.margin = '0 auto';
-        docContainer.appendChild(imageContainer);
-        
-        // 当前页面索引
-        let currentPage = 0;
-        
-        // 显示指定页面
-        const showPage = (pageIndex) => {
-          imageContainer.innerHTML = '';
-          slideCounter.textContent = `第 ${pageIndex + 1} 页 / 共 ${pageImages.length} 页`;
-          
-          const img = document.createElement('img');
-          img.src = `data:image/png;base64,${pageImages[pageIndex]}`;
-          img.style.maxWidth = '100%';
-          img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-          img.style.border = '1px solid #ddd';
-          imageContainer.appendChild(img);
-          
-          prevBtn.disabled = pageIndex === 0;
-          nextBtn.disabled = pageIndex === pageImages.length - 1;
-        };
-        
-        // 显示第一页
-        showPage(currentPage);
-        
-        // 绑定按钮事件
-        prevBtn.addEventListener('click', () => {
-          if (currentPage > 0) {
-            currentPage--;
-            showPage(currentPage);
-          }
-        });
-        
-        nextBtn.addEventListener('click', () => {
-          if (currentPage < pageImages.length - 1) {
-            currentPage++;
-            showPage(currentPage);
-          }
-        });
-      } else {
-        // 如果没有找到图片，显示原始HTML内容
-        const htmlContainer = document.createElement('div');
-        htmlContainer.innerHTML = htmlContent;
-        htmlContainer.style.padding = '20px';
-        htmlContainer.style.backgroundColor = '#fff';
-        htmlContainer.style.border = '1px solid #ddd';
-        htmlContainer.style.borderRadius = '5px';
-        htmlContainer.style.maxHeight = '600px';
-        htmlContainer.style.overflow = 'auto';
-        docContainer.appendChild(htmlContainer);
-      }
-      
-    } else if (previewData.fileType === 'doc' || previewData.fileType === 'docx') {
-      // 对于Word文档的文本模式，显示HTML内容
-      const docContainer = document.createElement('div');
-      docContainer.className = 'doc-container';
-      docContainer.style.padding = '20px';
-      docContainer.style.backgroundColor = '#fff';
-      docContainer.style.border = '1px solid #ddd';
-      docContainer.style.borderRadius = '5px';
-      docContainer.style.maxHeight = '600px';
-      docContainer.style.overflow = 'auto';
-      docContainer.style.fontFamily = 'Arial, sans-serif';
-      docContainer.style.lineHeight = '1.6';
-      
-      // 改进的Base64解码方式，更好地处理UTF-8编码
-      let htmlContent;
-      try {
-        const binaryString = atob(previewData.content);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const decoder = new TextDecoder('utf-8');
-        htmlContent = decoder.decode(bytes);
-      } catch (error) {
-        console.warn('UTF-8解码失败，使用备用方法:', error);
-        htmlContent = decodeURIComponent(escape(atob(previewData.content)));
-      }
-      
-      // 使用innerHTML来渲染HTML格式的内容
-      docContainer.innerHTML = htmlContent;
-      
-      // 添加下载链接
-      const downloadLink = document.createElement('a');
-      downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
-      downloadLink.textContent = '下载原文件';
-      downloadLink.target = '_blank';
-      downloadLink.style.display = 'block';
-      downloadLink.style.marginTop = '15px';
-      downloadLink.style.textAlign = 'center';
-      
-      content.appendChild(docContainer);
-      content.appendChild(downloadLink);
-      
-    } else {
-      // 使用永中DCS在线预览（国内可直接访问）
-      const iframe = document.createElement('iframe');
-      iframe.style.width = '100%';
-      iframe.style.height = '80vh';
-      iframe.style.border = 'none';
 
-      // 构造永中DCS预览URL（使用当前域名和新的查询参数格式）
-      const fileUrl = encodeURIComponent(
-          window.location.origin + '/api/files/download?fileName=' + encodeURIComponent(previewData.fileName)
-      );
-      iframe.src = `https://dcs.yozosoft.com/onlinePreview?url=${fileUrl}`;
+    // 使用永中DCS在线预览（国内可直接访问）
+    const iframe = document.createElement('iframe');
+    iframe.style.width = '100%';
+    iframe.style.height = '80vh';
+    iframe.style.border = 'none';
 
-      content.appendChild(iframe);
+    // 构造永中DCS预览URL（使用当前域名和新的查询参数格式）
+    const fileUrl = encodeURIComponent(
+        window.location.origin + '/api/files/download?fileName=' + encodeURIComponent(previewData.fileName)
+    );
+    iframe.src = `https://dcs.yozosoft.com/onlinePreview?url=${fileUrl}`;
 
-      // 添加备用下载链接
-      const downloadLink = document.createElement('a');
-      downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
-      downloadLink.className = 'download-link';
-      downloadLink.textContent = '下载文件';
-      downloadLink.target = '_blank';
-      content.appendChild(downloadLink);
-    }
+    content.appendChild(iframe);
 
-  } catch (error) {
-    console.error('Office文件预览失败:', error);
-    const modal = createModal(previewData.fileName);
-    modal.querySelector('.modal-content').innerHTML = `
-      <div style="text-align: center; padding: 20px;">
-        <p>预览失败: ${error.message}</p>
-        <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
-           target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
-          下载文件
-        </a>
-      </div>
-    `;
-  }
-};
-
-// Excel文件预览
-const previewExcelFile = async (previewData) => {
-  try {
-    const modal = createModal(previewData.fileName);
-    const content = modal.querySelector('.modal-content');
-    
-    // 创建Excel容器
-    const excelContainer = document.createElement('div');
-    excelContainer.className = 'excel-container';
-    excelContainer.style.padding = '20px';
-    excelContainer.style.backgroundColor = '#fff';
-    excelContainer.style.border = '1px solid #ddd';
-    excelContainer.style.borderRadius = '5px';
-    excelContainer.style.maxHeight = '600px';
-    excelContainer.style.overflow = 'auto';
-    excelContainer.style.fontFamily = 'Arial, sans-serif';
-    
-    // 解码Base64内容 - 正确处理UTF-8编码
-    const htmlContent = decodeURIComponent(escape(atob(previewData.content)));
-    // 使用innerHTML来渲染HTML格式的表格内容
-    excelContainer.innerHTML = htmlContent;
-    
-    // 添加下载链接
+    // 添加备用下载链接
     const downloadLink = document.createElement('a');
     downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
-    downloadLink.textContent = '下载原文件';
+    downloadLink.className = 'download-link';
+    downloadLink.textContent = '下载文件';
     downloadLink.target = '_blank';
-    downloadLink.style.display = 'block';
-    downloadLink.style.marginTop = '15px';
-    downloadLink.style.textAlign = 'center';
-    downloadLink.style.padding = '8px 16px';
-    downloadLink.style.backgroundColor = '#4CAF50';
-    downloadLink.style.color = 'white';
-    downloadLink.style.textDecoration = 'none';
-    downloadLink.style.borderRadius = '4px';
-    
-    content.appendChild(excelContainer);
     content.appendChild(downloadLink);
-    
+
   } catch (error) {
-    console.error('Excel文件预览失败:', error);
+    console.error('预览失败:', error);
     const modal = createModal(previewData.fileName);
     modal.querySelector('.modal-content').innerHTML = `
-      <div style="text-align: center; padding: 20px;">
-        <p>Excel预览失败: ${error.message}</p>
+      <div class="office-preview-fallback">
+        <p>在线预览不可用，请下载后查看</p>
         <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
-           target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+           class="download-link">
           下载文件
         </a>
       </div>
     `;
   }
 };
+
+
 
 // 创建模态框的通用方法
 const createModal = (title) => {
@@ -1169,67 +621,6 @@ const createModal = (title) => {
   content.appendChild(titleElement);
   modal.appendChild(content);
 
-  document.body.appendChild(modal);
-  return modal;
-};
-
-const createLoadingModal = (fileName) => {
-  const modal = document.createElement('div');
-  modal.className = 'loading-modal';
-  modal.style.position = 'fixed';
-  modal.style.top = '0';
-  modal.style.left = '0';
-  modal.style.width = '100%';
-  modal.style.height = '100%';
-  modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-  modal.style.zIndex = '10001';
-  modal.style.display = 'flex';
-  modal.style.alignItems = 'center';
-  modal.style.justifyContent = 'center';
-  
-  const content = document.createElement('div');
-  content.className = 'loading-content';
-  content.style.background = 'white';
-  content.style.padding = '30px';
-  content.style.borderRadius = '8px';
-  content.style.textAlign = 'center';
-  content.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
-  
-  const spinner = document.createElement('div');
-  spinner.className = 'loading-spinner';
-  spinner.style.width = '40px';
-  spinner.style.height = '40px';
-  spinner.style.border = '4px solid #f3f3f3';
-  spinner.style.borderTop = '4px solid #3498db';
-  spinner.style.borderRadius = '50%';
-  spinner.style.animation = 'spin 1s linear infinite';
-  spinner.style.margin = '0 auto 15px';
-  
-  const text = document.createElement('p');
-  text.textContent = `正在预览 ${fileName}...`;
-  text.style.margin = '0 0 10px 0';
-  
-  const subText = document.createElement('p');
-  subText.textContent = '请稍候，预览可能需要几秒钟';
-  subText.style.fontSize = '12px';
-  subText.style.color = '#666';
-  subText.style.margin = '0';
-  
-  // 添加旋转动画样式
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  `;
-  document.head.appendChild(style);
-  
-  content.appendChild(spinner);
-  content.appendChild(text);
-  content.appendChild(subText);
-  modal.appendChild(content);
-  
   document.body.appendChild(modal);
   return modal;
 };
@@ -1353,38 +744,24 @@ const confirmUpload = async () => {
 // 替换原有的 downloadMaterial 方法
 const downloadMaterial = async (material) => {
   try {
-    // 获取授权令牌
-    const token = localStorage.getItem('accessToken');
-    
-    // 从URL中提取文件名参数
-    const urlParams = new URLSearchParams(material.url.split('?')[1]);
-    const fileName = urlParams.get('fileName');
-    
-    if (!fileName) {
-      throw new Error('无法获取文件名');
-    }
-    
-    // 使用API下载并添加授权令牌
-    const response = await fetch(`/api/files/download?fileName=${encodeURIComponent(fileName)}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || '下载失败');
-    }
-    
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = material.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url); // 释放URL对象
+    // 直接使用文件下载URL
+    window.open(material.url, '_blank');
+
+    // 或者使用API下载（如果需要额外处理）
+    // const token = localStorage.getItem('accessToken');
+    // const response = await fetch(`/api/files/download?fileName=${encodeURIComponent(material.name)}`, {
+    //   headers: {
+    //     'Authorization': `Bearer ${token}`
+    //   }
+    // });
+    // const blob = await response.blob();
+    // const url = window.URL.createObjectURL(blob);
+    // const a = document.createElement('a');
+    // a.href = url;
+    // a.download = material.name;
+    // document.body.appendChild(a);
+    // a.click();
+    // document.body.removeChild(a);
   } catch (error) {
     console.error('下载错误:', error);
     alert(`下载失败: ${error.message}`);
@@ -1424,94 +801,19 @@ const deleteMaterial = async (material) => {
 // 修改 onMounted 加载文件列表
 onMounted(() => {
   loadMaterials();
-  
-  // 页面加载动画
-  setTimeout(() => {
-    pageLoaded.value = true;
-  }, 100);
-  
-  // 为资料卡片添加进入动画延迟
-  setTimeout(() => {
-    const cards = document.querySelectorAll('.material-card');
-    cards.forEach((card, index) => {
-      card.style.setProperty('--animation-delay', `${index * 0.1}s`);
-    });
-  }, 200);
-  
-  // 监听来自TaskManager的文件预览事件
-  const handleTaskFilePreview = async (event) => {
-    console.log('DataIntegration: 接收到previewTaskFile事件', event.detail);
-    const { fileName, originalFileName, taskName, fileUrl, taskId } = event.detail;
-    
-    // 确保资料库数据已加载
-    if (materials.value.length === 0) {
-      console.log('DataIntegration: 资料库数据未加载，开始加载...');
-      await loadMaterials();
-    }
-    
-    // 设置当前任务ID用于进度更新
-    currentTaskId = taskId;
-    
-    console.log('DataIntegration: 当前资料库文件数量:', materials.value.length);
-    console.log('DataIntegration: 查找文件:', fileName, '原始文件名:', originalFileName);
-    console.log('DataIntegration: 关联任务ID:', taskId);
-    
-    // 查找对应的文件（支持多种匹配方式，优先使用原始文件名）
-    const material = materials.value.find(m => {
-      // 优先匹配原始文件名
-      if (originalFileName) {
-        const originalMatch = m.name === originalFileName || 
-                            m.fileName === originalFileName ||
-                            m.name.includes(originalFileName) ||
-                            originalFileName.includes(m.name);
-        if (originalMatch) {
-          console.log('DataIntegration: 通过原始文件名找到匹配文件:', m);
-          return true;
-        }
-      }
-      
-      // 如果原始文件名匹配失败，使用当前文件名匹配
-      const currentMatch = m.name === fileName || 
-             m.fileName === fileName ||
-             m.name.includes(fileName) ||
-             fileName.includes(m.name);
-      if (currentMatch) {
-        console.log('DataIntegration: 通过当前文件名找到匹配文件:', m);
-      }
-      return currentMatch;
-    });
-    
-    if (material) {
-      console.log('DataIntegration: 准备预览文件:', material.name);
-      // 延迟一下确保页面完全加载
-      setTimeout(() => {
-        console.log(`DataIntegration: 正在预览文件: ${material.name}`);
-        openMaterial(material);
-      }, 200);
-    } else {
-      // 如果没找到，显示详细的提示信息
-      const availableFiles = materials.value.map(m => m.name || m.fileName).join('\n- ');
-      console.log('DataIntegration: 未找到匹配文件，可用文件:', availableFiles);
-      const searchInfo = originalFileName ? `${fileName} (原始名称: ${originalFileName})` : fileName;
-      alert(`未在资料库中找到文件: ${searchInfo}\n\n当前资料库中的文件:\n- ${availableFiles}\n\n提示：请确保文件已上传到资料库，或检查文件名是否匹配。`);
-    }
-  };
-  
-  // 添加事件监听器
-  window.addEventListener('previewTaskFile', handleTaskFilePreview);
-  console.log('DataIntegration: 事件监听器已添加');
-  
-  // 组件卸载时移除事件监听器
-  onUnmounted(() => {
-    window.removeEventListener('previewTaskFile', handleTaskFilePreview);
-    console.log('DataIntegration: 事件监听器已移除');
-  });
 });
 
 const loadMaterials = async () => {
   try {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch('/api/files/list', {
+    let url = '/api/files/list';
+    
+    // 如果是只读模式，获取指定用户的资料
+    if (isReadOnly.value && targetUserId.value) {
+      url = `/api/files/user/${targetUserId.value}`;
+    }
+    
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -1587,50 +889,7 @@ const getSubjectIcon = (subject) => {
 const aiSearchQuery = ref('')
 const aiResults = ref([])
 const aiLoading = ref(false)
-const aiError = ref('')
-
-// 当前关联的任务ID（用于更新阅读进度）
-let currentTaskId = null;
-
-// 更新任务进度函数
-const updateTaskProgress = async (taskId, progress) => {
-  if (!taskId) {
-    console.log('DataIntegration: 无任务ID，跳过进度更新');
-    return;
-  }
-  
-  try {
-    const token = localStorage.getItem('accessToken');
-    console.log(`DataIntegration: 准备更新任务 ${taskId} 进度为 ${progress}%`);
-    console.log(`DataIntegration: 使用token: ${token ? '已获取' : '未获取'}`);
-    
-    const response = await fetch(`/api/tasks/${taskId}/progress`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ progress })
-    });
-    
-    console.log(`DataIntegration: API响应状态: ${response.status}`);
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log(`DataIntegration: 任务 ${taskId} 进度已更新为 ${progress}%`, result);
-      // 通知TaskManager更新本地数据
-      const progressUpdateEvent = new CustomEvent('taskProgressUpdated', {
-        detail: { taskId, progress }
-      });
-      window.dispatchEvent(progressUpdateEvent);
-    } else {
-      const errorText = await response.text();
-      console.error('DataIntegration: 更新任务进度失败:', response.status, response.statusText, errorText);
-    }
-  } catch (error) {
-     console.error('DataIntegration: 更新任务进度网络错误:', error);
-   }
- }
+const aiError = ref(null)
 
 // AI搜索方法
 const handleAiSearch = async () => {
@@ -1677,32 +936,6 @@ const handleAiSearch = async () => {
   }
 }
 
-// 卡片悬停事件处理
-const handleCardHover = (material, isHovering) => {
-  hoveredCard.value = isHovering ? material.id : null;
-};
-
-// 按钮点击涟漪效果
-const createRippleEffect = (event) => {
-  const button = event.currentTarget;
-  const ripple = document.createElement('span');
-  const rect = button.getBoundingClientRect();
-  const size = Math.max(rect.width, rect.height);
-  const x = event.clientX - rect.left - size / 2;
-  const y = event.clientY - rect.top - size / 2;
-  
-  ripple.style.width = ripple.style.height = size + 'px';
-  ripple.style.left = x + 'px';
-  ripple.style.top = y + 'px';
-  ripple.classList.add('ripple');
-  
-  button.appendChild(ripple);
-  
-  setTimeout(() => {
-    ripple.remove();
-  }, 600);
-};
-
 // 辅助函数：加载外部脚本
 const loadScript = (url) => {
   return new Promise((resolve, reject) => {
@@ -1726,16 +959,15 @@ const loadScript = (url) => {
   flex-direction: column;
   height: 100vh;
   padding: 20px;
-  background-color: rgba(245, 247, 250, 0.85);
+  background-color: #f5f7fa;
 }
 
 .search-section {
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: white;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
-  backdrop-filter: blur(10px);
 }
 
 .search-bar {
@@ -1794,12 +1026,11 @@ const loadScript = (url) => {
 
 .material-library {
   flex: 1;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0);
   padding: 20px;
   overflow-y: auto;
-  backdrop-filter: blur(10px);
 }
 
 .library-header {
@@ -1834,15 +1065,13 @@ const loadScript = (url) => {
 }
 
 .material-card {
-  border: 1px solid rgba(238, 238, 238, 0.8);
+  border: 1px solid #eee;
   border-radius: 6px;
   padding: 15px;
   display: flex;
   gap: 15px;
   cursor: pointer;
   transition: all 0.2s;
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(5px);
 }
 
 .material-card:hover {
@@ -1853,7 +1082,7 @@ const loadScript = (url) => {
 .material-icon {
   width: 50px;
   height: 50px;
-  background-color: rgba(240, 244, 255, 0.8);
+  background-color: #f0f4ff;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -1979,7 +1208,7 @@ const loadScript = (url) => {
 }
 
 .upload-modal {
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: white;
   border-radius: 8px;
   width: 90%;
   max-width: 600px;
@@ -1987,7 +1216,6 @@ const loadScript = (url) => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  backdrop-filter: blur(15px);
 }
 
 .modal-header {
@@ -2124,11 +1352,10 @@ const loadScript = (url) => {
 
 .ai-search-section {
   margin-top: 20px;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: white;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
 }
 
 .ai-search-box {
@@ -2248,7 +1475,7 @@ const loadScript = (url) => {
 }
 
 .file-preview-modal .modal-content {
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: white;
   padding: 20px;
   border-radius: 8px;
   width: 90%;
@@ -2256,7 +1483,6 @@ const loadScript = (url) => {
   max-height: 90vh;
   overflow: auto;
   position: relative;
-  backdrop-filter: blur(15px);
 }
 
 .file-preview-modal .modal-content h3 {
@@ -2308,76 +1534,6 @@ const loadScript = (url) => {
 .download-link:hover {
   background-color: #3a5ce4;
 }
-
-/* Word文档容器样式 */
-.doc-container {
-  font-family: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', Arial, sans-serif !important;
-  font-size: 14px;
-  line-height: 1.8;
-  color: #333;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-.doc-container h1, .doc-container h2, .doc-container h3, .doc-container h4, .doc-container h5, .doc-container h6 {
-  font-weight: bold;
-  margin-top: 20px;
-  margin-bottom: 10px;
-  color: #2c3e50;
-}
-
-.doc-container p {
-  margin-bottom: 12px;
-  text-align: justify;
-  word-wrap: break-word;
-  word-break: break-all;
-}
-
-.doc-container br {
-  line-height: 1.5;
-}
-
-/* 处理特殊字符显示 */
-.doc-container {
-  unicode-bidi: embed;
-  direction: ltr;
-}
-
-/* 确保中文字符正确显示 */
-.doc-container * {
-  font-variant-ligatures: none;
-  text-rendering: geometricPrecision;
-}
-
-/* Word转图片预览样式 */
-.doc-container img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  margin: 10px auto;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease;
-}
-
-.doc-container img:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-/* 页面分隔样式 */
-.doc-container div[style*="page-break-after"] {
-  border-bottom: 2px dashed #e0e0e0;
-  padding-bottom: 20px;
-  margin-bottom: 20px;
-}
-
-.doc-container div[style*="page-break-after"]:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
 .office-preview-notice {
   text-align: center;
   padding: 20px;
@@ -2387,255 +1543,6 @@ const loadScript = (url) => {
   margin-bottom: 15px;
   font-size: 16px;
   color: #666;
-}
-
-/* 页面加载动画 */
-.material-container {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.6s ease;
-}
-
-.material-container.page-loaded {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* 卡片进入和悬停动画 */
-.material-card {
-  opacity: 0;
-  transform: translateY(30px) scale(0.95);
-  animation: cardSlideIn 0.6s ease forwards;
-  animation-delay: var(--animation-delay, 0s);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-@keyframes cardSlideIn {
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.material-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-.material-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
-}
-
-.material-card:hover::before {
-  left: 100%;
-}
-
-/* 图标发光效果 */
-.material-icon {
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.icon-glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  background: radial-gradient(circle, rgba(74, 144, 226, 0.3) 0%, transparent 70%);
-  border-radius: 50%;
-  transform: translate(-50%, -50%) scale(0);
-  transition: transform 0.3s ease;
-  pointer-events: none;
-}
-
-.material-card:hover .icon-glow {
-  transform: translate(-50%, -50%) scale(3);
-}
-
-/* 按钮涟漪效果 */
-.action-btn {
-  position: relative;
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.action-btn:active {
-  transform: scale(0.95);
-}
-
-.ripple {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
-  transform: scale(0);
-  animation: rippleEffect 0.6s linear;
-  pointer-events: none;
-}
-
-@keyframes rippleEffect {
-  to {
-    transform: scale(4);
-    opacity: 0;
-  }
-}
-
-/* 搜索按钮动画 */
-.search-btn {
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.search-btn.searching {
-  background: linear-gradient(-45deg, #4a90e2, #357abd, #4a90e2, #357abd);
-  background-size: 400% 400%;
-  animation: searchGradient 1.5s ease infinite;
-}
-
-@keyframes searchGradient {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.search-btn svg {
-  transition: transform 0.3s ease;
-}
-
-.search-btn.searching svg {
-  animation: searchSpin 1s linear infinite;
-}
-
-@keyframes searchSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* 上传按钮增强动画 */
-.upload-btn {
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.upload-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(74, 144, 226, 0.3);
-}
-
-.upload-icon-wrapper {
-  position: relative;
-  display: inline-block;
-}
-
-.upload-glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 30px;
-  height: 30px;
-  background: radial-gradient(circle, rgba(74, 144, 226, 0.4) 0%, transparent 70%);
-  border-radius: 50%;
-  transform: translate(-50%, -50%) scale(0);
-  transition: transform 0.3s ease;
-  pointer-events: none;
-}
-
-.upload-btn:hover .upload-glow {
-  transform: translate(-50%, -50%) scale(2);
-}
-
-.upload-particles {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.upload-particles .particle {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: #4a90e2;
-  border-radius: 50%;
-  opacity: 0;
-}
-
-.upload-particles .particle:nth-child(1) {
-  top: 20%;
-  left: 20%;
-}
-
-.upload-particles .particle:nth-child(2) {
-  top: 60%;
-  left: 70%;
-}
-
-.upload-particles .particle:nth-child(3) {
-  top: 40%;
-  left: 50%;
-}
-
-.upload-btn:hover .upload-particles .particle {
-  animation: particleFloat 2s ease-in-out infinite;
-}
-
-.upload-btn:hover .upload-particles .particle:nth-child(2) {
-  animation-delay: 0.3s;
-}
-
-.upload-btn:hover .upload-particles .particle:nth-child(3) {
-  animation-delay: 0.6s;
-}
-
-@keyframes particleFloat {
-  0%, 100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) translateY(0);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -50%) translateY(-20px);
-  }
-}
-
-/* 微交互动画 */
-.material-info h3 {
-  transition: color 0.2s ease;
-}
-
-.material-card:hover .material-info h3 {
-  color: #4a90e2;
-}
-
-.material-actions button {
-  transition: all 0.2s ease;
-}
-
-.material-actions button:hover {
-  transform: scale(1.1);
-}
-
-/* 加载动画优化 */
-.loading-spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 /* 添加上传进度条样式 */
@@ -2662,6 +1569,45 @@ const loadScript = (url) => {
   color: #ff4d4f;
   margin-top: 10px;
   font-size: 14px;
+}
+
+/* 只读模式样式 */
+.read-only-text {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.readonly-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.readonly-badge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #bbdefb;
+}
+
+.normal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.normal-header h2 {
+  margin: 0;
 }
 
 </style>

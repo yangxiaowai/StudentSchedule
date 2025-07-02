@@ -1,10 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Layout from '../components/Layout.vue'
 import TaskManager from '../components/TaskManager.vue'
-// import History from '../components/History.vue'
+import History from '../components/History.vue'
 import DataIntegration from '../components/DataIntegration.vue'
-// import PlanManager from '../components/PlanManager.vue'
+import PlanManager from '../components/PlanManager.vue'
 import AIAnalysis from '../components/AIAnalysis.vue'
+import SocialLearning from '../components/SocialLearning.vue'
 import Login from '../pages/Login.vue'
 import Register from '../pages/Register.vue'
 import ForgotPassword from '../pages/ForgotPassword.vue'
@@ -39,10 +40,11 @@ const routes = [
     children: [
       { path: '', redirect: '/data-integration' },
       { path: 'task-manager', component: TaskManager },
-      // { path: 'history', component: History },
+      { path: 'history', component: History },
       { path: 'data-integration', component: DataIntegration },
-      // { path: 'plan-manager', component: PlanManager },
-      { path: 'ai-analysis', component: AIAnalysis }
+      { path: 'plan-manager', component: PlanManager },
+      { path: 'ai-analysis', component: AIAnalysis },
+      { path: 'social-learning', component: SocialLearning }
     ]
   }
 ]

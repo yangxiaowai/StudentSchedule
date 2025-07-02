@@ -355,17 +355,7 @@ import { uploadForTask } from '@/utils/fileUpload'
 
 function formatDateTime(dateStr) {
   if (!dateStr) return ''
-  
-  // 创建Date对象时，如果字符串不包含时区信息，会被当作本地时间
-  let date
-  if (dateStr.includes('T') && !dateStr.includes('Z') && !dateStr.includes('+')) {
-    // 如果是YYYY-MM-DDTHH:mm格式且没有时区标识，当作本地时间处理
-    date = new Date(dateStr)
-  } else {
-    // 如果包含时区信息，需要转换为本地时间
-    date = new Date(dateStr)
-  }
-  
+  const date = new Date(dateStr)
   return date.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
@@ -375,38 +365,26 @@ function formatDateTime(dateStr) {
   })
 }
 
-// 添加时间格式化辅助函数
-function formatTimeForServer(timeStr) {
-  if (!timeStr) return ''
-  // 确保时间格式正确，添加秒数
-  return timeStr.includes(':') ? timeStr + (timeStr.split(':').length === 2 ? ':00' : '') : timeStr
-}
+// 路由和只读模式处理
+const route = useRoute()
+const isReadOnly = ref(false)
+const targetUserId = ref(null)
+const targetUserName = ref('')
 
-function formatTimeForEdit(timeStr) {
-  if (!timeStr) return ''
-  
-  let date
-  if (timeStr.includes('T')) {
-    // 如果已经是ISO格式
-    date = new Date(timeStr)
+// 检查是否为只读模式的函数
+const checkReadOnlyMode = () => {
+  console.log('检查只读模式，路由参数:', route.query)
+  if ((route.query.userId || route.query.targetUserId) && (route.query.readOnly === 'true' || route.query.readonly === 'true')) {
+    isReadOnly.value = true
+    targetUserId.value = route.query.userId || route.query.targetUserId
+    targetUserName.value = route.query.userName || route.query.targetUserName || '用户'
+    console.log('设置为只读模式:', { isReadOnly: isReadOnly.value, targetUserId: targetUserId.value, targetUserName: targetUserName.value })
   } else {
-    // 如果是其他格式，尝试解析
-    date = new Date(timeStr)
+    isReadOnly.value = false
+    targetUserId.value = null
+    targetUserName.value = ''
+    console.log('设置为正常模式')
   }
-  
-  // 确保日期有效
-  if (isNaN(date.getTime())) {
-    return ''
-  }
-  
-  // 获取本地时间组件
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  
-  return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
 // 将内容类型英文值转换为中文显示
@@ -453,49 +431,14 @@ const toggleSelectAll = () => {
   }
 }
 
-// 监听来自DataIntegration的进度更新事件
-const handleProgressUpdate = (event) => {
-  const { taskId, progress } = event.detail
-  console.log('TaskManager: 接收到进度更新事件', { taskId, progress })
-  
-  // 更新本地任务数据
-  const taskIndex = tasks.value.findIndex(t => t.id === taskId)
-  if (taskIndex !== -1) {
-    tasks.value[taskIndex].progress = progress
-    console.log(`TaskManager: 本地任务 ${taskId} 进度已更新为 ${progress}%`)
-  }
-}
+// 监听路由变化
+watch(() => route.query, () => {
+  checkReadOnlyMode()
+  fetchTasks()
+}, { immediate: false })
 
 onMounted(() => {
-  isComponentMounted.value = true
   fetchTasks()
-  startDdlCheck()
-  window.addEventListener('taskProgressUpdated', handleProgressUpdate)
-  
-  // 每分钟更新一次倒计时显示
-  setInterval(() => {
-    if (isComponentMounted.value) {
-      // 触发响应式更新
-      tasks.value = [...tasks.value]
-    }
-  }, 60000)
-  
-  // 开发环境下添加测试功能
-  if (process.env.NODE_ENV === 'development') {
-    // 添加全局测试函数
-    window.testDdlAlert = triggerTestDdlAlert
-    console.log('开发模式：可使用 window.testDdlAlert() 测试DDL提醒功能')
-  }
-})
-
-// 组件卸载时清理定时器
-onBeforeUnmount(() => {
-  isComponentMounted.value = false
-  stopDdlCheck()
-  window.removeEventListener('taskProgressUpdated', handleProgressUpdate)
-  // 关闭任何打开的DDL提醒弹窗
-  showDdlAlert.value = false
-  currentAlertTask.value = null
 })
 
 const showModal = ref(false)
@@ -560,11 +503,6 @@ const validateForm = () => {
     formErrors.value.content = '请输入任务内容'
   }
   
-  // 添加内容类型验证
-  if (!newTask.value.type) {
-    formErrors.value.type = '请选择内容类型'
-  }
-  
   if (!newTask.value.startTime) {
     formErrors.value.startTime = '请选择开始时间'
   }
@@ -587,7 +525,14 @@ const validateForm = () => {
 async function fetchTasks() {
   try {
     const token = localStorage.getItem('accessToken')
-    const response = await fetch('http://localhost:8080/api/tasks', {
+    let url = 'http://localhost:8080/api/tasks'
+    
+    // 如果是只读模式，获取指定用户的任务
+    if (isReadOnly.value && targetUserId.value) {
+      url = `http://localhost:8080/api/tasks/user/${targetUserId.value}`
+    }
+    
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -609,9 +554,8 @@ async function addTask() {
     name: newTask.value.name.trim(),
     subject: newTask.value.subject,
     content: newTask.value.content.trim(),
-    // 使用新的时间格式化函数
-    startTime: formatTimeForServer(newTask.value.startTime),
-    endTime: formatTimeForServer(newTask.value.endTime),
+    startTime: newTask.value.startTime ? new Date(newTask.value.startTime).toISOString().slice(0, 16) : '',
+    endTime: newTask.value.endTime ? new Date(newTask.value.endTime).toISOString().slice(0, 16) : '',
     type: newTask.value.type || '',
     remark: newTask.value.remark?.trim() || '',
     progress: newTask.value.progress || 0,
@@ -713,11 +657,11 @@ function resetForm() {
 
 function editTask(task) {
   isEditing.value = true
-  // 使用新的时间格式化函数
+  // 格式化日期时间为本地格式
   const formattedTask = {
     ...task,
-    startTime: formatTimeForEdit(task.startTime),
-    endTime: formatTimeForEdit(task.endTime)
+    startTime: task.startTime ? new Date(task.startTime).toISOString().slice(0, 16) : '',
+    endTime: task.endTime ? new Date(task.endTime).toISOString().slice(0, 16) : ''
   }
   Object.assign(newTask.value, formattedTask)
   
@@ -765,19 +709,6 @@ const handleFileUpload = async (event) => {
   const file = event.target.files[0]
   if (!file) return
 
-  // 验证是否已选择学科和内容类型
-  if (!newTask.value.subject) {
-    alert('请先选择学科再上传文件')
-    event.target.value = ''
-    return
-  }
-  
-  if (!newTask.value.type) {
-    alert('请先选择内容类型再上传文件')
-    event.target.value = ''
-    return
-  }
-
   if (file.size > 10 * 1024 * 1024) {
     alert('文件大小不能超过10MB')
     event.target.value = ''
@@ -788,10 +719,8 @@ const handleFileUpload = async (event) => {
     // 使用统一的文件上传API（与资料库相同）
     const formData = new FormData();
     formData.append('file', file);
-    // 传递用户选择的学科，如果未选择则默认为'other'
     formData.append('subject', newTask.value.subject || 'other');
-    // 传递用户选择的内容类型，如果未选择则默认为'other'
-    formData.append('type', newTask.value.type || 'other');
+    formData.append('type', 'task'); // 标记为任务类型
 
     const token = localStorage.getItem('accessToken');
     const response = await fetch('/api/files/upload', {
@@ -827,103 +756,12 @@ const handleFileUpload = async (event) => {
   }
 }
 
-// 打开文件 - 跳转到资料库预览
-const openFile = async (fileUrl, task) => {
-  if (!fileUrl) return
-  
-  // 从fileUrl中提取文件名
-  const fileName = fileUrl.split('/').pop()
-  if (!fileName) {
-    alert('无法获取文件信息')
-    return
-  }
-  
-  try {
-    // 跳转到资料库页面
-    await router.push('/data-integration')
-    
-    // 使用nextTick确保DOM完全渲染后再触发事件
-     await nextTick()
-     
-     // 等待DataIntegration组件完全加载的函数
-      const waitForDataIntegration = () => {
-        return new Promise((resolve) => {
-          let attempts = 0;
-          const maxAttempts = 30; // 最多尝试30次，每次100ms
-          
-          const checkInterval = setInterval(() => {
-            attempts++;
-            console.log(`TaskManager: 检查DataIntegration组件加载状态 (${attempts}/${maxAttempts})`);
-            
-            // 检查DataIntegration组件是否已加载（通过检查特定元素）
-            const dataIntegrationElement = document.querySelector('.data-integration-container') || 
-                                         document.querySelector('[data-component="data-integration"]') ||
-                                         document.querySelector('.materials-grid');
-            
-            if (dataIntegrationElement) {
-              console.log('TaskManager: DataIntegration组件已检测到');
-              clearInterval(checkInterval);
-              resolve(true);
-            } else if (attempts >= maxAttempts) {
-              console.log('TaskManager: 达到最大检测次数，继续执行');
-              clearInterval(checkInterval);
-              resolve(false);
-            }
-          }, 100);
-        });
-      };
-     
-     // 等待组件加载完成后触发事件
-      const componentDetected = await waitForDataIntegration();
-      
-      // 根据检测结果调整延迟时间
-      const delay = componentDetected ? 300 : 1000;
-      console.log(`TaskManager: 组件检测${componentDetected ? '成功' : '失败'}，将在${delay}ms后触发事件`);
-      
-      // 延迟触发事件确保事件监听器已设置
-      setTimeout(() => {
-        console.log('TaskManager: 准备触发previewTaskFile事件', {
-          fileName: fileName,
-          taskName: task.name,
-          fileUrl: fileUrl
-        })
-        
-        const event = new CustomEvent('previewTaskFile', {
-          detail: {
-            fileName: fileName,
-            originalFileName: task.fileName, // 原始文件名
-            taskName: task.name,
-            fileUrl: fileUrl,
-            taskId: task.id // 任务ID用于更新进度
-          }
-        })
-        window.dispatchEvent(event)
-        console.log('TaskManager: previewTaskFile事件已触发')
-        
-        // 如果事件触发后1秒内没有响应，再次尝试
-        setTimeout(() => {
-           console.log('TaskManager: 备用事件触发机制');
-           const backupEvent = new CustomEvent('previewTaskFile', {
-              detail: {
-                fileName: fileName,
-                originalFileName: task.fileName, // 原始文件名
-                taskName: task.name,
-                fileUrl: fileUrl,
-                taskId: task.id // 任务ID用于更新进度
-              }
-            });
-           window.dispatchEvent(backupEvent);
-         }, 1000);
-      }, delay)
-    
-  } catch (error) {
-    console.error('跳转到资料库失败:', error)
-    alert('跳转到资料库失败: ' + error.message)
+// 打开文件
+const openFile = (fileUrl) => {
+  if (fileUrl) {
+    window.open(fileUrl, '_blank')
   }
 }
-
-
-
 
 // 移除已上传的文件
 const removeUploadedFile = () => {
@@ -2076,28 +1914,6 @@ button:hover {
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
 }
 
-.analysis-btn {
-  background: linear-gradient(135deg, #2196F3, #1976D2);
-  color: white;
-  border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-width: 120px;
-}
-
-.analysis-btn:hover {
-  background: linear-gradient(135deg, #1976D2, #1565C0);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
-}
-
 .icon-button {
   background: transparent;
   padding: 0.5rem; /* 增加按钮大小 */
@@ -2210,16 +2026,13 @@ th {
   background: #f1f3f5;
   color: #495057;
   font-weight: 600;
-  padding: 0.75rem 0.5rem;
+  padding: 1rem;
   text-align: left;
   border-bottom: 2px solid #e9ecef;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 td {
-  padding: 0.75rem 0.5rem;
+  padding: 1rem;
   border-bottom: 1px solid #e9ecef;
   color: #495057;
   vertical-align: middle;
@@ -2690,15 +2503,14 @@ input[type="file"]:hover {
 
 .uploaded-file-info {
   margin-top: 0.5rem;
-  padding: 0.75rem; /* 增加内边距 */
+  padding: 0.5rem;
   background: #e8f5e8;
   border: 1px solid #4CAF50;
-  border-radius: 6px; /* 增加圆角 */
+  border-radius: 4px;
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* 增加间距 */
+  gap: 0.5rem;
   font-size: 0.9rem;
-  position: relative; /* 确保定位正确 */
 }
 
 .uploaded-file-info i {
@@ -2710,132 +2522,18 @@ input[type="file"]:hover {
   color: white;
   border: none;
   border-radius: 50%;
-  width: 24px;  /* 增加尺寸 */
-  height: 24px; /* 增加尺寸 */
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 0.8rem; /* 稍微增大字体 */
+  font-size: 0.7rem;
   margin-left: auto;
-  z-index: 10; /* 确保在最上层 */
-  transition: all 0.2s ease; /* 添加过渡效果 */
 }
 
 .remove-file-btn:hover {
   background: #c82333;
-  transform: scale(1.1); /* 悬停时稍微放大 */
-}
-
-/* DDL管理样式 */
-.ddl-cell {
-  min-width: 120px;
-  padding: 0.5rem;
-}
-
-.ddl-container {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.clock-icon {
-  font-size: 16px;
-  color: #666;
-}
-
-.clock-icon.ticking {
-  animation: tick 1s infinite;
-  color: #007bff;
-}
-
-@keyframes tick {
-  0%, 50% { transform: rotate(0deg); }
-  25% { transform: rotate(5deg); }
-  75% { transform: rotate(-5deg); }
-}
-
-.ddl-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.time-remaining {
-  font-size: 11px;
-  font-weight: bold;
-}
-
-.time-remaining.normal {
-  color: #28a745;
-}
-
-.time-remaining.warning {
-  color: #ffc107;
-}
-
-.time-remaining.urgent {
-  color: #dc3545;
-  animation: blink 1s infinite;
-}
-
-.time-remaining.completed {
-  color: #28a745;
-}
-
-.time-remaining.expired {
-  color: #dc3545;
-}
-
-.time-remaining.no-deadline {
-  color: #6c757d;
-}
-
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0.5; }
-}
-
-.status-indicator {
-  font-size: 12px;
-}
-
-.completed-icon {
-  color: #28a745;
-}
-
-.expired-icon {
-  color: #dc3545;
-}
-
-.pending-icon {
-  color: #ffc107;
-}
-
-/* 任务行样式 */
-.completed-task {
-  background-color: #f8fff8;
-  border-left: 4px solid #28a745;
-}
-
-.expired-task {
-  background-color: #fff8f8;
-  border-left: 4px solid #dc3545;
-}
-
-.completed-expired {
-  background-color: #f0f8f0;
-  border-left: 4px solid #28a745;
-}
-
-.failed-expired {
-  background-color: #fff0f0;
-  border-left: 4px solid #dc3545;
-}
-
-/* 过期任务透明度 */
-.expired-task {
-  opacity: 0.8;
 }
 
 /* 进度条样式 */
@@ -2873,10 +2571,9 @@ input[type="file"]:hover {
   border-radius: 10px;
   transition: width 0.3s ease;
   position: relative;
-  overflow: hidden;
 }
 
-.progress-fill::after {
+td:nth-child(6)::after {
   content: '';
   position: absolute;
   top: 0;
@@ -2964,141 +2661,23 @@ input[type="file"]:hover {
 
 .file-preview-modal .close-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #666;
+  left: 1rem;
+  bottom: 0.5rem;
+  height: 4px;
+  width: calc((100% - 2rem) * var(--progress) / 100);
+  background: #4CAF50;
+  border-radius: 2px;
+  z-index: 1;
 }
 
-.file-preview-modal .close-btn:hover {
-  color: #333;
-}
-
-/* PDF容器 */
-.pdf-container {
-  width: 100%;
-  padding: 20px;
-  overflow-y: auto;
-  max-height: 70vh;
-}
-
-.page-navigation {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin: 15px 0;
-}
-
-.page-navigation button {
-  padding: 8px 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
+.read-only-text {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
   border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.page-navigation button:hover:not(:disabled) {
-  background-color: #0056b3;
-}
-
-.page-navigation button:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-}
-
-.page-counter {
-  font-weight: bold;
-  color: #333;
-  margin: 0 10px;
-}
-
-.pdf-image-container {
-  text-align: center;
-  margin: 20px 0;
-}
-
-.pdf-image-container img {
-  max-width: 100%;
-  height: auto;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
-}
-
-.download-link {
-  display: inline-block;
-  padding: 10px 20px;
-  background-color: #28a745;
-  color: white;
-  text-decoration: none;
-  border-radius: 4px;
-  margin: 10px 0;
-  font-weight: bold;
-}
-
-.download-link:hover {
-  background-color: #218838;
-  color: white;
-  text-decoration: none;
-}
-
-/* 加载模态框样式 */
-.loading-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 10001;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.loading-content {
-  background: white;
-  padding: 30px;
-  border-radius: 8px;
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 15px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* DDL提醒弹窗样式 */
-.ddl-alert-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.8);
-  z-index: 1500; /* 降低z-index，确保不覆盖导航栏 */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  backdrop-filter: blur(4px);
-  /* 添加pointer-events控制，只在弹窗显示时阻止点击 */
-  pointer-events: auto;
+  border: 1px solid #e9ecef;
 }
 
 .ddl-alert-content {
