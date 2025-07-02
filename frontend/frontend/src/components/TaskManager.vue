@@ -1,270 +1,355 @@
 <template>
   <div class="task-manager">
-    <div class="header-section">
-      <h2>任务管理</h2>
-      <div class="header-buttons">
-        <button @click="showModal = true">
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h3 class="sidebar-title-highlight">任务管理</h3>
+        <button @click="showModal = true" class="add-task-btn">
           <i class="fas fa-plus"></i> 添加任务
         </button>
-        <!-- 修改为批量操作按钮组 -->
-        <div v-if="selectedTasks.length > 0" class="batch-operations">
-          <span class="selected-count">已选择 {{ selectedTasks.length }} 个任务</span>
+      </div>
+      
+      <!-- 搜索功能 -->
+      <div class="search-section">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input 
+            type="text" 
+            v-model="searchQuery" 
+            placeholder="按任务名称检索..."
+            @input="filterTasks"
+          />
+        </div>
+      </div>
+      
+      <!-- 分类筛选区域 -->
+      <div class="category-section">
+        <h4>分类筛选</h4>
+        <div class="category-tags">
           <button 
-            @click="goToAnalysis" 
-            class="analysis-btn"
+            v-for="category in categories" 
+            :key="category.key"
+            :class="['category-tag', { active: activeCategory === category.key }]"
+            @click="setActiveCategory(category.key)"
           >
-            <i class="fas fa-chart-line"></i> 分析选中任务
+            <i :class="category.icon"></i>
+            {{ category.label }}
+            <span class="count">{{ getCategoryCount(category.key) }}</span>
           </button>
-          <button 
-            @click="batchDeleteTasks" 
-            class="delete-btn"
-          >
+        </div>
+      </div>
+      
+      <!-- 在侧边栏底部添加批量操作区域 -->
+      <div v-if="selectedTasks.length > 0" class="batch-operations">
+        <div class="selected-info">
+          <h4>批量操作</h4>
+          <span class="selected-count">已选择 {{ selectedTasks.length }} 个任务</span>
+        </div>
+        <div class="batch-buttons">
+          <button @click="goToAnalysis" class="analysis-btn">
+            <i class="fas fa-chart-line"></i> 分析选中
+          </button>
+          <button @click="batchDeleteTasks" class="delete-btn">
             <i class="fas fa-trash-alt"></i> 批量删除
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- DDL提醒弹窗 -->
-    <div v-if="showDdlAlert" class="ddl-alert-modal" @click.self="closeDdlAlert">
-      <div class="ddl-alert-content">
-        <div class="ddl-alert-icon">
-          <i class="fas fa-exclamation-triangle"></i>
-        </div>
-        <h3>⏰ DDL提醒</h3>
-        <p class="ddl-alert-message">{{ ddlAlertMessage }}</p>
-        <div class="ddl-alert-buttons">
-          <button class="btn-secondary" @click="closeDdlAlert">
-            <i class="fas fa-check"></i>
-            知道啦
-          </button>
-          <button class="btn-primary" @click="goToTask">
-            <i class="fas fa-eye"></i>
-            带我去看看
+          <button @click="clearSelection" class="clear-btn">
+            <i class="fas fa-times"></i> 清空选择
           </button>
         </div>
       </div>
     </div>
+    
+    <!-- 主页面 -->
+    <div class="main-content">
+      <div class="content-header">
+        <h2>任务列表</h2>
+        <span class="task-count">共 {{ tasks.length }} 个任务</span>
+      </div>
 
-    <div class="table-container">
+      <!-- DDL提醒弹窗 -->
+      <div v-if="showDdlAlert" class="ddl-alert-modal" @click.self="closeDdlAlert">
+        <div class="ddl-alert-content">
+          <div class="ddl-alert-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <h3>⏰ DDL提醒</h3>
+          <p class="ddl-alert-message">{{ ddlAlertMessage }}</p>
+          <div class="ddl-alert-buttons">
+            <button class="btn-secondary" @click="closeDdlAlert">
+              <i class="fas fa-check"></i>
+              知道啦
+            </button>
+            <button class="btn-primary" @click="goToTask">
+              <i class="fas fa-eye"></i>
+              带我去看看
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container">
         <table>
           <thead>
             <tr>
-              <th>任务名称</th>
-              <th>学科</th>
-              <th>内容</th>
-              <th>内容类型</th>
-              <th>开始时间</th>
-              <th>结束时间</th>
-              <th>DDL管理</th>
-              <th>进度</th>
-              <th>附件</th>
-              <th>编辑</th>
-              <th>批量操作</th>
+              <th class="checkbox-col">
+                <input 
+                  type="checkbox" 
+                  @change="toggleSelectAll"
+                  :checked="isAllSelected"
+                  :indeterminate="isPartiallySelected"
+                />
+              </th>
+              <th class="name-col">任务名称</th>
+              <th class="ddl-col">DDL管理</th>
+              <th class="progress-col">进度</th>
+              <th class="file-col">附件</th>
+              <th class="edit-col">编辑</th>
+              <th class="delete-col">删除</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="task in sortedTasks" :key="task.id" :class="getTaskRowClass(task)" :data-task-id="task.id">
-              <td>{{ task.name }}</td>
-              <td>{{ task.subject }}</td>
-              <td>{{ task.content }}</td>
-              <td>{{ getContentTypeLabel(task.contentType || task.type) }}</td>
-              <td>{{ formatDateTime(task.startTime) || '未设置' }}</td>
-              <td>{{ formatDateTime(task.endTime) || '未设置' }}</td>
-              <td class="ddl-cell">
-                <div class="ddl-container">
-                  <div class="clock-icon" :class="{ 'ticking': !isTaskExpired(task) }">
-                    <i class="fas fa-clock"></i>
+            <template v-for="task in filteredTasks" :key="task.id">
+              <!-- 任务行 -->
+              <tr class="task-container" 
+                  :data-task-id="task.id"
+                  @mouseenter="hoveredTask = task.id"
+                  @mouseleave="hoveredTask = null">
+                <td class="checkbox-cell">
+                  <input 
+                    type="checkbox" 
+                    class="task-checkbox"
+                    :value="task"
+                    v-model="selectedTasks"
+                  >
+                </td>
+                
+                <td class="name-cell">
+                  <div class="task-name-wrapper">
+                    <span class="task-name">{{ task.name }}</span>
+                    <div class="task-status">
+                      <i v-if="isTaskCompleted(task)" class="fas fa-check-circle completed-icon" title="已完成"></i>
+                      <i v-else-if="isTaskExpired(task)" class="fas fa-exclamation-triangle expired-icon" title="已过期"></i>
+                      <i v-else class="fas fa-clock pending-icon" title="进行中"></i>
+                    </div>
                   </div>
+                </td>
+                
+                <td class="ddl-cell">
                   <div class="ddl-info">
                     <div class="time-remaining" :class="getTimeRemainingClass(task)">
                       {{ getTimeRemaining(task) }}
                     </div>
-                    <div class="status-indicator">
-                      <i v-if="isTaskCompleted(task)" class="fas fa-check completed-icon"></i>
-                      <i v-else-if="isTaskExpired(task)" class="fas fa-times expired-icon"></i>
-                      <i v-else class="fas fa-hourglass-half pending-icon"></i>
+                  </div>
+                </td>
+                
+                <td class="progress-cell">
+                  <div class="progress-wrapper">
+                    <div class="progress-bar">
+                      <div class="progress-fill" :style="{ width: task.progress + '%' }"></div>
+                    </div>
+                    <span class="progress-text">{{ task.progress }}%</span>
+                  </div>
+                </td>
+                
+                <td class="file-cell">
+                  <div v-if="task.fileName" class="file-info">
+                    <button @click="openFile(task.fileUrl, task)" class="file-button">
+                      <i class="fas fa-file"></i>
+                      {{ task.fileName.length > 10 ? task.fileName.substring(0, 10) + '...' : task.fileName }}
+                    </button>
+                  </div>
+                  <span v-else class="no-file">无附件</span>
+                </td>
+                
+                <td class="edit-cell">
+                  <button @click="editTask(task)" class="icon-button edit" title="编辑">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </td>
+                
+                <td class="delete-cell">
+                  <button @click="deleteTask(task.id)" class="icon-button delete" title="删除">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              
+              <!-- 详情行 -->
+              <tr v-if="hoveredTask === task.id" class="task-detail-row">
+                <td colspan="7" class="task-detail-cell">
+                  <div class="task-detail-content">
+                    <div class="detail-grid">
+                      <div class="detail-item">
+                        <span class="detail-label">学科：</span>
+                        <span class="detail-value">{{ task.subject }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">内容：</span>
+                        <span class="detail-value">{{ task.content }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">类型：</span>
+                        <span class="detail-value">{{ getContentTypeLabel(task.contentType || task.type) }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">开始时间：</span>
+                        <span class="detail-value">{{ formatDateTime(task.startTime) || '未设置' }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">结束时间：</span>
+                        <span class="detail-value">{{ formatDateTime(task.endTime) || '未设置' }}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </td>
-              <td class="progress-cell">
-                <div class="progress-container">
-                  <div class="progress-bar">
-                    <div class="progress-fill" :style="{width: (task.progress || 0) + '%'}"></div>
-                  </div>
-                  <span class="progress-text">{{ task.progress || 0 }}%</span>
-                </div>
-              </td>
-              <td class="file-cell">
-                <button v-if="task.fileUrl" class="icon-button file" title="预览文件" @click="openFile(task.fileUrl, task)">
-                  <i class="fas fa-file-alt"></i>
-                  {{ task.fileName || '附件' }}
-                </button>
-                <span v-else class="no-file">无附件</span>
-              </td>
-              <td class="actions-cell">
-                <button class="icon-button edit" title="编辑" @click="editTask(task)">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button class="icon-button delete" title="删除" @click="deleteTask(task.id)">
-                  <i class="fas fa-trash-alt"></i>
-                </button>
-              </td>
-              <td class="select-cell">
-                <input 
-                  type="checkbox" 
-                  v-model="selectedTasks" 
-                  :value="task" 
-                  class="task-checkbox"
-                />
-              </td>
-            </tr>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
+    </div>
 
-      <!-- 添加任务弹窗 -->
-      <div v-if="showModal" class="modal" @click.self="showModal = false">
-        <div class="modal-content">
-          <h3>添加新任务</h3>
-          <form @submit.prevent="addTask">
-            <div class="form-group" :class="{ 'has-error': formErrors.name }">
-               <label>任务名称 <span class="required">*</span></label>
+    <!-- 添加任务弹窗 -->
+    <div v-if="showModal" class="modal" @click.self="showModal = false">
+      <div class="modal-content">
+        <h3>添加新任务</h3>
+        <form @submit.prevent="addTask">
+          <div class="form-group" :class="{ 'has-error': formErrors.name }">
+             <label>任务名称 <span class="required">*</span></label>
+             <input 
+               v-model="newTask.name" 
+               placeholder="请输入任务名称" 
+               :class="{ 'error': formErrors.name }"
+               @focus="formErrors.name = null"
+               required
+             >
+             <span class="error-message" v-if="formErrors.name">{{ formErrors.name }}</span>
+           </div>
+           
+           <div class="form-group" :class="{ 'has-error': formErrors.subject }">
+             <label>学科 <span class="required">*</span></label>
+             <select 
+               v-model="newTask.subject" 
+               :class="{ 'error': formErrors.subject }"
+               @focus="formErrors.subject = null"
+               required
+             >
+               <option disabled value="">请选择学科</option>
+               <option value="chinese">语文</option>
+               <option value="math">数学</option>
+               <option value="english">英语</option>
+               <option value="physics">物理</option>
+               <option value="chemistry">化学</option>
+               <option value="biology">生物</option>
+               <option value="politics">政治</option>
+               <option value="history">历史</option>
+               <option value="geography">地理</option>
+               <option value="other">其他</option>
+             </select>
+             <span class="error-message" v-if="formErrors.subject">{{ formErrors.subject }}</span>
+           </div>
+           
+           <div class="form-group" :class="{ 'has-error': formErrors.content }">
+             <label>内容 <span class="required">*</span></label>
+             <textarea 
+               v-model="newTask.content" 
+               placeholder="请输入任务内容" 
+               :class="{ 'error': formErrors.content }"
+               @focus="formErrors.content = null"
+               required
+             ></textarea>
+             <span class="error-message" v-if="formErrors.content">{{ formErrors.content }}</span>
+           </div>
+           
+           <div class="form-row">
+             <div class="form-group half">
+               <label>开始时间 <span class="required">*</span></label>
                <input 
-                 v-model="newTask.name" 
-                 placeholder="请输入任务名称" 
-                 :class="{ 'error': formErrors.name }"
-                 @focus="formErrors.name = null"
-                 required
+                 type="datetime-local" 
+                 v-model="newTask.startTime"
+                 :class="{ 'error': formErrors.startTime }"
+                 @focus="formErrors.startTime = null"
                >
-               <span class="error-message" v-if="formErrors.name">{{ formErrors.name }}</span>
+               <span class="error-message" v-if="formErrors.startTime">{{ formErrors.startTime }}</span>
              </div>
              
-             <div class="form-group" :class="{ 'has-error': formErrors.subject }">
-               <label>学科 <span class="required">*</span></label>
-               <select 
-                 v-model="newTask.subject" 
-                 :class="{ 'error': formErrors.subject }"
-                 @focus="formErrors.subject = null"
-                 required
+             <div class="form-group half" :class="{ 'has-error': formErrors.endTime }">
+               <label>截止时间 <span class="required">*</span></label>
+               <input 
+                 type="datetime-local" 
+                 v-model="newTask.endTime"
+                 :class="{ 'error': formErrors.endTime }"
+                 @focus="formErrors.endTime = null"
                >
-                 <option disabled value="">请选择学科</option>
-                 <option value="chinese">语文</option>
-                 <option value="math">数学</option>
-                 <option value="english">英语</option>
-                 <option value="physics">物理</option>
-                 <option value="chemistry">化学</option>
-                 <option value="biology">生物</option>
-                 <option value="politics">政治</option>
-                 <option value="history">历史</option>
-                 <option value="geography">地理</option>
-                 <option value="other">其他</option>
-               </select>
-               <span class="error-message" v-if="formErrors.subject">{{ formErrors.subject }}</span>
+               <span class="error-message" v-if="formErrors.endTime">{{ formErrors.endTime }}</span>
              </div>
-             
-             <div class="form-group" :class="{ 'has-error': formErrors.content }">
-               <label>内容 <span class="required">*</span></label>
-               <textarea 
-                 v-model="newTask.content" 
-                 placeholder="请输入任务内容" 
-                 :class="{ 'error': formErrors.content }"
-                 @focus="formErrors.content = null"
-                 required
-               ></textarea>
-               <span class="error-message" v-if="formErrors.content">{{ formErrors.content }}</span>
-             </div>
-             
-             <div class="form-row">
-               <div class="form-group half">
-                 <label>开始时间 <span class="required">*</span></label>
-                 <input 
-                   type="datetime-local" 
-                   v-model="newTask.startTime"
-                   :class="{ 'error': formErrors.startTime }"
-                   @focus="formErrors.startTime = null"
-                 >
-                 <span class="error-message" v-if="formErrors.startTime">{{ formErrors.startTime }}</span>
-               </div>
-               
-               <div class="form-group half" :class="{ 'has-error': formErrors.endTime }">
-                 <label>截止时间 <span class="required">*</span></label>
-                 <input 
-                   type="datetime-local" 
-                   v-model="newTask.endTime"
-                   :class="{ 'error': formErrors.endTime }"
-                   @focus="formErrors.endTime = null"
-                 >
-                 <span class="error-message" v-if="formErrors.endTime">{{ formErrors.endTime }}</span>
-               </div>
-             </div>
-            
-            <div class="form-group" :class="{ 'has-error': formErrors.type }">
-              <label>内容类型 <span class="required">*</span></label>
-              <select 
-                v-model="newTask.type"
-                :class="{ 'error': formErrors.type }"
-                @focus="formErrors.type = null"
-                required
-              >
-                <option disabled value="">请选择内容类型</option>
-                <option value="textbook">教材</option>
-                <option value="notes">笔记</option>
-                <option value="exam">真题</option>
-                <option value="exercise">习题</option>
-                <option value="ppt">课件</option>
-              </select>
-              <span class="error-message" v-if="formErrors.type">{{ formErrors.type }}</span>
-            </div>
+           </div>
+          
+          <div class="form-group" :class="{ 'has-error': formErrors.type }">
+            <label>内容类型 <span class="required">*</span></label>
+            <select 
+              v-model="newTask.type"
+              :class="{ 'error': formErrors.type }"
+              @focus="formErrors.type = null"
+              required
+            >
+              <option disabled value="">请选择内容类型</option>
+              <option value="textbook">教材</option>
+              <option value="notes">笔记</option>
+              <option value="exam">真题</option>
+              <option value="exercise">习题</option>
+              <option value="ppt">课件</option>
+            </select>
+            <span class="error-message" v-if="formErrors.type">{{ formErrors.type }}</span>
+          </div>
 
-            <div class="form-group">
-              <label>进度</label>
-              <div class="progress-input">
-                <input type="range" v-model="newTask.progress" min="0" max="100" step="5">
-                <span class="progress-value">{{ newTask.progress || 0 }}%</span>
-              </div>
+          <div class="form-group">
+            <label>进度</label>
+            <div class="progress-input">
+              <input type="range" v-model="newTask.progress" min="0" max="100" step="5">
+              <span class="progress-value">{{ newTask.progress || 0 }}%</span>
             </div>
-            
-            <div class="form-group">
-              <label>备注</label>
-              <textarea v-model="newTask.remark" placeholder="请输入备注信息"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label>备注</label>
+            <textarea v-model="newTask.remark" placeholder="请输入备注信息"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label>附件</label>
+            <div class="file-upload">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <span>点击或拖拽文件到此处上传</span>
+              <input type="file" @change="handleFileUpload">
             </div>
-            
-            <div class="form-group">
-              <label>附件</label>
-              <div class="file-upload">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <span>点击或拖拽文件到此处上传</span>
-                <input type="file" @change="handleFileUpload">
-              </div>
-              <div v-if="uploadedFileInfo" class="uploaded-file-info">
-                <i class="fas fa-file-alt"></i>
-                <span>{{ uploadedFileInfo.originalName }}</span>
-                <button type="button" @click="removeUploadedFile" class="remove-file-btn">
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
+            <div v-if="uploadedFileInfo" class="uploaded-file-info">
+              <i class="fas fa-file-alt"></i>
+              <span>{{ uploadedFileInfo.originalName }}</span>
+              <button type="button" @click="removeUploadedFile" class="remove-file-btn">
+                <i class="fas fa-times"></i>
+              </button>
             </div>
-            
-            <div class="form-actions">
-              <div class="form-actions-content">
-                <button type="button" @click="showModal = false" class="btn-secondary">
-                  <i class="fas fa-times"></i> 取消
-                </button>
-                <button type="submit" class="btn-primary">
-                  <i class="fas fa-check"></i> 保存
-                </button>
-              </div>
+          </div>
+          
+          <div class="form-actions">
+            <div class="form-actions-content">
+              <button type="button" @click="showModal = false" class="btn-secondary">
+                <i class="fas fa-times"></i> 取消
+              </button>
+              <button type="submit" class="btn-primary">
+                <i class="fas fa-check"></i> 保存
+              </button>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { uploadForTask } from '@/utils/fileUpload'
 
@@ -338,6 +423,35 @@ function getContentTypeLabel(type) {
 
 const router = useRouter()
 const isComponentMounted = ref(false)
+const searchQuery = ref('')
+const filteredTasks = ref([])
+const activeCategory = ref('all')
+const categories = ref([
+  { key: 'all', label: '全部', icon: 'fas fa-list' },
+  { key: 'today', label: '今日', icon: 'fas fa-calendar-day' },
+  { key: 'todo', label: '待做', icon: 'fas fa-clock' },
+  { key: 'completed', label: '已完成', icon: 'fas fa-check-circle' },
+  { key: 'expired', label: '已过期', icon: 'fas fa-exclamation-triangle' }
+])
+const hoveredTask = ref(null)
+
+// 全选相关计算属性
+const isAllSelected = computed(() => {
+  return filteredTasks.value.length > 0 && selectedTasks.value.length === filteredTasks.value.length
+})
+
+const isPartiallySelected = computed(() => {
+  return selectedTasks.value.length > 0 && selectedTasks.value.length < filteredTasks.value.length
+})
+
+// 全选切换方法
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedTasks.value = []
+  } else {
+    selectedTasks.value = [...filteredTasks.value]
+  }
+}
 
 // 监听来自DataIntegration的进度更新事件
 const handleProgressUpdate = (event) => {
@@ -397,7 +511,10 @@ const notifiedTasks = ref(new Set()) // 记录已提醒过的任务，避免重�
 const sortedTasks = computed(() => {
   const now = new Date()
   
-  return [...tasks.value].sort((a, b) => {
+  // 如果有搜索查询，使用过滤后的任务，否则使用所有任务
+  const tasksToSort = searchQuery.value.trim() ? filteredTasks.value : tasks.value
+  
+  return [...tasksToSort].sort((a, b) => {
     const aExpired = isTaskExpired(a)
     const bExpired = isTaskExpired(b)
     
@@ -1528,6 +1645,79 @@ const batchDeleteTasks = async () => {
   }
 }
 
+// 搜索和分类过滤函数
+const filterTasks = () => {
+  let filtered = tasks.value
+  
+  // 按搜索关键词过滤
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim()
+    filtered = filtered.filter(task => 
+      task.name.toLowerCase().includes(query)
+    )
+  }
+  
+  // 按分类过滤
+  switch (activeCategory.value) {
+    case 'today':
+      filtered = filtered.filter(task => isToday(task))
+      break
+    case 'todo':
+      filtered = filtered.filter(task => !isTaskCompleted(task) && !isTaskExpired(task))
+      break
+    case 'completed':
+      filtered = filtered.filter(task => isTaskCompleted(task))
+      break
+    case 'expired':
+      filtered = filtered.filter(task => isTaskExpired(task))
+      break
+    default:
+      // 'all' - 显示所有任务
+      break
+  }
+  
+  filteredTasks.value = filtered
+}
+
+// 设置活动分类
+const setActiveCategory = (categoryKey) => {
+  activeCategory.value = categoryKey
+  filterTasks()
+}
+
+// 获取分类任务数量
+const getCategoryCount = (categoryKey) => {
+  switch (categoryKey) {
+    case 'all':
+      return tasks.value.length
+    case 'today':
+      return tasks.value.filter(task => isToday(task)).length
+    case 'todo':
+      return tasks.value.filter(task => !isTaskCompleted(task) && !isTaskExpired(task)).length
+    case 'completed':
+      return tasks.value.filter(task => isTaskCompleted(task)).length
+    case 'expired':
+      return tasks.value.filter(task => isTaskExpired(task)).length
+    default:
+      return 0
+  }
+}
+
+// 判断任务是否今日到期
+const isToday = (task) => {
+  if (!task.endTime) return false
+  const today = new Date()
+  const taskDate = new Date(task.endTime)
+  return today.toDateString() === taskDate.toDateString()
+}
+
+// 监听搜索和分类变化
+watch([tasks, searchQuery, activeCategory], () => {
+  filterTasks()
+}, { immediate: true })
+
+
+
 // 跳转到AI分析页面
 const goToAnalysis = () => {
   if (selectedTasks.value.length === 0) {
@@ -1587,38 +1777,243 @@ const goToAnalysis = () => {
   // 跳转到AI分析页面
   window.location.href = '/ai-analysis'
 }
+
+// 清空选择
+const clearSelection = () => {
+  selectedTasks.value = []
+}
 </script>
 
 <style scoped>
+/* 基础布局样式 */
 .task-manager {
-  padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  display: flex;
+  height: 100vh;
   background: #f8f9fa;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
-.header-section {
+/* 侧边栏样式 */
+.sidebar {
+  width: 300px;
+  background: white;
+  border-right: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.sidebar-header h3 {
+  color: #2c3e50;
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* 新增：突出显示侧边栏标题的样式 */
+.sidebar-title-highlight {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 1.6rem !important;
+  font-weight: 700 !important;
+  text-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+  letter-spacing: 0.5px;
+  position: relative;
+}
+
+.sidebar-title-highlight::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+}
+
+.add-task-btn {
+  width: 100%;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.add-task-btn:hover {
+  background: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+}
+
+/* 搜索区域样式 */
+.search-section {
+  padding: 1.5rem;
+  margin-bottom: 30px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.search-box {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+}
+
+.search-box i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+}
+
+.search-box input {
+  width: 100%;
+  max-width: 100%;
+  padding: 12px 12px 12px 40px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+  box-sizing: border-box;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+/* 分类筛选区域样式 */
+.category-section {
+  flex: 1;
+  padding: 1.5rem;
+  margin-bottom: 30px;
+}
+
+.category-section h4 {
+  color: #2c3e50;
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.category-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-tag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  width: 100%;
+}
+
+.category-tag:hover {
+  background: #e9ecef;
+  border-color: #4CAF50;
+  color: #2c3e50;
+  transform: translateX(4px);
+}
+
+.category-tag.active {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  border-color: #4CAF50;
+  color: white;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.category-tag i {
+  margin-right: 8px;
+  width: 16px;
+  text-align: center;
+}
+
+.category-tag .count {
+  background: rgba(0, 0, 0, 0.1);
+  color: inherit;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
+}
+
+.category-tag.active .count {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.category-tag:not(.active) .count {
+  background: #dee2e6;
+  color: #6c757d;
+}
+
+/* 主内容区样式 */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.content-header {
+  padding: 1.5rem 2rem;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
   flex-wrap: wrap;
   gap: 1rem;
 }
 
-.header-buttons {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.task-manager h2 {
+.content-header h2 {
   color: #2c3e50;
   margin: 0;
   font-size: 1.8rem;
   font-weight: 600;
+}
+
+.task-count {
+  color: #6c757d;
+  font-size: 0.9rem;
+  background: #f8f9fa;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: 1px solid #e9ecef;
 }
 
 button {
@@ -1705,51 +2100,54 @@ button:hover {
 
 .icon-button {
   background: transparent;
-  padding: 0.25rem;
+  padding: 0.5rem; /* 增加按钮大小 */
   border-radius: 4px;
   color: #6c757d;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 2rem; /* 固定宽度 */
+  height: 2rem; /* 固定高度 */
+  border: 1px solid transparent;
 }
 
 .icon-button:hover {
   transform: translateY(-1px);
-  box-shadow: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .icon-button.edit:hover {
   color: #2196F3;
   background: rgba(33, 150, 243, 0.1);
+  border-color: #2196F3;
 }
 
 .icon-button.delete:hover {
   color: #dc3545;
   background: rgba(220, 53, 69, 0.1);
+  border-color: #dc3545;
 }
 
 .icon-button i {
-  font-size: 0.8rem;
+  font-size: 0.9rem; /* 增加图标大小 */
 }
 
-.actions-cell {
+/* 操作按钮 */
+.action-buttons {
   display: flex;
-  gap: 0.25rem;
-  justify-content: flex-start;
+  gap: 0.5rem; /* 增加按钮间距 */
+  justify-content: center;
   align-items: center;
 }
 
+/* 表格容器和基础样式 */
 .table-container {
-  overflow-x: auto;
-  margin: 1rem 0;
-  padding: 0;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 1.5rem 2rem;
   background: white;
-  min-width: 1200px;
 }
 
 .progress-cell {
@@ -1769,10 +2167,45 @@ table {
   background: white;
   border-radius: 8px;
   overflow: hidden;
-  min-width: 1200px;
+  min-width: 1040px;
   font-size: 0.9rem;
+  table-layout: fixed; /* 固定表格布局 */
 }
 
+/* 设置精确的列宽 */
+th.checkbox-col, td.checkbox-cell { 
+  width: 60px;
+  text-align: center;
+}
+
+th.name-col, td.name-cell { 
+  width: 200px;
+}
+
+th.ddl-col, td.ddl-cell { 
+  width: 140px;
+}
+
+th.progress-col, td.progress-cell { 
+  width: 140px;
+}
+
+th.file-col, td.file-cell { 
+  width: 120px;
+  text-align: center;
+}
+
+th.edit-col, td.edit-cell { 
+  width: 80px;
+  text-align: center;
+}
+
+th.delete-col, td.delete-cell { 
+  width: 80px;
+  text-align: center;
+}
+
+/* 表格单元格基础样式 */
 th {
   background: #f1f3f5;
   color: #495057;
@@ -1789,6 +2222,7 @@ td {
   padding: 0.75rem 0.5rem;
   border-bottom: 1px solid #e9ecef;
   color: #495057;
+  vertical-align: middle;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1798,71 +2232,101 @@ tr:hover {
   background: #f8f9fa;
 }
 
-/* 优化各列宽度，使其更紧凑 */
-th:nth-child(1), td:nth-child(1) { /* 任务名称 */
-  min-width: 120px;
-  max-width: 150px;
+/* 任务容器样式 */
+.task-container {
+  border-bottom: 1px solid #e9ecef;
 }
 
-th:nth-child(2), td:nth-child(2) { /* 学科 */
-  min-width: 60px;
-  max-width: 80px;
+.task-container:hover {
+  background: #f8f9fa;
 }
 
-th:nth-child(3), td:nth-child(3) { /* 内容 */
-  min-width: 150px;
-  max-width: 200px;
-  white-space: normal;
-  max-height: 60px;
-  overflow: hidden;
+/* 详情行样式 */
+.task-detail-row {
+  background: #f8f9fa;
 }
 
-th:nth-child(4), td:nth-child(4) { /* 内容类型 */
-  min-width: 70px;
-  max-width: 90px;
+.task-detail-cell {
+  padding: 0;
+  border: none;
 }
 
-th:nth-child(5), td:nth-child(5) { /* 开始时间 */
-  min-width: 110px;
-  max-width: 130px;
-  font-size: 0.85rem;
-}
-
-th:nth-child(6), td:nth-child(6) { /* 结束时间 */
-  min-width: 110px;
-  max-width: 130px;
-  font-size: 0.85rem;
-}
-
-th:nth-child(7), td:nth-child(7) { /* DDL管理 */
-  min-width: 120px;
-  max-width: 140px;
-}
-
-th:nth-child(8), td:nth-child(8) { /* 进度 */
-  min-width: 100px;
-  max-width: 120px;
-}
-
-th:nth-child(9), td:nth-child(9) { /* 附件 */
-  min-width: 80px;
-  max-width: 100px;
-}
-
-th:nth-child(10), td:nth-child(10) { /* 操作 */
-  min-width: 80px;
-  max-width: 100px;
-}
-
-th:nth-child(11), td:nth-child(11) { /* 选择分析 */
-  min-width: 70px;
-  max-width: 90px;
-  text-align: center;
-}
-
-.select-cell {
-  text-align: center;
+/* 任务详情内容样式 */
+.task-detail-content {
+  background: #f8f9fa;
+  border-left: 4px solid #4CAF50;
   padding: 1rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.75rem;
+}
+
+.detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #495057;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  color: #6c757d;
+  flex: 1;
+  word-break: break-word;
+}
+
+.detail-item .file-info {
+  display: inline-flex;
+}
+
+.detail-item .file-button {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s ease;
+}
+
+.detail-item .file-button:hover {
+  background: #138496;
+  transform: translateY(-1px);
+}
+
+.detail-item .no-file {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.checkbox-cell {
+  text-align: center;
+  padding: 0.75rem 0.5rem;
 }
 
 .task-checkbox {
@@ -1875,6 +2339,174 @@ th:nth-child(11), td:nth-child(11) { /* 选择分析 */
 
 .task-checkbox:hover {
   transform: scale(1.3);
+}
+
+/* 任务名称单元格样式 */
+.name-cell {
+  padding: 0.75rem 0.5rem;
+}
+
+.task-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.task-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-status {
+  flex-shrink: 0;
+}
+
+.task-status i {
+  font-size: 0.9rem;
+}
+
+.completed-icon {
+  color: #28a745;
+}
+
+.expired-icon {
+  color: #dc3545;
+}
+
+.pending-icon {
+  color: #ffc107;
+}
+
+/* 进度单元格样式 */
+.progress-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 60px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50 0%, #45a049 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+.progress-text {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #2c3e50;
+  min-width: 35px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* 文件相关样式 */
+.file-cell {
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+}
+
+.file-cell .file-info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.file-cell .file-button {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s ease;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-cell .file-button:hover {
+  background: #138496;
+  transform: translateY(-1px);
+}
+
+.file-cell .no-file {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+.icon-button.file {
+  background: #17a2b8;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-button.file:hover {
+  background: #138496;
+  transform: translateY(-1px);
+}
+
+.no-file {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.file-button {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.file-button:hover {
+  background: #138496;
+  transform: translateY(-1px);
 }
 
 .modal {
@@ -2054,36 +2686,7 @@ input[type="file"]:hover {
   background: #f8f9fa;
 }
 
-/* 文件相关样式 */
-.file-cell {
-  text-align: center;
-}
 
-.icon-button.file {
-  background: #17a2b8;
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.icon-button.file:hover {
-  background: #138496;
-  transform: translateY(-1px);
-}
-
-.no-file {
-  color: #6c757d;
-  font-style: italic;
-  font-size: 0.9rem;
-}
 
 .uploaded-file-info {
   margin-top: 0.5rem;
@@ -2239,9 +2842,16 @@ input[type="file"]:hover {
 .progress-cell {
   padding: 0.5rem !important;
   min-width: 100px;
+  padding-bottom: 1.5rem !important;
 }
 
 .progress-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.progress-wrapper {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2288,6 +2898,44 @@ input[type="file"]:hover {
   font-size: 0.8rem;
   min-width: 35px;
   text-align: right;
+}
+
+.progress-input {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.progress-input input[type="range"] {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  background: #e9ecef;
+  border-radius: 3px;
+  outline: none;
+  border: none;
+  padding: 0;
+}
+
+.progress-input input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #4CAF50;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.progress-input input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.progress-value {
+  min-width: 48px;
+  text-align: right;
+  font-weight: 500;
+  color: #4CAF50;
 }
 /* 文件预览模态框样式 */
 .file-preview-modal {
@@ -2543,15 +3191,106 @@ input[type="file"]:hover {
   transform: translateY(-2px);
 }
 
-/* 批量操作样式 */
+/* 复选框和选择相关样式 */
+.select-cell {
+  text-align: center;
+  padding: 1rem;
+}
+
+.task-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #4CAF50;
+  transform: scale(1.2);
+}
+
+.task-checkbox:hover {
+  transform: scale(1.3);
+}
+
+/* 批量操作区域样式 */
 .batch-operations {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.selected-info {
+  margin-bottom: 15px;
+}
+
+.selected-info h4 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.selected-count {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+}
+
+.batch-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.analysis-btn, .delete-btn, .clear-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.analysis-btn {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+}
+
+.delete-btn {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: white;
+}
+
+.clear-btn {
+  background: linear-gradient(135deg, #6c757d, #495057);
+  color: white;
+}
+
+.analysis-btn:hover, .delete-btn:hover, .clear-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* 主内容区批量操作样式（保持原有样式） */
+.content-header .batch-operations {
   display: flex;
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
+  padding: 0;
+  background: transparent;
+  border: none;
+  margin: 0;
 }
 
-.selected-count {
+.content-header .selected-count {
   background: #e3f2fd;
   color: #1976d2;
   padding: 0.5rem 1rem;
@@ -2584,22 +3323,133 @@ input[type="file"]:hover {
 }
 
 /* 响应式设计 */
+@media (max-width: 1200px) {
+  .sidebar {
+    width: 250px;
+  }
+}
+
 @media (max-width: 768px) {
-  .batch-operations {
+  .task-manager {
     flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
   }
   
-  .selected-count {
-    text-align: center;
-  }
-  
-  .analysis-btn,
-  .delete-btn {
+  .sidebar {
     width: 100%;
-    justify-content: center;
+    height: auto;
+    max-height: 300px;
   }
+  
+  .main-content {
+    height: auto;
+  }
+  
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .detail-item {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .detail-label {
+    min-width: auto;
+  }
+}
+
+/* 文件预览模态框样式 */
+.file-preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.file-preview-modal .modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow: auto;
+  position: relative;
+}
+
+.file-preview-modal .close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+}
+
+.file-preview-modal .close-btn:hover {
+  color: #333;
+}
+
+/* 加载模态框样式 */
+.loading-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-content {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.download-link {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  margin: 10px 0;
+  font-weight: bold;
+}
+
+.download-link:hover {
+  background-color: #218838;
+  color: white;
+  text-decoration: none;
 }
 
 /* 任务高亮闪烁效果 */
