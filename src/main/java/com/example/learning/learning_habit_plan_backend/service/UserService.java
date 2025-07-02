@@ -33,6 +33,11 @@ public interface UserService {
     User findByEmail(String email);
     
     /**
+     * 根据用户ID查找用户
+     */
+    User findById(Long userId);
+    
+    /**
      * 发送密码重置邮件
      */
     void sendPasswordResetEmail(String email);

@@ -24,14 +24,18 @@
           <span class="logo-text">StudySys</span>
         </div>
       </div>
-      <nav class="top-nav-links">
+      <nav v-if="!isReadOnly" class="top-nav-links">
         <router-link to="/task-manager" class="top-nav-link" active-class="top-nav-link-active">Tasks</router-link>
         <router-link to="/history" class="top-nav-link" active-class="top-nav-link-active">History</router-link>
         <router-link to="/data-integration" class="top-nav-link" active-class="top-nav-link-active">Resources</router-link>
         <router-link to="/plan-manager" class="top-nav-link" active-class="top-nav-link-active">Plans</router-link>
         <router-link to="/ai-analysis" class="top-nav-link" active-class="top-nav-link-active">AI Analysis</router-link>
+        <router-link to="/social-learning" class="top-nav-link" active-class="top-nav-link-active">Social</router-link>
       </nav>
-      <div class="user-mini">
+      <div v-if="isReadOnly" class="readonly-indicator">
+        <span class="readonly-badge">只读模式</span>
+      </div>
+      <div v-if="!isReadOnly" class="user-mini">
         <span class="username">{{ userStore.userInfo?.username || 'User' }}</span>
         <button @click="handleLogout" class="logout-btn-mini">Logout</button>
       </div>
@@ -46,11 +50,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { userStore } from '../store/user.js'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
+
+// 检测是否为只读模式
+const isReadOnly = computed(() => {
+  return route.query.readonly === 'true' && (route.query.targetUserId || route.query.userId)
+})
+
 const handleLogout = () => {
   userStore.logout()
   router.push('/login')
@@ -162,6 +173,20 @@ const handleLogout = () => {
   background: linear-gradient(90deg, #ff4757 60%, #ff6b81 100%);
   box-shadow: 0 4px 16px #ffd6db;
   transform: scale(1.04);
+}
+.readonly-indicator {
+  display: flex;
+  align-items: center;
+}
+.readonly-badge {
+  background: linear-gradient(135deg, #1976d2, #38cfd9);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
 }
 .main-content {
   margin-top: 64px;

@@ -84,6 +84,14 @@ public class SecurityConfig {
                 // 允许访问任务相关的API
                 .requestMatchers("/api/tasks/**").authenticated()
                 .requestMatchers("/api/ai-search").permitAll()
+                // 社交学习模块API - 部分公开访问
+                .requestMatchers("/api/study-groups/public").permitAll()
+                .requestMatchers("/api/study-shares/public").permitAll()
+                .requestMatchers("/api/qa/questions").permitAll()
+                .requestMatchers("/api/leaderboard/**").permitAll()
+                .requestMatchers("/api/study-groups/**").authenticated()
+                .requestMatchers("/api/study-shares/**").authenticated()
+                .requestMatchers("/api/qa/**").authenticated()
                 // 需要认证的端点
                 .requestMatchers("/api/files/**").permitAll()
                 .requestMatchers("/api/preview/**").permitAll()

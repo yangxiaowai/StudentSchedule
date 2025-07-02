@@ -1,14 +1,19 @@
 package com.example.learning.learning_habit_plan_backend.controller;
 
 import com.example.learning.learning_habit_plan_backend.dto.FileUploadResponse;
-import com.example.learning.learning_habit_plan_backend.dto.FileUploadResponse;
+import com.example.learning.learning_habit_plan_backend.model.ErrorResponse;
 import com.example.learning.learning_habit_plan_backend.entity.LearningMaterial;
+import com.example.learning.learning_habit_plan_backend.entity.User;
 import com.example.learning.learning_habit_plan_backend.repository.LearningMaterialRepository;
 import com.example.learning.learning_habit_plan_backend.service.FileStorageService;
+import com.example.learning.learning_habit_plan_backend.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
@@ -21,6 +26,9 @@ public class FileController {
 
     private final FileStorageService fileStorageService;
     private final LearningMaterialRepository materialRepository;
+    
+    @Autowired
+    private UserService userService;
 
     public FileController(FileStorageService fileStorageService, LearningMaterialRepository materialRepository) {
         this.fileStorageService = fileStorageService;
@@ -74,5 +82,35 @@ public class FileController {
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
                 .body(fileContent);
+    }
+    
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getUserFiles(@PathVariable Long userId) {
+        try {
+            // 获取当前登录用户
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            User currentUser = userService.findByUsername(username);
+            
+            if (currentUser == null) {
+                ErrorResponse errorResponse = new ErrorResponse("用户未登录", "请先登录后再查看文件");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+            }
+            
+            // 验证目标用户是否存在
+            User targetUser = userService.findById(userId);
+            if (targetUser == null) {
+                ErrorResponse errorResponse = new ErrorResponse("用户不存在", "找不到ID为" + userId + "的用户");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+            
+            // 获取指定用户的文件
+            List<FileUploadResponse> files = fileStorageService.getFilesByUserId(userId);
+            return ResponseEntity.ok(files);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ErrorResponse errorResponse = new ErrorResponse("获取文件失败", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 }
