@@ -12,6 +12,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import fr.opensagres.poi.xwpf.converter.pdf.PdfConverter;
@@ -164,33 +165,308 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     }
     
     /**
-     * 预览文本文件
+     * 预览文本文件（TXT等）- 优化版本，支持智能格式化
      */
     private FilePreviewResponse previewTextFile(Path filePath, String fileName, String fileExtension) throws IOException {
         // 读取文本内容，对大文件进行截断
         byte[] fileBytes = Files.readAllBytes(filePath);
-        String content;
+        String rawContent;
+        boolean isTruncated = false;
         
         if (fileBytes.length > MAX_TEXT_PREVIEW_SIZE) {
             // 截断大文件，只显示前面部分
             byte[] truncatedBytes = new byte[MAX_TEXT_PREVIEW_SIZE];
             System.arraycopy(fileBytes, 0, truncatedBytes, 0, MAX_TEXT_PREVIEW_SIZE);
-            content = new String(truncatedBytes, StandardCharsets.UTF_8);
-            content += "\n\n[文件过大，仅显示前" + (MAX_TEXT_PREVIEW_SIZE / 1024) + "KB内容，完整内容请下载查看]";
+            rawContent = new String(truncatedBytes, StandardCharsets.UTF_8);
+            isTruncated = true;
         } else {
-            content = new String(fileBytes, StandardCharsets.UTF_8);
+            rawContent = new String(fileBytes, StandardCharsets.UTF_8);
         }
         
-        // 返回文本内容的Base64编码
+        // 智能格式化文本内容为HTML
+        String htmlContent = formatTextToHtml(rawContent, fileName, isTruncated);
+        
+        // 返回HTML内容的Base64编码
         FilePreviewResponse response = FilePreviewResponse.success(
                 fileName,
                 fileExtension,
-                Base64.getEncoder().encodeToString(content.getBytes(StandardCharsets.UTF_8))
+                Base64.getEncoder().encodeToString(htmlContent.getBytes(StandardCharsets.UTF_8))
         );
         
         // 缓存结果
         cachePreviewResult(fileName, response);
         return response;
+    }
+    
+    /**
+     * 将纯文本格式化为HTML，提供更好的阅读体验
+     */
+    private String formatTextToHtml(String rawContent, String fileName, boolean isTruncated) {
+        StringBuilder htmlContent = new StringBuilder();
+        
+        // HTML文档头部和样式
+        htmlContent.append("<div style='font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif; line-height: 1.6; padding: 20px; background-color: #f8f9fa; color: #333;'>")
+                  .append("<div style='background: white; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden;'>")
+                  .append("<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 20px; border-bottom: 1px solid #e1e5e9;'>")
+                  .append("<h3 style='margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center;'>")
+                  .append("<span style='margin-right: 8px;'>📄</span>")
+                  .append(escapeHtml(fileName))
+                  .append("</h3></div>")
+                  .append("<div style='padding: 20px;'>");
+        
+        // 检测文本类型并应用相应格式化
+        String formattedContent = detectAndFormatText(rawContent);
+        htmlContent.append(formattedContent);
+        
+        // 如果文件被截断，添加提示信息
+        if (isTruncated) {
+            htmlContent.append("<div style='margin-top: 30px; padding: 16px; background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%); border-radius: 8px; border-left: 4px solid #e17055;'>")
+                      .append("<div style='display: flex; align-items: center; color: #2d3436;'>")
+                      .append("<span style='font-size: 20px; margin-right: 10px;'>⚠️</span>")
+                      .append("<div>")
+                      .append("<strong>文件过大提示</strong><br>")
+                      .append("<span style='font-size: 14px;'>仅显示前 ").append(MAX_TEXT_PREVIEW_SIZE / 1024).append(" KB 内容，完整内容请下载文件查看</span>")
+                      .append("</div></div></div>");
+        }
+        
+        htmlContent.append("</div></div></div>");
+        
+        return htmlContent.toString();
+    }
+    
+    /**
+     * 检测文本类型并应用相应的格式化
+     */
+    private String detectAndFormatText(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return "<div style='text-align: center; color: #6c757d; padding: 40px;'><i style='font-size: 48px; margin-bottom: 16px; display: block;'>📄</i><p style='margin: 0;'>文件内容为空</p></div>";
+        }
+        
+        // 检测是否为代码文件（基于内容特征）
+        if (isCodeLikeContent(content)) {
+            return formatAsCode(content);
+        }
+        
+        // 检测是否为结构化文档（如Markdown、配置文件等）
+        if (isStructuredDocument(content)) {
+            return formatAsStructuredDocument(content);
+        }
+        
+        // 检测是否为日志文件
+        if (isLogFile(content)) {
+            return formatAsLog(content);
+        }
+        
+        // 默认作为普通文本处理
+        return formatAsPlainText(content);
+    }
+    
+    /**
+     * 检测是否为代码类内容
+     */
+    private boolean isCodeLikeContent(String content) {
+        // 检查代码特征
+        String[] codeIndicators = {
+            "function", "class", "import", "#include", "<?php", "<script", "def ", "public class",
+            "private ", "public ", "protected ", "static ", "const ", "var ", "let ", "if (", "for (",
+            "while (", "switch (", "try {", "catch (", "finally {", "return ", "throw ", "new ",
+            "@Override", "@Component", "@Service", "@Controller", "package ", "namespace "
+        };
+        
+        String lowerContent = content.toLowerCase();
+        int codeFeatures = 0;
+        
+        for (String indicator : codeIndicators) {
+            if (lowerContent.contains(indicator.toLowerCase())) {
+                codeFeatures++;
+            }
+        }
+        
+        // 检查括号和分号的使用频率
+        long braceCount = content.chars().filter(ch -> ch == '{' || ch == '}').count();
+        long semicolonCount = content.chars().filter(ch -> ch == ';').count();
+        long parenCount = content.chars().filter(ch -> ch == '(' || ch == ')').count();
+        
+        return codeFeatures >= 3 || (braceCount > 5 && semicolonCount > 5) || parenCount > 10;
+    }
+    
+    /**
+     * 检测是否为结构化文档
+     */
+    private boolean isStructuredDocument(String content) {
+        // 检查Markdown特征
+        return content.contains("# ") || content.contains("## ") || content.contains("### ") ||
+               content.contains("* ") || content.contains("- ") || content.contains("1. ") ||
+               content.contains("**") || content.contains("__") || content.contains("```") ||
+               content.contains("[TOC]") || content.contains("---");
+    }
+    
+    /**
+     * 检测是否为日志文件
+     */
+    private boolean isLogFile(String content) {
+        String[] logIndicators = {
+            "ERROR", "WARN", "INFO", "DEBUG", "TRACE", "FATAL",
+            "Exception", "Stack trace", "at ", "Caused by",
+            "[ERROR]", "[WARN]", "[INFO]", "[DEBUG]"
+        };
+        
+        int logFeatures = 0;
+        for (String indicator : logIndicators) {
+            if (content.contains(indicator)) {
+                logFeatures++;
+            }
+        }
+        
+        // 检查时间戳模式
+        boolean hasTimestamp = content.matches(".*\\d{4}-\\d{2}-\\d{2}.*") || 
+                              content.matches(".*\\d{2}:\\d{2}:\\d{2}.*");
+        
+        return logFeatures >= 2 || (logFeatures >= 1 && hasTimestamp);
+    }
+    
+    /**
+     * 格式化为代码显示
+     */
+    private String formatAsCode(String content) {
+        StringBuilder html = new StringBuilder();
+        
+        html.append("<div style='background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; overflow: hidden;'>")
+            .append("<div style='background: #e9ecef; padding: 8px 16px; border-bottom: 1px solid #dee2e6; font-size: 12px; color: #6c757d; font-weight: 600;'>")
+            .append("💻 代码文件")
+            .append("</div>")
+            .append("<pre style='margin: 0; padding: 16px; overflow-x: auto; font-family: \"SFMono-Regular\", Consolas, \"Liberation Mono\", Menlo, monospace; font-size: 13px; line-height: 1.45; background: #ffffff;'>")
+            .append("<code style='color: #24292e;'>")
+            .append(escapeHtml(content))
+            .append("</code></pre></div>");
+        
+        return html.toString();
+    }
+    
+    /**
+     * 格式化为结构化文档
+     */
+    private String formatAsStructuredDocument(String content) {
+        StringBuilder html = new StringBuilder();
+        
+        html.append("<div style='background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; overflow: hidden;'>")
+            .append("<div style='background: #e9ecef; padding: 8px 16px; border-bottom: 1px solid #dee2e6; font-size: 12px; color: #6c757d; font-weight: 600;'>")
+            .append("📝 结构化文档")
+            .append("</div>")
+            .append("<div style='padding: 16px; background: #ffffff;'>");
+        
+        // 简单的Markdown-like格式化
+        String[] lines = content.split("\n");
+        for (String line : lines) {
+            line = line.trim();
+            if (line.isEmpty()) {
+                html.append("<br>");
+                continue;
+            }
+            
+            if (line.startsWith("# ")) {
+                html.append("<h1 style='color: #2c3e50; margin: 20px 0 10px 0; font-size: 24px; font-weight: bold; border-bottom: 2px solid #3498db; padding-bottom: 8px;'>")
+                    .append(escapeHtml(line.substring(2)))
+                    .append("</h1>");
+            } else if (line.startsWith("## ")) {
+                html.append("<h2 style='color: #2c3e50; margin: 18px 0 8px 0; font-size: 20px; font-weight: bold;'>")
+                    .append(escapeHtml(line.substring(3)))
+                    .append("</h2>");
+            } else if (line.startsWith("### ")) {
+                html.append("<h3 style='color: #2c3e50; margin: 16px 0 6px 0; font-size: 16px; font-weight: bold;'>")
+                    .append(escapeHtml(line.substring(4)))
+                    .append("</h3>");
+            } else if (line.startsWith("* ") || line.startsWith("- ")) {
+                html.append("<li style='margin: 4px 0; color: #333; line-height: 1.6;'>")
+                    .append(escapeHtml(line.substring(2)))
+                    .append("</li>");
+            } else if (line.matches("\\d+\\. .*")) {
+                html.append("<li style='margin: 4px 0; color: #333; line-height: 1.6; list-style-type: decimal;'>")
+                    .append(escapeHtml(line.replaceFirst("\\d+\\. ", "")))
+                    .append("</li>");
+            } else {
+                html.append("<p style='margin: 8px 0; color: #333; line-height: 1.6;'>")
+                    .append(escapeHtml(line))
+                    .append("</p>");
+            }
+        }
+        
+        html.append("</div></div>");
+        return html.toString();
+    }
+    
+    /**
+     * 格式化为日志显示
+     */
+    private String formatAsLog(String content) {
+        StringBuilder html = new StringBuilder();
+        
+        html.append("<div style='background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; overflow: hidden;'>")
+            .append("<div style='background: #e9ecef; padding: 8px 16px; border-bottom: 1px solid #dee2e6; font-size: 12px; color: #6c757d; font-weight: 600;'>")
+            .append("📋 日志文件")
+            .append("</div>")
+            .append("<div style='padding: 16px; background: #ffffff; max-height: 600px; overflow-y: auto;'>");
+        
+        String[] lines = content.split("\n");
+        for (String line : lines) {
+            if (line.trim().isEmpty()) {
+                continue;
+            }
+            
+            String lineStyle = "margin: 2px 0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 12px; line-height: 1.4; padding: 2px 0;";
+            
+            if (line.contains("ERROR") || line.contains("FATAL") || line.contains("Exception")) {
+                lineStyle += " color: #dc3545; background-color: #f8d7da; padding: 2px 4px; border-radius: 3px;";
+            } else if (line.contains("WARN")) {
+                lineStyle += " color: #856404; background-color: #fff3cd; padding: 2px 4px; border-radius: 3px;";
+            } else if (line.contains("INFO")) {
+                lineStyle += " color: #0c5460; background-color: #d1ecf1; padding: 2px 4px; border-radius: 3px;";
+            } else if (line.contains("DEBUG") || line.contains("TRACE")) {
+                lineStyle += " color: #6c757d;";
+            } else {
+                lineStyle += " color: #333;";
+            }
+            
+            html.append("<div style='").append(lineStyle).append("'>")
+                .append(escapeHtml(line))
+                .append("</div>");
+        }
+        
+        html.append("</div></div>");
+        return html.toString();
+    }
+    
+    /**
+     * 格式化为普通文本
+     */
+    private String formatAsPlainText(String content) {
+        StringBuilder html = new StringBuilder();
+        
+        html.append("<div style='background: #ffffff; padding: 20px; border-radius: 6px; border: 1px solid #e9ecef;'>");
+        
+        String[] paragraphs = content.split("\n\n+");
+        
+        for (String paragraph : paragraphs) {
+            paragraph = paragraph.trim().replaceAll("\n", " ");
+            if (paragraph.isEmpty()) {
+                continue;
+            }
+            
+            // 检测是否为标题（短文本且可能包含特殊字符）
+            if (paragraph.length() < 100 && (paragraph.matches(".*[：:].{0,50}") || 
+                paragraph.matches(".*(第.*章|第.*节|\\d+[.、]).*"))) {
+                html.append("<h3 style='color: #2c3e50; margin: 20px 0 10px 0; font-size: 18px; font-weight: bold; border-bottom: 1px solid #e9ecef; padding-bottom: 8px;'>")
+                    .append(escapeHtml(paragraph))
+                    .append("</h3>");
+            } else {
+                html.append("<p style='margin: 12px 0; color: #333; line-height: 1.8; text-align: justify; text-indent: 2em; font-size: 14px;'>")
+                    .append(escapeHtml(paragraph))
+                    .append("</p>");
+            }
+        }
+        
+        html.append("</div>");
+        return html.toString();
     }
     
     /**
@@ -242,88 +518,19 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     }
     
     /**
-     * 预览Word文件 - 转换为PDF再转换为图片
+     * 预览Word文件 - 直接转换为HTML
      */
     private FilePreviewResponse previewWordFile(Path filePath, String fileName, String fileExtension) throws IOException {
         try {
-            if ("docx".equals(fileExtension)) {
-                // DOCX文件转换为PDF再转换为图片
-                return convertDocxToPdfImages(filePath, fileName, fileExtension);
-            } else {
-                // DOC文件使用HTML方式预览（DOC转PDF的库不可用）
-                return convertDocToHtml(filePath, fileName, fileExtension);
-            }
-        } catch (Exception e) {
-            logger.warning("Word文档转换失败，使用备用方案: " + e.getMessage());
-            // 如果转换失败，回退到原有的HTML方式
+            // 统一使用HTML方式预览，确保中文字符正确显示
             return convertDocToHtml(filePath, fileName, fileExtension);
-        }
-    }
-    
-    /**
-     * 将DOCX文件转换为PDF，再转换为图片
-     */
-    private FilePreviewResponse convertDocxToPdfImages(Path filePath, String fileName, String fileExtension) throws IOException {
-        List<String> imageBase64List = new ArrayList<>();
-        
-        try (InputStream is = Files.newInputStream(filePath)) {
-            // 读取DOCX文档
-            XWPFDocument document = new XWPFDocument(is);
-            
-            // 创建临时PDF文件
-            Path tempPdfPath = Files.createTempFile("word_preview_", ".pdf");
-            
-            try (OutputStream pdfOut = Files.newOutputStream(tempPdfPath)) {
-                // 转换为PDF
-                PdfOptions options = PdfOptions.create();
-                PdfConverter.getInstance().convert(document, pdfOut, options);
-            }
-            
-            // 将PDF转换为图片
-            try (PDDocument pdfDocument = PDDocument.load(tempPdfPath.toFile())) {
-                PDFRenderer pdfRenderer = new PDFRenderer(pdfDocument);
-                int pageCount = Math.min(pdfDocument.getNumberOfPages(), MAX_PDF_PAGES);
-                
-                for (int page = 0; page < pageCount; page++) {
-                    BufferedImage image = pdfRenderer.renderImageWithDPI(page, PDF_DPI);
-                    
-                    // 转换为Base64
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    ImageIO.write(image, "PNG", baos);
-                    String imageBase64 = Base64.getEncoder().encodeToString(baos.toByteArray());
-                    imageBase64List.add(imageBase64);
-                }
-            }
-            
-            // 清理临时文件
-            Files.deleteIfExists(tempPdfPath);
-            document.close();
-            
         } catch (Exception e) {
-            throw new IOException("DOCX转换失败: " + e.getMessage(), e);
+            logger.warning("Word文档转换失败: " + e.getMessage());
+            throw new IOException("Word文档预览失败: " + e.getMessage(), e);
         }
-        
-        // 创建HTML容器来显示图片
-        StringBuilder htmlContent = new StringBuilder();
-        htmlContent.append("<div style='font-family: Arial, sans-serif; padding: 20px; text-align: center;'>");
-        
-        for (int i = 0; i < imageBase64List.size(); i++) {
-            htmlContent.append("<div style='margin-bottom: 20px; page-break-after: always;'>")
-                      .append("<h4 style='color: #666; margin-bottom: 10px;'>第 ").append(i + 1).append(" 页</h4>")
-                      .append("<img src='data:image/png;base64,").append(imageBase64List.get(i))
-                      .append("' style='max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);' />")
-                      .append("</div>");
-        }
-        
-        htmlContent.append("</div>");
-        
-        return FilePreviewResponse.success(
-                fileName,
-                fileExtension,
-                Base64.getEncoder().encodeToString(htmlContent.toString().getBytes(StandardCharsets.UTF_8))
-        );
     }
     
+
 
     /**
      * DOC文件转换为HTML（保留原有逻辑作为备用方案）
@@ -334,64 +541,104 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         
         try (InputStream is = Files.newInputStream(filePath)) {
             if ("doc".equals(fileExtension)) {
-                // 处理DOC文件
+                // 处理DOC文件 - 改进的结构化处理
                 HWPFDocument doc = new HWPFDocument(is);
                 
-                // 使用Range来更好地提取文本内容
-                org.apache.poi.hwpf.usermodel.Range range = doc.getRange();
-                String text = range.text();
-                
-                // 清理和处理文本，保留原始文本作为备份
-                String originalText = text;
-                text = cleanWordText(text);
-                
-                // 如果清理后文本过短（可能过度清理），使用原始文本
-                if (text.length() < originalText.length() * 0.5) {
-                    text = originalText;
-                    // 只进行基本的控制字符清理
-                    text = text.replaceAll("[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]", "");
-                }
-                
-                // 将文本转换为HTML格式，保持段落结构
-                String[] paragraphs = text.split("[\r\n]+");
-                if (paragraphs.length == 1) {
-                    // 如果没有换行符，尝试按句号分割长文本
-                    paragraphs = text.split("(?<=。)\\s*");
-                }
-                
-                for (String paragraph : paragraphs) {
-                    paragraph = paragraph.trim();
-                    if (paragraph.isEmpty()) {
-                        continue; // 跳过空段落
+                try {
+                    // 尝试提取段落信息
+                    org.apache.poi.hwpf.usermodel.Range range = doc.getRange();
+                    
+                    // 检查是否有表格
+                    org.apache.poi.hwpf.usermodel.TableIterator tableIterator = new org.apache.poi.hwpf.usermodel.TableIterator(range);
+                    boolean hasTables = tableIterator.hasNext();
+                    
+                    if (hasTables) {
+                        // 处理包含表格的文档
+                        processDocWithTables(range, htmlContent);
                     } else {
-                        // 检测是否为标题
-                        if (paragraph.length() < 50 && (paragraph.matches(".*\\d+\\..*") || paragraph.matches(".*[一二三四五六七八九十]+、.*"))) {
-                            htmlContent.append("<h3 style='color: #333; margin-top: 20px; margin-bottom: 10px;'>").append(escapeHtml(paragraph)).append("</h3>");
-                        } else {
-                            htmlContent.append("<p style='margin-bottom: 10px; text-indent: 2em;'>").append(escapeHtml(paragraph)).append("</p>");
+                        // 处理纯文本文档
+                        processDocTextOnly(range, htmlContent);
+                    }
+                    
+                } catch (Exception e) {
+                    // 如果结构化处理失败，回退到简单文本提取
+                    org.apache.poi.hwpf.usermodel.Range range = doc.getRange();
+                    String text = range.text();
+                    text = cleanWordText(text);
+                    
+                    String[] paragraphs = text.split("[\r\n]+");
+                    for (String paragraph : paragraphs) {
+                        paragraph = paragraph.trim();
+                        if (!paragraph.isEmpty()) {
+                            if (isTitle(paragraph)) {
+                                htmlContent.append("<h3 style='color: #2c3e50; margin-top: 25px; margin-bottom: 15px; font-weight: bold; font-size: 18px; border-bottom: 2px solid #3498db; padding-bottom: 5px;'>")
+                                          .append(escapeHtml(paragraph))
+                                          .append("</h3>");
+                            } else {
+                                htmlContent.append("<p style='margin-bottom: 15px; text-indent: 2em; line-height: 1.8; color: #333; font-size: 14px;'>")
+                                          .append(escapeHtml(paragraph))
+                                          .append("</p>");
+                            }
                         }
                     }
                 }
+                
                 doc.close();
             } else {
-                // 处理DOCX文件（备用方案）
+                // 处理DOCX文件 - 改进的中文支持
                 XWPFDocument docx = new XWPFDocument(is);
-                docx.getParagraphs().forEach(paragraph -> {
-                    String text = paragraph.getText().trim();
+                
+                // 获取所有段落
+                List<XWPFParagraph> paragraphs = docx.getParagraphs();
+                
+                for (XWPFParagraph paragraph : paragraphs) {
+                    String text = paragraph.getText();
                     
-                    if (!text.isEmpty()) {
-                        // 基本的HTML转义
-                        text = escapeHtml(text);
-                        
-                        // 检测标题样式
-                        String styleName = paragraph.getStyle();
-                        if (styleName != null && (styleName.toLowerCase().contains("heading") || styleName.toLowerCase().contains("title"))) {
-                            htmlContent.append("<h3 style='color: #333; margin-top: 20px; margin-bottom: 10px;'>").append(text).append("</h3>");
-                        } else {
-                            htmlContent.append("<p style='margin-bottom: 10px; text-indent: 2em;'>").append(text).append("</p>");
+                    // 跳过空段落
+                    if (text == null || text.trim().isEmpty()) {
+                        continue;
+                    }
+                    
+                    text = text.trim();
+                    
+                    // HTML转义，确保特殊字符正确显示
+                    text = escapeHtml(text);
+                    
+                    // 检测标题样式
+                    String styleName = paragraph.getStyle();
+                    boolean isHeading = false;
+                    
+                    if (styleName != null) {
+                        String lowerStyle = styleName.toLowerCase();
+                        isHeading = lowerStyle.contains("heading") || lowerStyle.contains("title") || lowerStyle.contains("标题");
+                    }
+                    
+                    // 检查段落格式
+                    if (!isHeading) {
+                        // 通过文本特征判断是否为标题
+                        if (text.length() < 50 && (
+                            text.matches(".*\\d+[.、].*") || 
+                            text.matches(".*[一二三四五六七八九十]+[、.].*") ||
+                            text.matches("第.*章.*") ||
+                            text.matches(".*摘要.*") ||
+                            text.matches(".*总结.*") ||
+                            text.matches(".*结论.*")
+                        )) {
+                            isHeading = true;
                         }
                     }
-                });
+                    
+                    if (isHeading) {
+                        htmlContent.append("<h3 style='color: #2c3e50; margin-top: 25px; margin-bottom: 15px; font-weight: bold; font-size: 18px; border-bottom: 2px solid #3498db; padding-bottom: 5px;'>")
+                                  .append(text)
+                                  .append("</h3>");
+                    } else {
+                        htmlContent.append("<p style='margin-bottom: 15px; text-indent: 2em; line-height: 1.8; color: #333; font-size: 14px;'>")
+                                  .append(text)
+                                  .append("</p>");
+                    }
+                }
+                
                 docx.close();
             }
         }
@@ -406,7 +653,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     }
     
     /**
-     * 预览PowerPoint文件 - 转换为图片序列
+     * 预览PowerPoint文件 - 转换为高质量图片序列
      */
     private FilePreviewResponse previewPptFile(Path filePath, String fileName, String fileExtension) throws IOException {
         List<String> slideImages = new ArrayList<>();
@@ -423,32 +670,72 @@ public class FilePreviewServiceImpl implements FilePreviewService {
             }
             
             try {
+                int totalSlides = slideShow.getSlides().size();
+                int maxSlides = Math.min(totalSlides, 50); // 限制最大幻灯片数量
+                
+                // 获取原始页面尺寸
+                java.awt.Dimension originalSize = slideShow.getPageSize();
+                
+                // 计算优化后的尺寸（保持宽高比，提高清晰度）
+                double scale = Math.min(1200.0 / originalSize.width, 900.0 / originalSize.height);
+                scale = Math.max(scale, 1.0); // 确保不会缩小
+                
+                int scaledWidth = (int) (originalSize.width * scale);
+                int scaledHeight = (int) (originalSize.height * scale);
+                
                 // 转换幻灯片为图片
-                for (int i = 0; i < slideShow.getSlides().size(); i++) {
-                    java.awt.Dimension pgsize = slideShow.getPageSize();
-                    BufferedImage img = new BufferedImage(pgsize.width, pgsize.height, BufferedImage.TYPE_INT_RGB);
+                for (int i = 0; i < maxSlides; i++) {
+                    BufferedImage img = new BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_RGB);
                     java.awt.Graphics2D graphics = img.createGraphics();
                     
-                    // 设置渲染质量
-                    graphics.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-                    graphics.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY);
-                    graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-                    graphics.setRenderingHint(java.awt.RenderingHints.KEY_FRACTIONALMETRICS, java.awt.RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-                    
-                    // 填充背景
-                    graphics.setColor(java.awt.Color.WHITE);
-                    graphics.fill(new java.awt.Rectangle(0, 0, pgsize.width, pgsize.height));
-                    
-                    // 绘制幻灯片
-                    slideShow.getSlides().get(i).draw(graphics);
-                    
-                    // 转换为Base64
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    ImageIO.write(img, "png", baos);
-                    slideImages.add(Base64.getEncoder().encodeToString(baos.toByteArray()));
-                    
-                    graphics.dispose();
+                    try {
+                        // 设置高质量渲染
+                        graphics.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                        graphics.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+                        graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                        graphics.setRenderingHint(java.awt.RenderingHints.KEY_FRACTIONALMETRICS, java.awt.RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+                        graphics.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                        graphics.setRenderingHint(java.awt.RenderingHints.KEY_ALPHA_INTERPOLATION, java.awt.RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+                        graphics.setRenderingHint(java.awt.RenderingHints.KEY_COLOR_RENDERING, java.awt.RenderingHints.VALUE_COLOR_RENDER_QUALITY);
+                        
+                        // 填充白色背景
+                        graphics.setColor(java.awt.Color.WHITE);
+                        graphics.fillRect(0, 0, scaledWidth, scaledHeight);
+                        
+                        // 应用缩放
+                        graphics.scale(scale, scale);
+                        
+                        // 绘制幻灯片
+                        slideShow.getSlides().get(i).draw(graphics);
+                        
+                        // 转换为Base64（使用JPEG格式以减小文件大小，同时保持质量）
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        
+                        // 创建高质量的JPEG编码器
+                        javax.imageio.ImageWriter jpegWriter = javax.imageio.ImageIO.getImageWritersByFormatName("jpeg").next();
+                        javax.imageio.ImageWriteParam jpegWriteParam = jpegWriter.getDefaultWriteParam();
+                        jpegWriteParam.setCompressionMode(javax.imageio.ImageWriteParam.MODE_EXPLICIT);
+                        jpegWriteParam.setCompressionQuality(0.95f); // 高质量
+                        
+                        javax.imageio.stream.ImageOutputStream imageOutputStream = javax.imageio.ImageIO.createImageOutputStream(baos);
+                        jpegWriter.setOutput(imageOutputStream);
+                        jpegWriter.write(null, new javax.imageio.IIOImage(img, null, null), jpegWriteParam);
+                        
+                        imageOutputStream.close();
+                        jpegWriter.dispose();
+                        
+                        slideImages.add(Base64.getEncoder().encodeToString(baos.toByteArray()));
+                        
+                    } finally {
+                        graphics.dispose();
+                    }
                 }
+                
+                // 如果幻灯片数量被限制，记录信息
+                if (totalSlides > maxSlides) {
+                    logger.info("PPT文件 {} 包含 {} 张幻灯片，仅预览前 {} 张", fileName, totalSlides, maxSlides);
+                }
+                
             } finally {
                 // 确保slideShow被正确关闭
                 if (slideShow != null) {
@@ -500,11 +787,11 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     }
     
     /**
-     * 预览Excel文件 - 转换为HTML表格
+     * 预览Excel文件 - 转换为HTML表格（优化版）
      */
     private FilePreviewResponse previewExcelFile(Path filePath, String fileName, String fileExtension) throws IOException {
         StringBuilder htmlContent = new StringBuilder();
-        htmlContent.append("<div style='font-family: Arial, sans-serif; padding: 20px;'>");
+        htmlContent.append("<div style='font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; padding: 20px; background-color: #f8f9fa;'>");
         
         try (InputStream is = Files.newInputStream(filePath)) {
             Workbook workbook;
@@ -517,80 +804,110 @@ public class FilePreviewServiceImpl implements FilePreviewService {
             
             // 限制预览的工作表数量和行数
             int maxSheets = Math.min(workbook.getNumberOfSheets(), 3);
-            int maxRows = 100; // 最多预览100行
+            int maxRows = 150; // 增加到150行
+            int maxCols = 15;  // 限制列数
             
             for (int sheetIndex = 0; sheetIndex < maxSheets; sheetIndex++) {
                 org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(sheetIndex);
                 
                 if (maxSheets > 1) {
-                    htmlContent.append("<h3 style='color: #333; margin-top: 20px;'>工作表: ")
-                              .append(escapeHtml(sheet.getSheetName()))
-                              .append("</h3>");
+                    htmlContent.append("<div style='margin: 30px 0 15px 0;'>")
+                              .append("<h3 style='color: #2c3e50; margin: 0; padding: 12px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px 8px 0 0; font-size: 16px; font-weight: 600;'>")
+                              .append("📊 工作表: ").append(escapeHtml(sheet.getSheetName()))
+                              .append("</h3></div>");
                 }
                 
-                htmlContent.append("<table style='border-collapse: collapse; width: 100%; margin-bottom: 20px; font-size: 12px;'>");
+                // 表格容器
+                htmlContent.append("<div style='background: white; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 25px;'>")
+                          .append("<div style='overflow-x: auto;'>")
+                          .append("<table style='border-collapse: collapse; width: 100%; font-size: 13px; min-width: 600px;'>");
                 
                 int lastRowNum = Math.min(sheet.getLastRowNum(), maxRows - 1);
+                boolean hasData = false;
                 
                 for (int rowIndex = 0; rowIndex <= lastRowNum; rowIndex++) {
                     org.apache.poi.ss.usermodel.Row row = sheet.getRow(rowIndex);
+                    
+                    if (row == null) {
+                        continue;
+                    }
+                    
+                    // 检查行是否有数据
+                    boolean rowHasData = false;
+                    for (int cellIndex = 0; cellIndex < Math.min(row.getLastCellNum(), maxCols); cellIndex++) {
+                        org.apache.poi.ss.usermodel.Cell cell = row.getCell(cellIndex);
+                        if (cell != null && !getCellValueAsString(cell).trim().isEmpty()) {
+                            rowHasData = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!rowHasData) {
+                        continue;
+                    }
+                    
+                    hasData = true;
                     htmlContent.append("<tr>");
                     
-                    if (row != null) {
-                        int lastCellNum = Math.min(row.getLastCellNum(), 20); // 最多20列
+                    int actualLastCellNum = Math.min(row.getLastCellNum(), maxCols);
+                    
+                    for (int cellIndex = 0; cellIndex < actualLastCellNum; cellIndex++) {
+                        org.apache.poi.ss.usermodel.Cell cell = row.getCell(cellIndex);
+                        String cellValue = getCellValueAsString(cell);
                         
-                        for (int cellIndex = 0; cellIndex < lastCellNum; cellIndex++) {
-                            org.apache.poi.ss.usermodel.Cell cell = row.getCell(cellIndex);
-                            String cellValue = "";
-                            
-                            if (cell != null) {
-                                switch (cell.getCellType()) {
-                                    case STRING:
-                                        cellValue = cell.getStringCellValue();
-                                        break;
-                                    case NUMERIC:
-                                        if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
-                                            cellValue = cell.getDateCellValue().toString();
-                                        } else {
-                                            cellValue = String.valueOf(cell.getNumericCellValue());
-                                        }
-                                        break;
-                                    case BOOLEAN:
-                                        cellValue = String.valueOf(cell.getBooleanCellValue());
-                                        break;
-                                    case FORMULA:
-                                        try {
-                                            cellValue = String.valueOf(cell.getNumericCellValue());
-                                        } catch (Exception e) {
-                                            cellValue = cell.getCellFormula();
-                                        }
-                                        break;
-                                    default:
-                                        cellValue = "";
-                                }
-                            }
-                            
-                            String style = "border: 1px solid #ddd; padding: 4px 8px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
-                            if (rowIndex == 0) {
-                                style += " background-color: #f5f5f5; font-weight: bold;";
-                            }
-                            
-                            htmlContent.append("<td style='").append(style).append("'>")
-                                      .append(escapeHtml(cellValue))
-                                      .append("</td>");
+                        // 基础样式
+                        StringBuilder cellStyle = new StringBuilder();
+                        cellStyle.append("border: 1px solid #e1e5e9; padding: 10px 12px; vertical-align: top; max-width: 200px; word-wrap: break-word;");
+                        
+                        // 表头样式
+                        if (rowIndex == 0 || isHeaderRow(row, maxCols)) {
+                            cellStyle.append(" background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); font-weight: 600; color: #495057; text-align: center;");
+                        } else {
+                            cellStyle.append(" background-color: #ffffff;");
                         }
+                        
+                        // 数字右对齐
+                        if (isNumericCell(cell)) {
+                            cellStyle.append(" text-align: right; font-family: 'Courier New', monospace;");
+                        }
+                        
+                        // 空单元格样式
+                        if (cellValue.trim().isEmpty()) {
+                            cellStyle.append(" background-color: #f8f9fa;");
+                            cellValue = "&nbsp;";
+                        }
+                        
+                        htmlContent.append("<td style='").append(cellStyle).append("'>")
+                                  .append(escapeHtml(cellValue))
+                                  .append("</td>");
                     }
                     
                     htmlContent.append("</tr>");
                 }
                 
-                htmlContent.append("</table>");
+                htmlContent.append("</table></div>");
                 
-                if (sheet.getLastRowNum() > maxRows - 1) {
-                    htmlContent.append("<p style='color: #666; font-style: italic;'>注：仅显示前")
-                              .append(maxRows)
-                              .append("行数据，完整内容请下载查看</p>");
+                // 数据统计信息
+                if (hasData) {
+                    int totalRows = sheet.getLastRowNum() + 1;
+                    int displayedRows = Math.min(totalRows, maxRows);
+                    
+                    htmlContent.append("<div style='padding: 12px 16px; background-color: #f8f9fa; border-top: 1px solid #e1e5e9; font-size: 12px; color: #6c757d;'>")
+                              .append("📈 显示 ").append(displayedRows).append(" / ").append(totalRows).append(" 行数据");
+                    
+                    if (totalRows > maxRows) {
+                        htmlContent.append(" • <span style='color: #dc3545;'>完整数据请下载文件查看</span>");
+                    }
+                    
+                    htmlContent.append("</div>");
+                } else {
+                    htmlContent.append("<div style='padding: 40px; text-align: center; color: #6c757d;'>")
+                              .append("<i style='font-size: 48px; margin-bottom: 16px; display: block;'>📄</i>")
+                              .append("<p style='margin: 0; font-size: 14px;'>此工作表暂无数据</p>")
+                              .append("</div>");
                 }
+                
+                htmlContent.append("</div>");
             }
             
             workbook.close();
@@ -607,6 +924,226 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         // 缓存结果
         cachePreviewResult(fileName, response);
         return response;
+    }
+    
+    /**
+     * 获取单元格值作为字符串
+     */
+    private String getCellValueAsString(org.apache.poi.ss.usermodel.Cell cell) {
+        if (cell == null) {
+            return "";
+        }
+        
+        try {
+            switch (cell.getCellType()) {
+                case STRING:
+                    return cell.getStringCellValue();
+                case NUMERIC:
+                    if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+                        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        return sdf.format(cell.getDateCellValue());
+                    } else {
+                        double numValue = cell.getNumericCellValue();
+                        // 如果是整数，不显示小数点
+                        if (numValue == Math.floor(numValue)) {
+                            return String.valueOf((long) numValue);
+                        } else {
+                            return String.format("%.2f", numValue);
+                        }
+                    }
+                case BOOLEAN:
+                    return cell.getBooleanCellValue() ? "是" : "否";
+                case FORMULA:
+                    try {
+                        return getCellValueAsString(cell); // 递归获取计算结果
+                    } catch (Exception e) {
+                        return "=" + cell.getCellFormula();
+                    }
+                case BLANK:
+                    return "";
+                default:
+                    return cell.toString();
+            }
+        } catch (Exception e) {
+            return "";
+        }
+    }
+    
+    /**
+     * 判断是否为数字单元格
+     */
+    private boolean isNumericCell(org.apache.poi.ss.usermodel.Cell cell) {
+        if (cell == null) {
+            return false;
+        }
+        
+        return cell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC && 
+               !org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell);
+    }
+    
+    /**
+     * 判断是否为表头行
+     */
+    private boolean isHeaderRow(org.apache.poi.ss.usermodel.Row row, int maxCols) {
+        if (row == null) {
+            return false;
+        }
+        
+        int textCells = 0;
+        int totalCells = 0;
+        
+        for (int i = 0; i < Math.min(row.getLastCellNum(), maxCols); i++) {
+            org.apache.poi.ss.usermodel.Cell cell = row.getCell(i);
+            if (cell != null && !getCellValueAsString(cell).trim().isEmpty()) {
+                totalCells++;
+                if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
+                    textCells++;
+                }
+            }
+        }
+        
+        // 如果大部分单元格都是文本，可能是表头
+        return totalCells > 0 && (double) textCells / totalCells > 0.7;
+    }
+    
+    /**
+     * 处理包含表格的DOC文档
+     */
+    private void processDocWithTables(org.apache.poi.hwpf.usermodel.Range range, StringBuilder htmlContent) {
+        try {
+            org.apache.poi.hwpf.usermodel.TableIterator tableIterator = new org.apache.poi.hwpf.usermodel.TableIterator(range);
+            int currentPos = 0;
+            
+            while (tableIterator.hasNext()) {
+                org.apache.poi.hwpf.usermodel.Table table = tableIterator.next();
+                
+                // 处理表格前的文本
+                if (table.getStartOffset() > currentPos) {
+                    String beforeTableText = range.text().substring(currentPos, table.getStartOffset());
+                    processPlainText(beforeTableText, htmlContent);
+                }
+                
+                // 处理表格
+                htmlContent.append("<table style='border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 14px;'>");
+                
+                for (int rowIndex = 0; rowIndex < table.numRows(); rowIndex++) {
+                    org.apache.poi.hwpf.usermodel.TableRow row = table.getRow(rowIndex);
+                    htmlContent.append("<tr>");
+                    
+                    for (int cellIndex = 0; cellIndex < row.numCells(); cellIndex++) {
+                        org.apache.poi.hwpf.usermodel.TableCell cell = row.getCell(cellIndex);
+                        String cellText = cell.text().trim();
+                        cellText = cleanWordText(cellText);
+                        
+                        String cellStyle = "border: 1px solid #ddd; padding: 8px 12px; vertical-align: top;";
+                        if (rowIndex == 0) {
+                            cellStyle += " background-color: #f8f9fa; font-weight: bold;";
+                        }
+                        
+                        htmlContent.append("<td style='").append(cellStyle).append("'>")
+                                  .append(escapeHtml(cellText))
+                                  .append("</td>");
+                    }
+                    
+                    htmlContent.append("</tr>");
+                }
+                
+                htmlContent.append("</table>");
+                currentPos = table.getEndOffset();
+            }
+            
+            // 处理最后一个表格后的文本
+            if (currentPos < range.text().length()) {
+                String afterTableText = range.text().substring(currentPos);
+                processPlainText(afterTableText, htmlContent);
+            }
+            
+        } catch (Exception e) {
+            // 如果表格处理失败，回退到纯文本处理
+            processDocTextOnly(range, htmlContent);
+        }
+    }
+    
+    /**
+     * 处理纯文本DOC文档
+     */
+    private void processDocTextOnly(org.apache.poi.hwpf.usermodel.Range range, StringBuilder htmlContent) {
+        String text = range.text();
+        processPlainText(text, htmlContent);
+    }
+    
+    /**
+     * 处理纯文本内容
+     */
+    private void processPlainText(String text, StringBuilder htmlContent) {
+        text = cleanWordText(text);
+        
+        String[] paragraphs = text.split("[\r\n]+");
+        if (paragraphs.length == 1 && text.length() > 200) {
+            // 如果是长文本没有换行，尝试按句号分割
+            paragraphs = text.split("(?<=。)\\s*");
+        }
+        
+        for (String paragraph : paragraphs) {
+            paragraph = paragraph.trim();
+            if (paragraph.isEmpty()) {
+                continue;
+            }
+            
+            if (isTitle(paragraph)) {
+                htmlContent.append("<h3 style='color: #2c3e50; margin-top: 25px; margin-bottom: 15px; font-weight: bold; font-size: 18px; border-bottom: 2px solid #3498db; padding-bottom: 5px;'>")
+                          .append(escapeHtml(paragraph))
+                          .append("</h3>");
+            } else if (isList(paragraph)) {
+                htmlContent.append("<li style='margin-bottom: 8px; line-height: 1.6; color: #333; font-size: 14px;'>")
+                          .append(escapeHtml(paragraph.replaceFirst("^[\\d\\u4e00-\\u9fff]+[.、]\\s*", "")))
+                          .append("</li>");
+            } else {
+                htmlContent.append("<p style='margin-bottom: 15px; text-indent: 2em; line-height: 1.8; color: #333; font-size: 14px;'>")
+                          .append(escapeHtml(paragraph))
+                          .append("</p>");
+            }
+        }
+    }
+    
+    /**
+     * 改进的标题检测
+     */
+    private boolean isTitle(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return false;
+        }
+        
+        text = text.trim();
+        
+        // 长度限制
+        if (text.length() > 80) {
+            return false;
+        }
+        
+        // 常见标题模式
+        return text.matches(".*\\d+[.、].*") ||                    // 数字编号
+               text.matches(".*[一二三四五六七八九十]+[、.].*") ||        // 中文数字编号
+               text.matches("第.*[章节部分].*") ||                   // 第X章/节/部分
+               text.matches(".*(摘要|总结|结论|引言|前言|概述|背景).*") ||  // 常见章节名
+               text.matches(".*(目录|参考文献|附录).*") ||            // 文档结构
+               (text.length() < 30 && text.matches(".*[：:].{0,20}")) || // 短标题带冒号
+               (text.length() < 20 && !text.contains("，") && !text.contains("。")); // 短文本且无标点
+    }
+    
+    /**
+     * 检测是否为列表项
+     */
+    private boolean isList(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return false;
+        }
+        
+        text = text.trim();
+        
+        return text.matches("^[\\d\\u4e00-\\u9fff]+[.、]\\s*.*") ||  // 数字或中文数字开头的列表
+               text.matches("^[\\u2022\\u25cf\\u25cb]\\s*.*") ||      // 项目符号
+               text.matches("^[-*+]\\s*.*");                        // 破折号、星号、加号
     }
     
     /**

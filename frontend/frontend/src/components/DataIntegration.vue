@@ -860,8 +860,136 @@ const previewOfficeFile = async (previewData) => {
         }
       });
       
+    } else if ((previewData.fileType === 'doc' || previewData.fileType === 'docx') && previewData.multiPage) {
+      // 对于DOCX文件转换的多页面图片，使用图片轮播模式
+      const docContainer = document.createElement('div');
+      docContainer.className = 'doc-container';
+      docContainer.style.textAlign = 'center';
+      content.appendChild(docContainer);
+      
+      // 添加下载链接
+      const downloadLink = document.createElement('a');
+      downloadLink.href = `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`;
+      downloadLink.className = 'download-link';
+      downloadLink.textContent = '下载原文件';
+      downloadLink.target = '_blank';
+      downloadLink.style.display = 'inline-block';
+      downloadLink.style.marginTop = '15px';
+      downloadLink.style.marginBottom = '15px';
+      docContainer.appendChild(downloadLink);
+      
+      // 解码HTML内容并提取图片
+      let htmlContent;
+      try {
+        const binaryString = atob(previewData.content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const decoder = new TextDecoder('utf-8');
+        htmlContent = decoder.decode(bytes);
+      } catch (error) {
+        htmlContent = decodeURIComponent(escape(atob(previewData.content)));
+      }
+      
+      // 从HTML中提取Base64图片数据
+      const imgRegex = /data:image\/png;base64,([^'"]+)/g;
+      const pageImages = [];
+      let match;
+      while ((match = imgRegex.exec(htmlContent)) !== null) {
+        pageImages.push(match[1]);
+      }
+      
+      if (pageImages.length > 0) {
+        // 创建页面导航
+        const slideNav = document.createElement('div');
+        slideNav.className = 'slide-navigation';
+        slideNav.style.marginBottom = '15px';
+        slideNav.style.display = 'flex';
+        slideNav.style.justifyContent = 'center';
+        slideNav.style.gap = '10px';
+        
+        // 添加页面计数器
+        const slideCounter = document.createElement('div');
+        slideCounter.className = 'slide-counter';
+        slideCounter.style.margin = '0 10px';
+        slideCounter.style.lineHeight = '30px';
+        
+        // 添加上一页按钮
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = '上一页';
+        prevBtn.style.padding = '5px 10px';
+        prevBtn.style.cursor = 'pointer';
+        
+        // 添加下一页按钮
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = '下一页';
+        nextBtn.style.padding = '5px 10px';
+        nextBtn.style.cursor = 'pointer';
+        
+        slideNav.appendChild(prevBtn);
+        slideNav.appendChild(slideCounter);
+        slideNav.appendChild(nextBtn);
+        docContainer.appendChild(slideNav);
+        
+        // 创建图片容器
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'doc-image-container';
+        imageContainer.style.maxWidth = '100%';
+        imageContainer.style.margin = '0 auto';
+        docContainer.appendChild(imageContainer);
+        
+        // 当前页面索引
+        let currentPage = 0;
+        
+        // 显示指定页面
+        const showPage = (pageIndex) => {
+          imageContainer.innerHTML = '';
+          slideCounter.textContent = `第 ${pageIndex + 1} 页 / 共 ${pageImages.length} 页`;
+          
+          const img = document.createElement('img');
+          img.src = `data:image/png;base64,${pageImages[pageIndex]}`;
+          img.style.maxWidth = '100%';
+          img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+          img.style.border = '1px solid #ddd';
+          imageContainer.appendChild(img);
+          
+          prevBtn.disabled = pageIndex === 0;
+          nextBtn.disabled = pageIndex === pageImages.length - 1;
+        };
+        
+        // 显示第一页
+        showPage(currentPage);
+        
+        // 绑定按钮事件
+        prevBtn.addEventListener('click', () => {
+          if (currentPage > 0) {
+            currentPage--;
+            showPage(currentPage);
+          }
+        });
+        
+        nextBtn.addEventListener('click', () => {
+          if (currentPage < pageImages.length - 1) {
+            currentPage++;
+            showPage(currentPage);
+          }
+        });
+      } else {
+        // 如果没有找到图片，显示原始HTML内容
+        const htmlContainer = document.createElement('div');
+        htmlContainer.innerHTML = htmlContent;
+        htmlContainer.style.padding = '20px';
+        htmlContainer.style.backgroundColor = '#fff';
+        htmlContainer.style.border = '1px solid #ddd';
+        htmlContainer.style.borderRadius = '5px';
+        htmlContainer.style.maxHeight = '600px';
+        htmlContainer.style.overflow = 'auto';
+        docContainer.appendChild(htmlContainer);
+      }
+      
     } else if (previewData.fileType === 'doc' || previewData.fileType === 'docx') {
-      // 对于Word文档，显示文本内容
+      // 对于Word文档的文本模式，显示HTML内容
       const docContainer = document.createElement('div');
       docContainer.className = 'doc-container';
       docContainer.style.padding = '20px';
@@ -870,14 +998,12 @@ const previewOfficeFile = async (previewData) => {
       docContainer.style.borderRadius = '5px';
       docContainer.style.maxHeight = '600px';
       docContainer.style.overflow = 'auto';
-      // 移除pre-wrap样式，让HTML内容正常渲染
       docContainer.style.fontFamily = 'Arial, sans-serif';
       docContainer.style.lineHeight = '1.6';
       
       // 改进的Base64解码方式，更好地处理UTF-8编码
       let htmlContent;
       try {
-        // 使用TextDecoder来正确处理UTF-8编码
         const binaryString = atob(previewData.content);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
@@ -887,7 +1013,6 @@ const previewOfficeFile = async (previewData) => {
         htmlContent = decoder.decode(bytes);
       } catch (error) {
         console.warn('UTF-8解码失败，使用备用方法:', error);
-        // 备用解码方法
         htmlContent = decodeURIComponent(escape(atob(previewData.content)));
       }
       
