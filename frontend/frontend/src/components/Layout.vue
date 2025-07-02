@@ -26,9 +26,7 @@
       </div>
       <nav v-if="!isReadOnly" class="top-nav-links">
         <router-link to="/task-manager" class="top-nav-link" active-class="top-nav-link-active">Tasks</router-link>
-        <router-link to="/history" class="top-nav-link" active-class="top-nav-link-active">History</router-link>
         <router-link to="/data-integration" class="top-nav-link" active-class="top-nav-link-active">Resources</router-link>
-        <router-link to="/plan-manager" class="top-nav-link" active-class="top-nav-link-active">Plans</router-link>
         <router-link to="/ai-analysis" class="top-nav-link" active-class="top-nav-link-active">AI Analysis</router-link>
         <router-link to="/social-learning" class="top-nav-link" active-class="top-nav-link-active">Social</router-link>
       </nav>
@@ -197,12 +195,12 @@ const handleLogout = () => {
   z-index: 10;
 }
 .content-wrapper {
-  background: rgba(255, 255, 255, 0.45); /* 从0.65进一步降低到0.45 */
+  background: rgba(255, 255, 255, 0.35); /* 进一步降低到0.35，让星空更明显 */
   border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(4px); /* 从6px降低到4px，进一步减少模糊 */
-  border: 1px solid rgba(255, 255, 255, 0.25); /* 降低边框透明度 */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(3px); /* 进一步降低模糊效果到3px */
+  border: 1px solid rgba(255, 255, 255, 0.2); /* 进一步降低边框透明度 */
   min-height: calc(100vh - 160px);
   position: relative;
 }
@@ -215,7 +213,7 @@ const handleLogout = () => {
   bottom: 0;
   border-radius: 16px;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(56, 207, 217, 0.15), rgba(25, 118, 210, 0.15)); /* 进一步降低边框渐变透明度 */
+  background: linear-gradient(135deg, rgba(56, 207, 217, 0.1), rgba(25, 118, 210, 0.1)); /* 进一步降低边框渐变透明度到0.1 */
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   pointer-events: none;

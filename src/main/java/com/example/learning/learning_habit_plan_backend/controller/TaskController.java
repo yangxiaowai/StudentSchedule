@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import com.example.learning.learning_habit_plan_backend.model.ErrorResponse;
 
 @RestController
@@ -69,6 +68,7 @@ public class TaskController {
             task.setContent(content);
             task.setStartTime(startTime != null && !startTime.isEmpty() ? LocalDateTime.parse(startTime) : null);
             task.setEndTime(endTime != null && !endTime.isEmpty() ? LocalDateTime.parse(endTime) : null);
+            task.setContentType(type);  // 添加这一行
             task.setRemark(remark);
             task.setProgress(progress);
             task.setCompleted(isCompleted);
@@ -183,6 +183,7 @@ public ResponseEntity<?> updateTask(
         task.setContent(content);
         task.setStartTime(startTime != null && !startTime.isEmpty() ? LocalDateTime.parse(startTime) : null);
         task.setEndTime(endTime != null && !endTime.isEmpty() ? LocalDateTime.parse(endTime) : null);
+        task.setContentType(type);  // 添加这一行
         task.setRemark(remark);
         task.setProgress(progress);
         task.setCompleted(isCompleted);
@@ -245,6 +246,44 @@ public ResponseEntity<?> deleteTask(@PathVariable Long id) {
         e.printStackTrace();
         ErrorResponse errorResponse = new ErrorResponse("删除任务失败", e.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+}
+
+@PutMapping("/{id}/progress")
+public ResponseEntity<?> updateTaskProgress(@PathVariable Long id, @RequestBody ProgressUpdateRequest request) {
+    try {
+        Task task = taskService.findById(id);
+        if (task == null) {
+            ErrorResponse errorResponse = new ErrorResponse("任务不存在", "找不到ID为 " + id + " 的任务");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+        
+        task.setProgress(request.getProgress());
+        
+        // 如果进度达到100%，自动标记为已完成
+        if (request.getProgress() != null && request.getProgress() >= 100) {
+            task.setCompleted(true);
+        }
+        
+        Task updated = taskService.save(task);
+        return ResponseEntity.ok(updated);
+    } catch (Exception e) {
+        e.printStackTrace();
+        ErrorResponse errorResponse = new ErrorResponse("更新任务进度失败", e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+}
+
+// 进度更新请求的内部类
+public static class ProgressUpdateRequest {
+    private Integer progress;
+    
+    public Integer getProgress() {
+        return progress;
+    }
+    
+    public void setProgress(Integer progress) {
+        this.progress = progress;
     }
 }
 

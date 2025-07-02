@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface LearningMaterialRepository extends JpaRepository<LearningMaterial, Long> {
     List<LearningMaterial> findByUserId(Long userId);
@@ -21,4 +20,7 @@ public interface LearningMaterialRepository extends JpaRepository<LearningMateri
 
     @Query("SELECT m FROM LearningMaterial m WHERE m.filePath LIKE %:fileName%")
     List<LearningMaterial> findByFilePathContaining(@Param("fileName") String fileName);
+    
+    @Query("SELECT m FROM LearningMaterial m WHERE m.filePath LIKE CONCAT('%', :fileName)")
+    List<LearningMaterial> findByFilePathEndingWith(@Param("fileName") String fileName);
 }
