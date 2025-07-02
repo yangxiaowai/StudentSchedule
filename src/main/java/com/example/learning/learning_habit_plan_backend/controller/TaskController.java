@@ -51,6 +51,7 @@ public class TaskController {
             task.setContent(content);
             task.setStartTime(startTime != null && !startTime.isEmpty() ? LocalDateTime.parse(startTime) : null);
             task.setEndTime(endTime != null && !endTime.isEmpty() ? LocalDateTime.parse(endTime) : null);
+            task.setContentType(type);  // 添加这一行
             task.setRemark(remark);
             task.setProgress(progress);
             task.setCompleted(isCompleted);
@@ -135,6 +136,7 @@ public ResponseEntity<?> updateTask(
         task.setContent(content);
         task.setStartTime(startTime != null && !startTime.isEmpty() ? LocalDateTime.parse(startTime) : null);
         task.setEndTime(endTime != null && !endTime.isEmpty() ? LocalDateTime.parse(endTime) : null);
+        task.setContentType(type);  // 添加这一行
         task.setRemark(remark);
         task.setProgress(progress);
         task.setCompleted(isCompleted);
