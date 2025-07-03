@@ -365,7 +365,7 @@ export const leaderboardAPI = {
 const userAPI = {
   // 根据用户ID获取用户信息
   getUserInfo(userId) {
-    return api.get(`/api/user/info/${userId}`);
+    return api.get(`/user/info/${userId}`);
   }
 };
 
