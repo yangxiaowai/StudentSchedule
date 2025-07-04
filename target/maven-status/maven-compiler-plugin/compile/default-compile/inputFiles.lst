@@ -1,68 +1,68 @@
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\FileUploadResponse.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\repository\StudyShareRepository.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\LoginResponse.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\StudyShare.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\LearningHabitPlanBackendApplication.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\common\handler\GlobalExceptionHandler.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\StudyGroupMember.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\UserService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\FilePreviewResponse.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\EmailServiceImpl.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\UserController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\QAController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\UserLearningStatsService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\VerificationCodeService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\repository\StudyGroupRepository.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\WebConfig.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\RestTemplateConfig.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\repository\QAAnswerRepository.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\utils\JwtUtil.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\StudyGroupService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\FileController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\RegisterRequest.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\UserDetailsServiceImpl.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\JacksonConfig.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\repository\StudyGroupMemberRepository.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\AISearchController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\AnalysisController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\QAService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\common\Result.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\LeaderboardController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\FileStorageServiceImpl.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\SecurityConfig.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\AISearchServiceImpl.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\UserServiceImpl.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\FilePreviewController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\StudyShareController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\VerificationCodeServiceImpl.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\LikeRecord.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\StudyShareService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\UserLearningStats.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\SwaggerConfig.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\LoginRequest.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\repository\LearningMaterialRepository.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\TaskService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\JwtAuthenticationFilter.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\FilePreviewService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\CorsConfig.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\QAAnswer.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\repository\UserLearningStatsRepository.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\StudyGroupController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\FilePreviewServiceImpl.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\mapper\UserMapper.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\StudyGroup.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\User.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\repository\TaskRepository.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\QAQuestion.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\dto\AIResourceResponse.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\repository\QAQuestionRepository.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\config\MyBatisConfig.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\EmailService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\model\ErrorResponse.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\FileStorageService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\HomeController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\repository\LikeRecordRepository.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\controller\TaskController.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\Task.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\service\AISearchService.java
-D:\google Downloads\StudentSchedule-main\src\main\java\com\example\learning\learning_habit_plan_backend\entity\LearningMaterial.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\UserLearningStatsRepository.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\CorsConfig.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\SwaggerConfig.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\TaskService.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\AnalysisController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\QAQuestion.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\FilePreviewService.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\EmailServiceImpl.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\StudyGroupRepository.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\JacksonConfig.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\LikeRecordRepository.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\FileStorageService.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\StudyGroupService.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\AISearchService.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\FilePreviewServiceImpl.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\common\Result.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\AISearchController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\UserController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\UserLearningStats.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\UserDetailsServiceImpl.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\QAAnswer.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\User.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\StudyGroupMemberRepository.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\common\handler\GlobalExceptionHandler.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\FilePreviewResponse.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\QAAnswerRepository.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\SecurityConfig.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\RegisterRequest.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\QAController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\StudyShareService.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\Task.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\StudyShareRepository.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\StudyGroupMember.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\FileStorageServiceImpl.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\EmailService.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\MyBatisConfig.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\RestTemplateConfig.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\mapper\UserMapper.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\TaskController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\LoginResponse.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\LearningMaterialRepository.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\StudyGroupController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\model\ErrorResponse.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\FilePreviewController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\LearningHabitPlanBackendApplication.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\QAQuestionRepository.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\LearningMaterial.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\utils\JwtUtil.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\StudyShare.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\LoginRequest.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\FileController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\LeaderboardController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\QAService.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\UserServiceImpl.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\UserLearningStatsService.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\VerificationCodeServiceImpl.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\WebConfig.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\LikeRecord.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\AISearchServiceImpl.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\AIResourceResponse.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\VerificationCodeService.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\FileUploadResponse.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\HomeController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\JwtAuthenticationFilter.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\TaskRepository.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\StudyShareController.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\StudyGroup.java
+F:\rg\studentplan\test02\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\UserService.java
