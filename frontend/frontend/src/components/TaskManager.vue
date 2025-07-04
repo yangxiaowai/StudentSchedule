@@ -329,7 +329,7 @@
             <label>附件</label>
             <div class="file-upload">
               <i class="fas fa-cloud-upload-alt"></i>
-              <span>点击或拖拽文件到此处上传</span>
+              <span>点击或拖拽文件到此处上传 (最大10MB)</span>
               <input type="file" @change="handleFileUpload">
             </div>
             <div v-if="uploadedFileInfo" class="uploaded-file-info">
@@ -340,7 +340,48 @@
               </button>
             </div>
           </div>
-          
+
+          <div class="form-group">
+            <label>视频文件 <span class="video-upload-hint">(支持大文件上传)</span></label>
+            <div class="video-upload-area"
+                 @dragover.prevent="handleVideoDragOver"
+                 @dragleave.prevent="handleVideoDragLeave"
+                 @drop.prevent="handleVideoDrop"
+                 :class="{ 'drag-over': isVideoDragOver, 'has-video': uploadedVideoInfo }">
+              <div v-if="!uploadedVideoInfo" class="video-upload-placeholder">
+                <i class="fas fa-video video-icon"></i>
+                <div class="upload-text">
+                  <p class="primary-text">拖拽视频文件到此处</p>
+                  <p class="secondary-text">或 <span class="click-text" @click="triggerVideoFileInput">点击选择</span></p>
+                  <p class="format-hint">支持 MP4, AVI, MOV, WMV 等格式</p>
+                </div>
+              </div>
+              <div v-else class="uploaded-video-info">
+                <div class="video-preview">
+                  <i class="fas fa-video video-file-icon"></i>
+                  <div class="video-details">
+                    <p class="video-name">{{ uploadedVideoInfo.originalName }}</p>
+                    <p class="video-size">{{ formatFileSize(uploadedVideoInfo.size) }}</p>
+                  </div>
+                </div>
+                <button type="button" @click="removeUploadedVideo" class="remove-video-btn">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <input type="file"
+                     ref="videoFileInput"
+                     @change="handleVideoUpload"
+                     accept="video/*"
+                     style="display: none;">
+            </div>
+            <div v-if="videoUploadProgress > 0 && videoUploadProgress < 100" class="video-upload-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" :style="{ width: videoUploadProgress + '%' }"></div>
+              </div>
+              <span class="progress-text">{{ videoUploadProgress }}%</span>
+            </div>
+          </div>
+
           <div class="form-actions">
             <div class="form-actions-content">
               <button type="button" @click="showModal = false" class="btn-secondary">
@@ -582,6 +623,12 @@ const newTask = ref({
   isCompleted: false
 })
 
+// 视频上传相关变量
+const uploadedVideoInfo = ref(null)
+const isVideoDragOver = ref(false)
+const videoUploadProgress = ref(0)
+const videoFileInput = ref(null)
+
 const formErrors = ref({})
 
 const validateForm = () => {
@@ -678,12 +725,22 @@ async function addTask() {
   
   // 如果有文件信息，添加到formData
   if (uploadedFileInfo.value) {
-    // 如果是新上传的文件，文件信息已经在uploadedFileInfo中
+    // 如果是新上传的普通文件，文件信息已经在uploadedFileInfo中
     formData.append('fileName', uploadedFileInfo.value.fileName)
     formData.append('fileUrl', uploadedFileInfo.value.fileUrl)
+  } else if (uploadedVideoInfo.value) {
+    // 如果只有视频文件，使用视频文件信息
+    formData.append('fileName', uploadedVideoInfo.value.fileName)
+    formData.append('fileUrl', uploadedVideoInfo.value.fileUrl)
   } else if (newTask.value.file) {
     // 兼容原有的文件上传方式
     formData.append('file', newTask.value.file)
+  }
+
+  // 如果同时有普通文件和视频文件，记录视频文件信息（可用于扩展功能）
+  if (uploadedFileInfo.value && uploadedVideoInfo.value) {
+    formData.append('videoFileName', uploadedVideoInfo.value.fileName)
+    formData.append('videoFileUrl', uploadedVideoInfo.value.fileUrl)
   }
 
   try {
@@ -750,10 +807,19 @@ function resetForm() {
   isEditing.value = false
   uploadedFileInfo.value = null
   
+  // 清除视频上传信息
+  uploadedVideoInfo.value = null
+  videoUploadProgress.value = 0
+
   // 清除文件输入框
   const fileInput = document.querySelector('input[type="file"]')
   if (fileInput) {
     fileInput.value = ''
+  }
+
+  // 清除视频文件输入框
+  if (videoFileInput.value) {
+    videoFileInput.value.value = ''
   }
 }
 
@@ -767,15 +833,32 @@ function editTask(task) {
   }
   Object.assign(newTask.value, formattedTask)
   
-  // 如果任务有文件信息，设置uploadedFileInfo
+  // 如果任务有文件信息，根据文件类型设置相应的上传信息
   if (task.fileName && task.fileUrl) {
-    uploadedFileInfo.value = {
-      fileName: task.fileName,
-      fileUrl: task.fileUrl,
-      originalName: task.fileName
+    // 检查文件是否为视频格式
+    const isVideoFile = /\.(mp4|avi|mov|wmv|flv|mkv|webm)$/i.test(task.fileName)
+
+    if (isVideoFile) {
+      // 设置为视频文件
+      uploadedVideoInfo.value = {
+        fileName: task.fileName,
+        fileUrl: task.fileUrl,
+        originalName: task.fileName,
+        size: 0 // 编辑时无法获取原始文件大小
+      }
+      uploadedFileInfo.value = null
+    } else {
+      // 设置为普通文件
+      uploadedFileInfo.value = {
+        fileName: task.fileName,
+        fileUrl: task.fileUrl,
+        originalName: task.fileName
+      }
+      uploadedVideoInfo.value = null
     }
   } else {
     uploadedFileInfo.value = null
+    uploadedVideoInfo.value = null
   }
   
   showModal.value = true
@@ -982,6 +1065,149 @@ const removeUploadedFile = () => {
   if (fileInput) {
     fileInput.value = ''
   }
+}
+
+// 视频上传相关函数
+const triggerVideoFileInput = () => {
+  videoFileInput.value?.click()
+}
+
+const handleVideoDragOver = (event) => {
+  event.preventDefault()
+  isVideoDragOver.value = true
+}
+
+const handleVideoDragLeave = (event) => {
+  event.preventDefault()
+  isVideoDragOver.value = false
+}
+
+const handleVideoDrop = (event) => {
+  event.preventDefault()
+  isVideoDragOver.value = false
+
+  const files = event.dataTransfer.files
+  if (files.length > 0) {
+    const file = files[0]
+    if (file.type.startsWith('video/')) {
+      uploadVideo(file)
+    } else {
+      alert('请选择视频文件')
+    }
+  }
+}
+
+const handleVideoUpload = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    uploadVideo(file)
+  }
+}
+
+const uploadVideo = async (file) => {
+  // 验证是否已选择学科和内容类型
+  if (!newTask.value.subject) {
+    alert('请先选择学科再上传视频')
+    return
+  }
+
+  if (!newTask.value.type) {
+    alert('请先选择内容类型再上传视频')
+    return
+  }
+
+  try {
+    videoUploadProgress.value = 0
+
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('subject', newTask.value.subject || 'other')
+    formData.append('type', newTask.value.type || 'other')
+
+    const token = localStorage.getItem('accessToken')
+
+    // 使用XMLHttpRequest以支持上传进度
+    const xhr = new XMLHttpRequest()
+
+    return new Promise((resolve, reject) => {
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          videoUploadProgress.value = Math.round((event.loaded / event.total) * 100)
+        }
+      })
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status === 200) {
+          const result = JSON.parse(xhr.responseText)
+
+          // 保存上传结果
+          uploadedVideoInfo.value = {
+            fileName: result.fileName,
+            fileUrl: result.fileDownloadUri,
+            originalName: file.name,
+            size: file.size
+          }
+
+          // 将视频信息添加到任务对象
+          // 如果没有普通附件，则使用视频作为主要文件
+          // 如果有普通附件，视频信息仍然保存但不覆盖主要文件信息
+          if (!newTask.value.fileName) {
+            newTask.value.fileName = result.fileName
+            newTask.value.fileUrl = result.fileDownloadUri
+          } else {
+            // 如果已有普通附件，可以考虑将视频作为备用文件或者提示用户
+            console.log('视频已上传，但任务已有普通附件:', newTask.value.fileName)
+          }
+
+          videoUploadProgress.value = 100
+          setTimeout(() => {
+            videoUploadProgress.value = 0
+          }, 2000)
+
+          alert('视频上传成功！')
+          resolve(result)
+        } else {
+          reject(new Error('视频上传失败'))
+        }
+      })
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('网络错误'))
+      })
+
+      xhr.open('POST', '/api/files/upload')
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+      xhr.send(formData)
+    })
+  } catch (error) {
+    console.error('视频上传失败:', error)
+    alert('视频上传失败: ' + error.message)
+    videoUploadProgress.value = 0
+  }
+}
+
+const removeUploadedVideo = () => {
+  // 如果视频是主要文件，则清除任务的文件信息
+  if (uploadedVideoInfo.value && newTask.value.fileName === uploadedVideoInfo.value.fileName) {
+    newTask.value.fileName = ''
+    newTask.value.fileUrl = ''
+  }
+
+  uploadedVideoInfo.value = null
+  videoUploadProgress.value = 0
+
+  // 清除视频文件输入框
+  if (videoFileInput.value) {
+    videoFileInput.value.value = ''
+  }
+}
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 // 创建模态框的通用方法
@@ -2646,6 +2872,148 @@ tr:hover {
   height: 100%;
   opacity: 0;
   cursor: pointer;
+}
+
+/* 视频上传区域样式 */
+.video-upload-hint {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+.video-upload-area {
+  border: 2px dashed #e9ecef;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  border-radius: 6px;
+  background: #f8f9fa;
+  transition: all 0.3s ease;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-upload-area.drag-over {
+  border-color: #4CAF50;
+  background: #f1f8f1;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
+.video-upload-area.has-video {
+  border-color: #4CAF50;
+  background: #f1f8f1;
+}
+
+.video-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.video-icon {
+  font-size: 3rem;
+  color: #4CAF50;
+  margin-bottom: 1rem;
+}
+
+.upload-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.primary-text {
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.secondary-text {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin: 0;
+}
+
+.click-text {
+  color: #4CAF50;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.format-hint {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin: 0.5rem 0 0 0;
+}
+
+.uploaded-video-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+}
+
+.video-preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.video-file-icon {
+  font-size: 2rem;
+  color: #4CAF50;
+}
+
+.video-details {
+  text-align: left;
+}
+
+.video-name {
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+  font-size: 1rem;
+  word-break: break-all;
+}
+
+.video-size {
+  color: #6c757d;
+  margin: 0.25rem 0 0 0;
+  font-size: 0.8rem;
+}
+
+.remove-video-btn {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.remove-video-btn:hover {
+  transform: scale(1.2);
+}
+
+.video-upload-progress {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .modal-content input,

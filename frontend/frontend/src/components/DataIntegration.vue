@@ -136,54 +136,80 @@
           </button>
         </div>
 
-        <div class="modal-body">
-          <div class="upload-area" @dragover.prevent @drop.prevent="handleDrop">
-            <input
-                type="file"
-                id="fileInput"
-                ref="fileInput"
-                @change="handleFileSelect"
-                multiple
-                style="display: none;"
-            />
+        <!-- 上传类型选择标签 -->
+        <div class="upload-tabs">
+          <button
+            class="tab-btn"
+            :class="{ active: uploadMode === 'file' }"
+            @click="uploadMode = 'file'"
+          >
+            📄 文档资料
+          </button>
+          <button
+            class="tab-btn"
+            :class="{ active: uploadMode === 'video' }"
+            @click="uploadMode = 'video'"
+          >
+            🎬 视频资料
+          </button>
+        </div>
 
-            <div v-if="!selectedFiles.length" class="drop-zone">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
-              </svg>
-              <p>拖放文件到此处或<button @click="triggerFileInput">点击选择文件</button></p>
+        <div class="modal-body">
+          <!-- 文档上传模式 -->
+          <div v-if="uploadMode === 'file'" class="file-upload-section">
+            <div class="upload-area" @dragover.prevent @drop.prevent="handleDrop">
+              <input
+                  type="file"
+                  id="fileInput"
+                  ref="fileInput"
+                  @change="handleFileSelect"
+                  multiple
+                  style="display: none;"
+              />
+
+              <div v-if="!selectedFiles.length" class="drop-zone">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                  <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+                </svg>
+                <p>拖放文件到此处或<button @click="triggerFileInput">点击选择文件</button></p>
+              </div>
+
+              <div v-else class="file-list">
+                <div v-for="(file, index) in selectedFiles" :key="index" class="file-item">
+                  <span>{{ file.name }}</span>
+                  <span>{{ formatFileSize(file.size) }}</span>
+                  <button @click="removeFile(index)">×</button>
+                </div>
+              </div>
             </div>
 
-            <div v-else class="file-list">
-              <div v-for="(file, index) in selectedFiles" :key="index" class="file-item">
-                <span>{{ file.name }}</span>
-                <span>{{ formatFileSize(file.size) }}</span>
-                <button @click="removeFile(index)">×</button>
+            <div class="upload-options">
+              <div class="form-group">
+                <label>学科分类：</label>
+                <select v-model="uploadSubject" required>
+                  <option value="" disabled selected>请选择学科</option>
+                  <option v-for="subject in subjects" :value="subject.value">{{ subject.label }}</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>内容类型：</label>
+                <select v-model="uploadType" required>
+                  <option value="" disabled selected>请选择类型</option>
+                  <option v-for="type in contentTypes" :value="type.value">{{ type.label }}</option>
+                </select>
               </div>
             </div>
           </div>
 
-          <div class="upload-options">
-            <div class="form-group">
-              <label>学科分类：</label>
-              <select v-model="uploadSubject" required>
-                <option value="" disabled selected>请选择学科</option>
-                <option v-for="subject in subjects" :value="subject.value">{{ subject.label }}</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label>内容类型：</label>
-              <select v-model="uploadType" required>
-                <option value="" disabled selected>请选择类型</option>
-                <option v-for="type in contentTypes" :value="type.value">{{ type.label }}</option>
-              </select>
-            </div>
+          <!-- 视频上传模式 -->
+          <div v-else-if="uploadMode === 'video'" class="video-upload-section">
+            <VideoUpload @upload-success="handleVideoUploadSuccess" />
           </div>
         </div>
 
-        <div class="modal-footer">
+        <div v-if="uploadMode === 'file'" class="modal-footer">
           <button class="cancel-btn" @click="cancelUpload">取消</button>
           <button
               class="confirm-btn"
@@ -236,8 +262,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import VideoUpload from './VideoUpload.vue'
 
 // 路由和只读模式处理
 const route = useRoute()
@@ -282,6 +309,7 @@ const materials = ref([])
 
 // 上传相关状态
 const showUploadModal = ref(false)
+const uploadMode = ref('file') // 'file' 或 'video'
 const selectedFiles = ref([])
 const uploadSubject = ref('')
 const uploadType = ref('')
@@ -365,7 +393,7 @@ const handleSearch = () => {
 const openMaterial = async (material) => {
   try {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`/api/preview/${material.id}`, {
+    const response = await fetch(`/api/preview/file/${material.id}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -390,6 +418,15 @@ const openMaterial = async (material) => {
       case 'ppt':
       case 'pptx':
         await previewOfficeFile(previewData);
+        break;
+      case 'mp4':
+      case 'avi':
+      case 'mov':
+      case 'wmv':
+      case 'flv':
+      case 'webm':
+      case 'mkv':
+        await previewVideoFile(previewData);
         break;
       default:
         throw new Error('不支持预览此文件类型');
@@ -574,6 +611,538 @@ const previewOfficeFile = async (previewData) => {
   }
 };
 
+// 视频文件预览
+const previewVideoFile = async (previewData) => {
+  try {
+    const modal = createModal(previewData.fileName);
+    const content = modal.querySelector('.modal-content');
+
+    // 创建视频容器
+    const videoContainer = document.createElement('div');
+    videoContainer.style.textAlign = 'center';
+    videoContainer.style.marginTop = '20px';
+    videoContainer.style.width = '100%';
+    videoContainer.style.height = '100%';
+    videoContainer.style.display = 'flex';
+    videoContainer.style.flexDirection = 'column';
+    videoContainer.style.justifyContent = 'center';
+    videoContainer.style.alignItems = 'center';
+
+    // 创建视频元素
+    const video = document.createElement('video');
+    video.controls = true;
+    video.style.borderRadius = '8px';
+    video.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+    video.style.backgroundColor = '#000';
+    video.style.outline = 'none';
+    video.style.pointerEvents = 'auto';
+
+    // 确保视频控件可以交互
+    video.setAttribute('controlsList', '');
+    video.setAttribute('disablePictureInPicture', 'false');
+
+    console.log('视频元素创建完成，controls属性:', video.controls);
+
+    // 响应式视频尺寸设置
+    const setVideoSize = () => {
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      const isLandscape = windowWidth > windowHeight;
+
+      if (isLandscape) {
+        // 横屏模式：优先考虑宽度
+        video.style.width = Math.min(windowWidth * 0.8, 1200) + 'px';
+        video.style.maxHeight = (windowHeight * 0.7) + 'px';
+        video.style.height = 'auto';
+      } else {
+        // 竖屏模式：优先考虑高度
+        video.style.height = Math.min(windowHeight * 0.6, 800) + 'px';
+        video.style.maxWidth = (windowWidth * 0.9) + 'px';
+        video.style.width = 'auto';
+      }
+    };
+
+    // 初始设置视频尺寸
+    setVideoSize();
+
+    // 监听窗口大小变化和屏幕方向变化
+    const resizeHandler = () => {
+      setVideoSize();
+    };
+
+    window.addEventListener('resize', resizeHandler);
+    window.addEventListener('orientationchange', () => {
+      // 延迟执行以确保方向变化完成
+      setTimeout(resizeHandler, 100);
+    });
+
+    // 创建时间显示元素
+    const timeDisplay = document.createElement('div');
+    timeDisplay.style.fontSize = '14px';
+    timeDisplay.style.color = '#666';
+    timeDisplay.style.marginTop = '5px';
+    timeDisplay.style.marginBottom = '10px';
+    timeDisplay.style.textAlign = 'center';
+
+    // 更新时间显示
+    const updateTimeDisplay = () => {
+      if (video.duration) {
+        const currentMinutes = Math.floor(video.currentTime / 60);
+        const currentSeconds = Math.floor(video.currentTime % 60);
+        const totalMinutes = Math.floor(video.duration / 60);
+        const totalSeconds = Math.floor(video.duration % 60);
+
+        timeDisplay.textContent = `${currentMinutes.toString().padStart(2, '0')}:${currentSeconds.toString().padStart(2, '0')} / ${totalMinutes.toString().padStart(2, '0')}:${totalSeconds.toString().padStart(2, '0')}`;
+      }
+    };
+
+    // 监听时间更新事件，更新时间显示
+    video.addEventListener('timeupdate', updateTimeDisplay);
+
+    // 在模态框关闭时移除事件监听器
+    const originalCloseBtn = modal.querySelector('button');
+    const originalOnClick = originalCloseBtn.onclick;
+    originalCloseBtn.onclick = () => {
+      // 移除窗口事件监听器
+      window.removeEventListener('resize', resizeHandler);
+      window.removeEventListener('orientationchange', resizeHandler);
+
+      // 移除拖拽相关的事件监听器
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+
+      // 移除视频事件监听器
+      if (videoCanPlayHandler) {
+        video.removeEventListener('canplay', videoCanPlayHandler);
+      }
+
+      // 执行原始的关闭函数
+      originalOnClick();
+    };
+
+    // 设置视频源
+    const videoUrl = previewData.downloadUrl || `/api/files/download/${encodeURIComponent(previewData.fileName)}`;
+    video.src = videoUrl;
+    video.preload = 'metadata';
+
+    // 添加错误处理
+    video.onerror = () => {
+      videoContainer.innerHTML = `
+        <div style="padding: 20px; text-align: center; color: #666;">
+          <p>视频加载失败，请检查文件格式或网络连接</p>
+          <a href="${videoUrl}"
+             target="_blank"
+             style="color: #007bff; text-decoration: none;">
+            下载视频文件
+          </a>
+        </div>
+      `;
+    };
+
+    // 添加加载提示
+    const loadingText = document.createElement('p');
+    loadingText.textContent = '视频加载中...';
+    loadingText.style.textAlign = 'center';
+    loadingText.style.color = '#666';
+    loadingText.style.margin = '20px 0';
+
+    video.onloadstart = () => {
+      loadingText.style.display = 'block';
+    };
+
+    video.oncanplay = () => {
+      loadingText.style.display = 'none';
+    };
+
+    // 添加视频信息
+    const videoInfo = document.createElement('div');
+    videoInfo.style.marginTop = '15px';
+    videoInfo.style.padding = '10px';
+    videoInfo.style.backgroundColor = '#f8f9fa';
+    videoInfo.style.borderRadius = '4px';
+    videoInfo.style.fontSize = '14px';
+    videoInfo.style.color = '#666';
+
+    // 视频观看进度跟踪
+    let maxWatchedProgress = 0;
+    const taskId = previewData.taskId; // 从预览数据中获取任务ID
+    let currentTaskProgress = 0; // 当前任务进度
+    let isProgressComplete = false; // 标记任务是否已完成
+
+    // 获取当前任务进度
+    const getCurrentTaskProgress = async () => {
+      if (!taskId) return;
+
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`/api/tasks/${taskId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const task = await response.json();
+          currentTaskProgress = task.progress || 0;
+          isProgressComplete = currentTaskProgress >= 100;
+          console.log(`当前任务进度: ${currentTaskProgress}%, 是否已完成: ${isProgressComplete}`);
+
+          if (isProgressComplete) {
+            console.log('任务已完成，不再记录观看进度');
+          }
+        }
+      } catch (error) {
+        console.error('获取任务进度失败:', error);
+      }
+    };
+
+    // 初始化时获取当前进度
+    await getCurrentTaskProgress();
+
+    // 格式化时间的辅助函数
+    const formatTime = (seconds) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    // 更新观看进度的函数
+    const updateWatchProgress = () => {
+      if (video.duration && taskId && !isProgressComplete && !isUserSeeking) {
+        const currentTime = video.currentTime;
+        const duration = video.duration;
+        const percentage = Math.round((currentTime / duration) * 100);
+
+        // 记录最大观看进度，但不能低于当前任务进度
+        const newProgress = Math.max(percentage, currentTaskProgress);
+
+        if (newProgress > maxWatchedProgress) {
+          maxWatchedProgress = newProgress;
+          console.log(`视频观看进度更新: ${maxWatchedProgress}%`);
+
+          // 每当进度增加5%时更新任务进度
+          if (maxWatchedProgress % 5 === 0 || maxWatchedProgress === 100) {
+            updateTaskProgress(taskId, maxWatchedProgress);
+          }
+        }
+      }
+    };
+
+    // 更新任务进度到后端的函数
+    const updateTaskProgress = async (taskId, progress) => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        console.log(`准备更新任务 ${taskId} 视频观看进度为 ${progress}%`);
+
+        const response = await fetch(`/api/tasks/${taskId}/progress`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ progress })
+        });
+
+        if (response.ok) {
+          console.log(`任务 ${taskId} 视频观看进度已更新为 ${progress}%`);
+          // 触发任务进度更新事件，通知TaskManager更新显示
+          window.dispatchEvent(new CustomEvent('taskProgressUpdated', {
+            detail: { taskId, progress }
+          }));
+        } else {
+          console.error('更新任务进度失败:', response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error('更新任务进度时发生错误:', error);
+      }
+    };
+
+    video.onloadedmetadata = () => {
+      const duration = Math.round(video.duration);
+      const minutes = Math.floor(duration / 60);
+      const seconds = duration % 60;
+      videoInfo.innerHTML = `
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+          <span>时长: ${minutes}:${seconds.toString().padStart(2, '0')}</span>
+          <span>分辨率: ${video.videoWidth} × ${video.videoHeight}</span>
+          <span>文件大小: ${previewData.fileSize ? (previewData.fileSize / 1024 / 1024).toFixed(2) + ' MB' : '未知'}</span>
+        </div>
+      `;
+
+      console.log(`视频元数据加载完成，时长: ${duration}秒, 当前任务进度: ${currentTaskProgress}%`);
+    };
+
+    // 在视频可以播放时设置进度（移到进度条创建之后）
+    let videoCanPlayHandler = null;
+
+    // 监听时间更新事件
+    video.addEventListener('timeupdate', updateWatchProgress);
+
+    // 监听播放状态变化
+    video.addEventListener('play', () => {
+      console.log('视频开始播放');
+    });
+
+    video.addEventListener('pause', () => {
+      console.log('视频暂停播放');
+    });
+
+    video.addEventListener('ended', () => {
+      console.log('视频播放完成');
+      // 视频播放完成时确保进度为100%（仅当任务未完成时）
+      if (taskId && !isProgressComplete) {
+        maxWatchedProgress = 100;
+        updateTaskProgress(taskId, 100);
+      }
+    });
+
+    // 监听用户手动跳转进度
+    video.addEventListener('seeked', () => {
+      if (video.duration && taskId && !isProgressComplete) {
+        const currentTime = video.currentTime;
+        const duration = video.duration;
+        const percentage = Math.round((currentTime / duration) * 100);
+
+        // 如果用户跳转到更高的进度，更新最大观看进度
+        if (percentage > maxWatchedProgress) {
+          maxWatchedProgress = percentage;
+          console.log(`用户跳转到新进度: ${maxWatchedProgress}%`);
+
+          // 立即更新任务进度
+          updateTaskProgress(taskId, maxWatchedProgress);
+        }
+      }
+    });
+
+    // 添加下载链接
+    const downloadLink = document.createElement('a');
+    downloadLink.href = videoUrl;
+    downloadLink.textContent = '下载视频';
+    downloadLink.target = '_blank';
+    downloadLink.style.display = 'inline-block';
+    downloadLink.style.marginTop = '15px';
+    downloadLink.style.padding = '8px 16px';
+    downloadLink.style.backgroundColor = '#007bff';
+    downloadLink.style.color = 'white';
+    downloadLink.style.textDecoration = 'none';
+    downloadLink.style.borderRadius = '4px';
+    downloadLink.style.fontSize = '14px';
+
+    downloadLink.onmouseover = () => {
+      downloadLink.style.backgroundColor = '#0056b3';
+    };
+    downloadLink.onmouseout = () => {
+      downloadLink.style.backgroundColor = '#007bff';
+    };
+
+    // 创建自定义进度条容器
+    const progressWrapper = document.createElement('div');
+    progressWrapper.style.width = '100%';
+    progressWrapper.style.padding = '10px 0';
+    progressWrapper.style.cursor = 'pointer';
+
+    const customProgressContainer = document.createElement('div');
+    customProgressContainer.style.width = '100%';
+    customProgressContainer.style.height = '6px';
+    customProgressContainer.style.backgroundColor = '#e0e0e0';
+    customProgressContainer.style.borderRadius = '3px';
+    customProgressContainer.style.position = 'relative';
+    customProgressContainer.style.cursor = 'pointer';
+
+    const customProgressBar = document.createElement('div');
+    customProgressBar.style.width = '0%';
+    customProgressBar.style.height = '100%';
+    customProgressBar.style.backgroundColor = '#4CAF50';
+    customProgressBar.style.borderRadius = '3px';
+    customProgressBar.style.transition = 'width 0.1s';
+
+    // 创建拖拽手柄
+    const progressHandle = document.createElement('div');
+    progressHandle.style.width = '16px';
+    progressHandle.style.height = '16px';
+    progressHandle.style.backgroundColor = '#4CAF50';
+    progressHandle.style.borderRadius = '50%';
+    progressHandle.style.position = 'absolute';
+    progressHandle.style.top = '-5px';
+    progressHandle.style.left = '0%';
+    progressHandle.style.cursor = 'grab';
+    progressHandle.style.border = '2px solid white';
+    progressHandle.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+    progressHandle.style.transform = 'translateX(-50%)';
+    progressHandle.style.zIndex = '10';
+
+    customProgressContainer.appendChild(customProgressBar);
+    customProgressContainer.appendChild(progressHandle);
+    progressWrapper.appendChild(customProgressContainer);
+
+    // 更新自定义进度条和手柄位置
+    const updateCustomProgress = () => {
+      if (video.duration) {
+        const percentage = (video.currentTime / video.duration) * 100;
+        customProgressBar.style.width = `${percentage}%`;
+        progressHandle.style.left = `${percentage}%`;
+      }
+    };
+
+    // 监听视频时间更新事件，更新自定义进度条
+    video.addEventListener('timeupdate', updateCustomProgress);
+
+    // 拖拽状态管理
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartTime = 0;
+    let isUserSeeking = false; // 标记用户是否在手动跳转
+
+    // 获取进度位置的辅助函数
+    const getProgressPosition = (clientX) => {
+      const rect = customProgressContainer.getBoundingClientRect();
+      const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      return pos;
+    };
+
+    // 设置视频时间的辅助函数
+    const setVideoTime = (position, isUserAction = false) => {
+      if (video.duration) {
+        if (isUserAction) {
+          isUserSeeking = true;
+          // 用户拖拽时，更新maxWatchedProgress以保持最大观看进度
+          const newTime = position * video.duration;
+          const newProgress = (newTime / video.duration) * 100;
+          if (newProgress > maxWatchedProgress) {
+            maxWatchedProgress = newProgress;
+          }
+        }
+        video.currentTime = position * video.duration;
+        updateCustomProgress();
+
+        // 延迟重置标志，确保timeupdate事件能正确识别
+        if (isUserAction) {
+          setTimeout(() => {
+            isUserSeeking = false;
+          }, 100);
+        }
+      }
+    };
+
+    // 点击进度条跳转
+    progressWrapper.addEventListener('click', (e) => {
+      if (!isDragging) {
+        const pos = getProgressPosition(e.clientX);
+        setVideoTime(pos, true); // 标记为用户操作
+      }
+    });
+
+    // 鼠标拖拽事件
+    const handleMouseDown = (e) => {
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartTime = video.currentTime;
+      progressHandle.style.cursor = 'grabbing';
+      const pos = getProgressPosition(e.clientX);
+      setVideoTime(pos, true); // 标记为用户操作
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handleMouseMove = (e) => {
+      if (isDragging) {
+        const pos = getProgressPosition(e.clientX);
+        setVideoTime(pos, true); // 标记为用户操作
+        e.preventDefault();
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging) {
+        isDragging = false;
+        progressHandle.style.cursor = 'grab';
+      }
+    };
+
+    // 触摸拖拽事件
+    const handleTouchStart = (e) => {
+      isDragging = true;
+      const touch = e.touches[0];
+      dragStartX = touch.clientX;
+      dragStartTime = video.currentTime;
+      const pos = getProgressPosition(touch.clientX);
+      setVideoTime(pos, true); // 标记为用户操作
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handleTouchMove = (e) => {
+      if (isDragging) {
+        const touch = e.touches[0];
+        const pos = getProgressPosition(touch.clientX);
+        setVideoTime(pos, true); // 标记为用户操作
+        e.preventDefault();
+      }
+    };
+
+    const handleTouchEnd = () => {
+      isDragging = false;
+    };
+
+    // 绑定事件监听器
+    progressHandle.addEventListener('mousedown', handleMouseDown);
+    progressWrapper.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    progressHandle.addEventListener('touchstart', handleTouchStart);
+    progressWrapper.addEventListener('touchstart', handleTouchStart);
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
+
+    // 定义并绑定视频可播放事件处理器
+    let hasInitializedProgress = false;
+    videoCanPlayHandler = () => {
+      console.log('视频可以播放，准备设置进度');
+
+      // 只在首次加载时设置进度，避免用户拖拽时被重置
+      if (!hasInitializedProgress && currentTaskProgress > 0 && currentTaskProgress < 100) {
+        const startTime = (currentTaskProgress / 100) * video.duration;
+        video.currentTime = startTime;
+        maxWatchedProgress = currentTaskProgress;
+        hasInitializedProgress = true;
+        console.log(`从记录的进度开始播放: ${currentTaskProgress}% (${Math.round(startTime)}秒)`);
+
+        // 更新自定义进度条到正确位置
+        updateCustomProgress();
+      }
+    };
+
+    // 绑定事件
+    video.addEventListener('canplay', videoCanPlayHandler);
+
+    // 组装元素
+    videoContainer.appendChild(loadingText);
+    videoContainer.appendChild(video);
+    videoContainer.appendChild(timeDisplay);
+    videoContainer.appendChild(progressWrapper);
+    videoContainer.appendChild(videoInfo);
+    videoContainer.appendChild(downloadLink);
+    content.appendChild(videoContainer);
+
+  } catch (error) {
+    console.error('视频预览失败:', error);
+    const modal = createModal(previewData.fileName);
+    modal.querySelector('.modal-content').innerHTML = `
+      <div style="padding: 20px; text-align: center;">
+        <p>视频预览失败: ${error.message}</p>
+        <a href="/api/files/download/${encodeURIComponent(previewData.fileName)}"
+           target="_blank"
+           style="color: #007bff; text-decoration: none;">
+          下载视频文件
+        </a>
+      </div>
+    `;
+  }
+}
+
 
 
 // 创建模态框的通用方法
@@ -590,6 +1159,8 @@ const createModal = (title) => {
   modal.style.display = 'flex';
   modal.style.justifyContent = 'center';
   modal.style.alignItems = 'center';
+  modal.style.padding = '10px';
+  modal.style.boxSizing = 'border-box';
 
   const content = document.createElement('div');
   content.className = 'modal-content';
@@ -601,6 +1172,49 @@ const createModal = (title) => {
   content.style.maxHeight = '90vh';
   content.style.overflow = 'auto';
   content.style.position = 'relative';
+  content.style.borderRadius = '8px';
+  content.style.position = 'relative';
+  content.style.boxSizing = 'border-box';
+  content.style.display = 'flex';
+  content.style.flexDirection = 'column';
+
+  // 响应式模态框尺寸设置
+  const setModalSize = () => {
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const isLandscape = windowWidth > windowHeight;
+
+    if (isLandscape) {
+      // 横屏模式
+      content.style.width = '95%';
+      content.style.maxWidth = '1400px';
+      content.style.height = '95%';
+      content.style.maxHeight = '95vh';
+      content.style.padding = '20px';
+    } else {
+      // 竖屏模式
+      content.style.width = '98%';
+      content.style.maxWidth = '500px';
+      content.style.height = '95%';
+      content.style.maxHeight = '95vh';
+      content.style.padding = '15px';
+    }
+
+    content.style.overflow = 'auto';
+  };
+
+  // 初始设置模态框尺寸
+  setModalSize();
+
+  // 监听窗口大小变化
+  const modalResizeHandler = () => {
+    setModalSize();
+  };
+
+  window.addEventListener('resize', modalResizeHandler);
+  window.addEventListener('orientationchange', () => {
+    setTimeout(modalResizeHandler, 100);
+  });
 
   const closeBtn = document.createElement('button');
   closeBtn.textContent = '×';
@@ -612,6 +1226,13 @@ const createModal = (title) => {
   closeBtn.style.fontSize = '24px';
   closeBtn.style.cursor = 'pointer';
   closeBtn.onclick = () => document.body.removeChild(modal);
+  closeBtn.style.zIndex = '10';
+  closeBtn.onclick = () => {
+    // 移除模态框的事件监听器
+    window.removeEventListener('resize', modalResizeHandler);
+    window.removeEventListener('orientationchange', modalResizeHandler);
+    document.body.removeChild(modal);
+  };
 
   const titleElement = document.createElement('h3');
   titleElement.textContent = title;
@@ -769,6 +1390,27 @@ const downloadMaterial = async (material) => {
 };
 
 
+// 处理视频上传成功
+const handleVideoUploadSuccess = (response) => {
+  console.log('视频上传成功:', response);
+
+  // 添加到文件列表
+  materials.value.unshift({
+    id: response.id,
+    name: response.originalFileName || response.fileName,
+    subject: response.subject,
+    type: response.contentType || '视频',
+    uploadTime: response.uploadTime || new Date().toISOString(),
+    size: response.size,
+    url: response.fileDownloadUri
+  });
+
+  // 关闭上传模态框
+  showUploadModal.value = false;
+
+  alert('视频上传成功！');
+};
+
 // 替换原有的 deleteMaterial 方法
 const deleteMaterial = async (material) => {
   if (!confirm(`确定要删除 "${material.name}" 吗？`)) return;
@@ -801,7 +1443,52 @@ const deleteMaterial = async (material) => {
 // 修改 onMounted 加载文件列表
 onMounted(() => {
   loadMaterials();
+
+  // 监听来自TaskManager的预览事件
+  window.addEventListener('previewTaskFile', handleTaskFilePreview);
 });
+
+// 组件卸载时移除事件监听器
+onBeforeUnmount(() => {
+  window.removeEventListener('previewTaskFile', handleTaskFilePreview);
+});
+
+// 处理任务文件预览事件
+const handleTaskFilePreview = async (event) => {
+  console.log('DataIntegration: 收到previewTaskFile事件', event.detail);
+
+  const { fileName, originalFileName, taskName, fileUrl, taskId } = event.detail;
+
+  try {
+    // 检查文件类型
+    const fileExtension = fileName.toLowerCase().split('.').pop();
+    const videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'];
+
+    if (videoExtensions.includes(fileExtension)) {
+      // 构造预览数据
+      const previewData = {
+        fileName: fileName,
+        fileType: 'video',
+        downloadUrl: fileUrl,
+        previewType: 'video',
+        contentType: `video/${fileExtension === 'mov' ? 'quicktime' : fileExtension}`,
+        taskId: taskId // 添加任务ID用于进度跟踪
+      };
+
+      console.log('DataIntegration: 开始预览视频文件', previewData);
+
+      // 调用视频预览函数
+      previewVideoFile(previewData);
+    } else {
+      // 对于非视频文件，可以调用其他预览方法
+      console.log('DataIntegration: 非视频文件，使用默认预览方式');
+      // 这里可以添加其他文件类型的预览逻辑
+    }
+  } catch (error) {
+    console.error('DataIntegration: 预览文件失败', error);
+    alert(`预览文件失败: ${error.message}`);
+  }
+};
 
 const loadMaterials = async () => {
   try {
@@ -954,6 +1641,63 @@ const loadScript = (url) => {
 </script>
 
 <style scoped>
+/* 视频预览模态框响应式样式 */
+.file-preview-modal {
+  touch-action: manipulation;
+}
+
+.modal-content {
+  transition: all 0.3s ease;
+}
+
+/* 移动设备优化 */
+@media (max-width: 768px) {
+  .file-preview-modal .modal-content {
+    margin: 5px !important;
+    border-radius: 4px !important;
+  }
+
+  .file-preview-modal video {
+    border-radius: 4px !important;
+  }
+}
+
+/* 横屏模式优化 */
+@media (orientation: landscape) and (max-height: 600px) {
+  .file-preview-modal .modal-content {
+    padding: 10px !important;
+  }
+}
+
+/* 竖屏模式优化 */
+@media (orientation: portrait) {
+  .file-preview-modal video {
+    max-width: 100% !important;
+  }
+}
+
+/* 超小屏幕设备 */
+@media (max-width: 480px) {
+  .file-preview-modal .modal-content {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    padding: 10px !important;
+  }
+
+  .file-preview-modal {
+    padding: 0 !important;
+  }
+}
+
+/* 确保视频控件在移动设备上可见 */
+video::-webkit-media-controls {
+  display: flex !important;
+}
+
+video::-webkit-media-controls-panel {
+  display: flex !important;
+}
 .material-container {
   display: flex;
   flex-direction: column;
@@ -1608,6 +2352,54 @@ const loadScript = (url) => {
 
 .normal-header h2 {
   margin: 0;
+}
+
+/* 上传标签页样式 */
+.upload-tabs {
+  display: flex;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: #f8f9fa;
+  color: #666;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+  border-bottom: 3px solid transparent;
+}
+
+.tab-btn:first-child {
+  border-top-left-radius: 6px;
+}
+
+.tab-btn:last-child {
+  border-top-right-radius: 6px;
+}
+
+.tab-btn:hover {
+  background: #e9ecef;
+  color: #333;
+}
+
+.tab-btn.active {
+  background: white;
+  color: #4a6cf7;
+  border-bottom-color: #4a6cf7;
+  font-weight: 500;
+}
+
+/* 视频上传区域样式 */
+.video-upload-section {
+  min-height: 400px;
+}
+
+.file-upload-section {
+  min-height: 300px;
 }
 
 </style>

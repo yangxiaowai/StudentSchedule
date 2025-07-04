@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.learning.learning_habit_plan_backend.util.VideoFileValidator;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -44,9 +45,38 @@ public class FileStorageServiceImpl implements FileStorageService {
     // ... existing code ...
     public FileUploadResponse storeFile(MultipartFile file, String subject, String type) {
         try {
+            // 基本参数验证
+            if (file == null || file.isEmpty()) {
+                throw new RuntimeException("上传文件不能为空");
+            }
+
+            if (subject == null || subject.trim().isEmpty()) {
+                throw new RuntimeException("学科分类不能为空");
+            }
+
+            if (type == null || type.trim().isEmpty()) {
+                throw new RuntimeException("内容类型不能为空");
+            }
+
             // 添加详细日志输出
             System.out.println("开始处理文件上传请求 - 文件名: " + file.getOriginalFilename() + ", 学科: " + subject + ", 类型: " + type);
             
+            // 获取原始文件名并进行基本验证
+            String originalFileName = file.getOriginalFilename();
+            if (originalFileName == null || originalFileName.isEmpty()) {
+                throw new RuntimeException("文件名不能为空");
+            }
+
+            // 如果是视频文件，进行特殊验证
+            if (VideoFileValidator.isVideoFile(originalFileName)) {
+                VideoFileValidator.ValidationResult validationResult = VideoFileValidator.validateVideoFile(file);
+                if (!validationResult.isValid()) {
+                    System.out.println("视频文件验证失败: " + validationResult.getMessage());
+                    throw new RuntimeException("视频文件验证失败: " + validationResult.getMessage());
+                }
+                System.out.println("视频文件验证通过: " + validationResult.getMessage());
+            }
+
             // 从请求头获取JWT令牌
             HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
             String token = request.getHeader("Authorization");
@@ -82,19 +112,37 @@ public class FileStorageServiceImpl implements FileStorageService {
                 throw new RuntimeException("无效的认证令牌", e);
             }
             
+            // 文件大小验证（通用限制：100MB，视频文件在VideoFileValidator中有单独限制）
+            long maxFileSize = 100 * 1024 * 1024; // 100MB
+            if (file.getSize() > maxFileSize) {
+                throw new RuntimeException("文件大小超过限制（最大100MB）");
+            }
+
             // 确保上传目录存在
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
 
-            // 生成唯一文件名
-            String originalFileName = file.getOriginalFilename();
-            String fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
+            // 生成唯一文件名 - 安全的文件名处理，移除路径分隔符
+            originalFileName = originalFileName.replaceAll("[/\\\\]", "_");
+
+            // 检查文件是否有扩展名
+            if (!originalFileName.contains(".")) {
+                throw new RuntimeException("文件必须包含扩展名");
+            }
+
+            String fileExtension = originalFileName.substring(originalFileName.lastIndexOf(".")).toLowerCase();
             String uniqueFileName = UUID.randomUUID() + fileExtension;
 
             // 保存文件
             Path filePath = uploadPath.resolve(uniqueFileName);
+
+            // 确保文件路径安全
+            if (!filePath.startsWith(uploadPath)) {
+                throw new RuntimeException("非法的文件路径");
+            }
+
             Files.copy(file.getInputStream(), filePath);
 
             // 保存到数据库
@@ -109,8 +157,20 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             LearningMaterial savedMaterial = materialRepository.save(material);
 
+            // 验证保存结果
+            if (savedMaterial == null) {
+                throw new RuntimeException("数据库保存失败，返回结果为空");
+            }
+
+
             // 返回响应
             System.out.println("文件上传成功 - ID: " + savedMaterial.getId() + ", 文件名: " + originalFileName);
+
+            // 安全获取上传时间
+            String uploadTimeStr = savedMaterial.getUploadTime() != null ?
+                savedMaterial.getUploadTime().toString() :
+                java.time.LocalDateTime.now().toString();
+
             return new FileUploadResponse(
                     savedMaterial.getId(),
                     originalFileName,
@@ -119,9 +179,19 @@ public class FileStorageServiceImpl implements FileStorageService {
                     file.getSize(),
                     subject,
                     type,
+                    uploadTimeStr
                     savedMaterial.getUploadTime().toString()
             );
+        } catch (IOException e) {
+            System.err.println("文件IO操作失败: " + e.getMessage());
+            throw new RuntimeException("文件保存失败，请检查磁盘空间和权限: " + e.getMessage(), e);
+        } catch (RuntimeException e) {
+            System.err.println("运行时异常: " + e.getMessage());
+            throw e; // 重新抛出运行时异常，保持原有的错误信息
         } catch (Exception e) {
+            System.err.println("未知异常: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("文件存储过程中发生未知错误: " + e.getMessage(), e);
             throw new RuntimeException("文件存储失败: " + e.getMessage(), e);
         }
     }
@@ -256,6 +326,9 @@ public class FileStorageServiceImpl implements FileStorageService {
                 FileUploadResponse response = new FileUploadResponse();
                 response.setId(material.getId());
                 response.setFileName(material.getFileName());
+                // 从文件路径中提取实际的UUID格式文件名
+                String actualFileName = Paths.get(material.getFilePath()).getFileName().toString();
+                response.setFileDownloadUri("/api/files/download?fileName=" + actualFileName);
                 response.setFileDownloadUri("/api/files/download?fileName=" + material.getFileName());
                 response.setFileType(material.getFileType());
                 response.setSize(material.getFileSize());
