@@ -147,7 +147,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                                 "视频文件超过100MB限制，请下载查看");
                     }
                     return previewVideoFile(filePath, fileName, fileExtension);
-                    
+
                 default:
                     logger.warning("不支持的文件类型: " + fileExtension);
                     return FilePreviewResponse.error(fileName, "不支持的文件类型: " + fileExtension);
@@ -1228,34 +1228,34 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     private FilePreviewResponse previewVideoFile(Path filePath, String fileName, String fileExtension) {
         try {
             logger.info("预览视频文件: " + fileName);
-            
+
             // 构建下载URL
             String downloadUrl = "/api/files/download/" + fileName;
-            
+
             // 创建视频预览响应
             FilePreviewResponse response = new FilePreviewResponse();
             response.setFileName(fileName);
             response.setFileType(fileExtension);
             response.setDownloadUrl(downloadUrl);
             response.setPreviewType("video");
-            
+
             // 获取文件大小
             long fileSize = Files.size(filePath);
             response.setFileSize(fileSize);
-            
+
             // 设置视频相关信息
             response.setContentType(getContentType(fileExtension));
-            
+
             logger.info("视频文件预览成功: " + fileName + ", 大小: " + fileSize + " bytes");
             return response;
-            
+
         } catch (Exception e) {
             logger.severe("视频文件预览失败: " + e.getMessage());
             e.printStackTrace();
             return FilePreviewResponse.error(fileName, "视频文件预览失败: " + e.getMessage());
         }
     }
-    
+
     /**
      * 根据文件扩展名获取Content-Type
      */

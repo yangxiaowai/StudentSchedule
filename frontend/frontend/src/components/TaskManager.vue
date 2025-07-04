@@ -331,10 +331,10 @@
               </button>
             </div>
           </div>
-          
+
           <div class="form-group">
             <label>视频文件 <span class="video-upload-hint">(支持大文件上传)</span></label>
-            <div class="video-upload-area" 
+            <div class="video-upload-area"
                  @dragover.prevent="handleVideoDragOver"
                  @dragleave.prevent="handleVideoDragLeave"
                  @drop.prevent="handleVideoDrop"
@@ -359,9 +359,9 @@
                   <i class="fas fa-times"></i>
                 </button>
               </div>
-              <input type="file" 
+              <input type="file"
                      ref="videoFileInput"
-                     @change="handleVideoUpload" 
+                     @change="handleVideoUpload"
                      accept="video/*"
                      style="display: none;">
             </div>
@@ -372,7 +372,7 @@
               <span class="progress-text">{{ videoUploadProgress }}%</span>
             </div>
           </div>
-          
+
           <div class="form-actions">
             <div class="form-actions-content">
               <button type="button" @click="showModal = false" class="btn-secondary">
@@ -690,7 +690,7 @@ async function addTask() {
     // 兼容原有的文件上传方式
     formData.append('file', newTask.value.file)
   }
-  
+
   // 如果同时有普通文件和视频文件，记录视频文件信息（可用于扩展功能）
   if (uploadedFileInfo.value && uploadedVideoInfo.value) {
     formData.append('videoFileName', uploadedVideoInfo.value.fileName)
@@ -764,13 +764,13 @@ function resetForm() {
   // 清除视频上传信息
   uploadedVideoInfo.value = null
   videoUploadProgress.value = 0
-  
+
   // 清除文件输入框
   const fileInput = document.querySelector('input[type="file"]')
   if (fileInput) {
     fileInput.value = ''
   }
-  
+
   // 清除视频文件输入框
   if (videoFileInput.value) {
     videoFileInput.value.value = ''
@@ -791,7 +791,7 @@ function editTask(task) {
   if (task.fileName && task.fileUrl) {
     // 检查文件是否为视频格式
     const isVideoFile = /\.(mp4|avi|mov|wmv|flv|mkv|webm)$/i.test(task.fileName)
-    
+
     if (isVideoFile) {
       // 设置为视频文件
       uploadedVideoInfo.value = {
@@ -1039,7 +1039,7 @@ const handleVideoDragLeave = (event) => {
 const handleVideoDrop = (event) => {
   event.preventDefault()
   isVideoDragOver.value = false
-  
+
   const files = event.dataTransfer.files
   if (files.length > 0) {
     const file = files[0]
@@ -1064,7 +1064,7 @@ const uploadVideo = async (file) => {
     alert('请先选择学科再上传视频')
     return
   }
-  
+
   if (!newTask.value.type) {
     alert('请先选择内容类型再上传视频')
     return
@@ -1072,28 +1072,28 @@ const uploadVideo = async (file) => {
 
   try {
     videoUploadProgress.value = 0
-    
+
     const formData = new FormData()
     formData.append('file', file)
     formData.append('subject', newTask.value.subject || 'other')
     formData.append('type', newTask.value.type || 'other')
 
     const token = localStorage.getItem('accessToken')
-    
+
     // 使用XMLHttpRequest以支持上传进度
     const xhr = new XMLHttpRequest()
-    
+
     return new Promise((resolve, reject) => {
       xhr.upload.addEventListener('progress', (event) => {
         if (event.lengthComputable) {
           videoUploadProgress.value = Math.round((event.loaded / event.total) * 100)
         }
       })
-      
+
       xhr.addEventListener('load', () => {
         if (xhr.status === 200) {
           const result = JSON.parse(xhr.responseText)
-          
+
           // 保存上传结果
           uploadedVideoInfo.value = {
             fileName: result.fileName,
@@ -1101,7 +1101,7 @@ const uploadVideo = async (file) => {
             originalName: file.name,
             size: file.size
           }
-          
+
           // 将视频信息添加到任务对象
           // 如果没有普通附件，则使用视频作为主要文件
           // 如果有普通附件，视频信息仍然保存但不覆盖主要文件信息
@@ -1112,23 +1112,23 @@ const uploadVideo = async (file) => {
             // 如果已有普通附件，可以考虑将视频作为备用文件或者提示用户
             console.log('视频已上传，但任务已有普通附件:', newTask.value.fileName)
           }
-          
+
           videoUploadProgress.value = 100
           setTimeout(() => {
             videoUploadProgress.value = 0
           }, 2000)
-          
+
           alert('视频上传成功！')
           resolve(result)
         } else {
           reject(new Error('视频上传失败'))
         }
       })
-      
+
       xhr.addEventListener('error', () => {
         reject(new Error('网络错误'))
       })
-      
+
       xhr.open('POST', '/api/files/upload')
       xhr.setRequestHeader('Authorization', `Bearer ${token}`)
       xhr.send(formData)
@@ -1146,10 +1146,10 @@ const removeUploadedVideo = () => {
     newTask.value.fileName = ''
     newTask.value.fileUrl = ''
   }
-  
+
   uploadedVideoInfo.value = null
   videoUploadProgress.value = 0
-  
+
   // 清除视频文件输入框
   if (videoFileInput.value) {
     videoFileInput.value.value = ''

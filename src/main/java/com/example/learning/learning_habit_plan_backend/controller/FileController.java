@@ -88,10 +88,10 @@ public class FileController {
     public ResponseEntity<byte[]> downloadFileByPath(@PathVariable String fileName) {
         try {
             byte[] fileContent = fileStorageService.loadFileAsResource(fileName);
-            
+
             // 根据文件扩展名设置正确的Content-Type
             String contentType = getContentType(fileName);
-            
+
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
@@ -107,21 +107,21 @@ public class FileController {
         try {
             // 获取文件扩展名
             String extension = getFileExtension(fileName).toLowerCase();
-            
+
             // 构建预览响应
             Map<String, Object> response = Map.of(
                 "fileName", fileName,
                 "fileType", extension,
                 "downloadUrl", "/api/files/download/" + fileName
             );
-            
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "预览失败: " + e.getMessage()));
         }
     }
-    
+
     private String getFileExtension(String fileName) {
         int lastDotIndex = fileName.lastIndexOf('.');
         if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
@@ -129,7 +129,7 @@ public class FileController {
         }
         return "";
     }
-    
+
     private String getContentType(String fileName) {
         String extension = getFileExtension(fileName).toLowerCase();
         switch (extension) {

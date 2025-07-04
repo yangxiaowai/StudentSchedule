@@ -49,15 +49,15 @@ public class FileStorageServiceImpl implements FileStorageService {
             if (file == null || file.isEmpty()) {
                 throw new RuntimeException("上传文件不能为空");
             }
-            
+
             if (subject == null || subject.trim().isEmpty()) {
                 throw new RuntimeException("学科分类不能为空");
             }
-            
+
             if (type == null || type.trim().isEmpty()) {
                 throw new RuntimeException("内容类型不能为空");
             }
-            
+
             // 添加详细日志输出
             System.out.println("开始处理文件上传请求 - 文件名: " + file.getOriginalFilename() + ", 学科: " + subject + ", 类型: " + type);
             
@@ -66,7 +66,7 @@ public class FileStorageServiceImpl implements FileStorageService {
             if (originalFileName == null || originalFileName.isEmpty()) {
                 throw new RuntimeException("文件名不能为空");
             }
-            
+
             // 如果是视频文件，进行特殊验证
             if (VideoFileValidator.isVideoFile(originalFileName)) {
                 VideoFileValidator.ValidationResult validationResult = VideoFileValidator.validateVideoFile(file);
@@ -76,7 +76,7 @@ public class FileStorageServiceImpl implements FileStorageService {
                 }
                 System.out.println("视频文件验证通过: " + validationResult.getMessage());
             }
-            
+
             // 从请求头获取JWT令牌
             HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
             String token = request.getHeader("Authorization");
@@ -117,7 +117,7 @@ public class FileStorageServiceImpl implements FileStorageService {
             if (file.getSize() > maxFileSize) {
                 throw new RuntimeException("文件大小超过限制（最大100MB）");
             }
-            
+
             // 确保上传目录存在
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
@@ -126,23 +126,23 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             // 生成唯一文件名 - 安全的文件名处理，移除路径分隔符
             originalFileName = originalFileName.replaceAll("[/\\\\]", "_");
-            
+
             // 检查文件是否有扩展名
             if (!originalFileName.contains(".")) {
                 throw new RuntimeException("文件必须包含扩展名");
             }
-            
+
             String fileExtension = originalFileName.substring(originalFileName.lastIndexOf(".")).toLowerCase();
             String uniqueFileName = UUID.randomUUID() + fileExtension;
 
             // 保存文件
             Path filePath = uploadPath.resolve(uniqueFileName);
-            
+
             // 确保文件路径安全
             if (!filePath.startsWith(uploadPath)) {
                 throw new RuntimeException("非法的文件路径");
             }
-            
+
             Files.copy(file.getInputStream(), filePath);
 
             // 保存到数据库
@@ -156,20 +156,21 @@ public class FileStorageServiceImpl implements FileStorageService {
             material.setUserId(userId);
 
             LearningMaterial savedMaterial = materialRepository.save(material);
-            
+
             // 验证保存结果
             if (savedMaterial == null) {
                 throw new RuntimeException("数据库保存失败，返回结果为空");
             }
 
+
             // 返回响应
             System.out.println("文件上传成功 - ID: " + savedMaterial.getId() + ", 文件名: " + originalFileName);
-            
+
             // 安全获取上传时间
-            String uploadTimeStr = savedMaterial.getUploadTime() != null ? 
-                savedMaterial.getUploadTime().toString() : 
+            String uploadTimeStr = savedMaterial.getUploadTime() != null ?
+                savedMaterial.getUploadTime().toString() :
                 java.time.LocalDateTime.now().toString();
-                
+
             return new FileUploadResponse(
                     savedMaterial.getId(),
                     originalFileName,
@@ -179,6 +180,7 @@ public class FileStorageServiceImpl implements FileStorageService {
                     subject,
                     type,
                     uploadTimeStr
+                    savedMaterial.getUploadTime().toString()
             );
         } catch (IOException e) {
             System.err.println("文件IO操作失败: " + e.getMessage());
@@ -190,6 +192,7 @@ public class FileStorageServiceImpl implements FileStorageService {
             System.err.println("未知异常: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("文件存储过程中发生未知错误: " + e.getMessage(), e);
+            throw new RuntimeException("文件存储失败: " + e.getMessage(), e);
         }
     }
         
@@ -326,6 +329,7 @@ public class FileStorageServiceImpl implements FileStorageService {
                 // 从文件路径中提取实际的UUID格式文件名
                 String actualFileName = Paths.get(material.getFilePath()).getFileName().toString();
                 response.setFileDownloadUri("/api/files/download?fileName=" + actualFileName);
+                response.setFileDownloadUri("/api/files/download?fileName=" + material.getFileName());
                 response.setFileType(material.getFileType());
                 response.setSize(material.getFileSize());
                 response.setSubject(material.getSubject());

@@ -135,18 +135,18 @@
             &times;
           </button>
         </div>
-        
+
         <!-- 上传类型选择标签 -->
         <div class="upload-tabs">
-          <button 
-            class="tab-btn" 
+          <button
+            class="tab-btn"
             :class="{ active: uploadMode === 'file' }"
             @click="uploadMode = 'file'"
           >
             📄 文档资料
           </button>
-          <button 
-            class="tab-btn" 
+          <button
+            class="tab-btn"
             :class="{ active: uploadMode === 'video' }"
             @click="uploadMode = 'video'"
           >
@@ -202,7 +202,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- 视频上传模式 -->
           <div v-else-if="uploadMode === 'video'" class="video-upload-section">
             <VideoUpload @upload-success="handleVideoUploadSuccess" />
@@ -636,19 +636,19 @@ const previewVideoFile = async (previewData) => {
     video.style.backgroundColor = '#000';
     video.style.outline = 'none';
     video.style.pointerEvents = 'auto';
-    
+
     // 确保视频控件可以交互
     video.setAttribute('controlsList', '');
     video.setAttribute('disablePictureInPicture', 'false');
-    
+
     console.log('视频元素创建完成，controls属性:', video.controls);
-    
+
     // 响应式视频尺寸设置
     const setVideoSize = () => {
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
       const isLandscape = windowWidth > windowHeight;
-      
+
       if (isLandscape) {
         // 横屏模式：优先考虑宽度
         video.style.width = Math.min(windowWidth * 0.8, 1200) + 'px';
@@ -661,21 +661,21 @@ const previewVideoFile = async (previewData) => {
         video.style.width = 'auto';
       }
     };
-    
+
     // 初始设置视频尺寸
     setVideoSize();
-    
+
     // 监听窗口大小变化和屏幕方向变化
     const resizeHandler = () => {
       setVideoSize();
     };
-    
+
     window.addEventListener('resize', resizeHandler);
     window.addEventListener('orientationchange', () => {
       // 延迟执行以确保方向变化完成
       setTimeout(resizeHandler, 100);
     });
-    
+
     // 创建时间显示元素
     const timeDisplay = document.createElement('div');
     timeDisplay.style.fontSize = '14px';
@@ -683,7 +683,7 @@ const previewVideoFile = async (previewData) => {
     timeDisplay.style.marginTop = '5px';
     timeDisplay.style.marginBottom = '10px';
     timeDisplay.style.textAlign = 'center';
-    
+
     // 更新时间显示
     const updateTimeDisplay = () => {
       if (video.duration) {
@@ -691,14 +691,14 @@ const previewVideoFile = async (previewData) => {
         const currentSeconds = Math.floor(video.currentTime % 60);
         const totalMinutes = Math.floor(video.duration / 60);
         const totalSeconds = Math.floor(video.duration % 60);
-        
+
         timeDisplay.textContent = `${currentMinutes.toString().padStart(2, '0')}:${currentSeconds.toString().padStart(2, '0')} / ${totalMinutes.toString().padStart(2, '0')}:${totalSeconds.toString().padStart(2, '0')}`;
       }
     };
-    
+
     // 监听时间更新事件，更新时间显示
     video.addEventListener('timeupdate', updateTimeDisplay);
-    
+
     // 在模态框关闭时移除事件监听器
     const originalCloseBtn = modal.querySelector('button');
     const originalOnClick = originalCloseBtn.onclick;
@@ -706,18 +706,18 @@ const previewVideoFile = async (previewData) => {
       // 移除窗口事件监听器
       window.removeEventListener('resize', resizeHandler);
       window.removeEventListener('orientationchange', resizeHandler);
-      
+
       // 移除拖拽相关的事件监听器
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
-      
+
       // 移除视频事件监听器
       if (videoCanPlayHandler) {
         video.removeEventListener('canplay', videoCanPlayHandler);
       }
-      
+
       // 执行原始的关闭函数
       originalOnClick();
     };
@@ -733,7 +733,7 @@ const previewVideoFile = async (previewData) => {
         <div style="padding: 20px; text-align: center; color: #666;">
           <p>视频加载失败，请检查文件格式或网络连接</p>
           <a href="${videoUrl}"
-             target="_blank" 
+             target="_blank"
              style="color: #007bff; text-decoration: none;">
             下载视频文件
           </a>
@@ -770,11 +770,11 @@ const previewVideoFile = async (previewData) => {
     const taskId = previewData.taskId; // 从预览数据中获取任务ID
     let currentTaskProgress = 0; // 当前任务进度
     let isProgressComplete = false; // 标记任务是否已完成
-    
+
     // 获取当前任务进度
     const getCurrentTaskProgress = async () => {
       if (!taskId) return;
-      
+
       try {
         const token = localStorage.getItem('accessToken');
         const response = await fetch(`/api/tasks/${taskId}`, {
@@ -782,13 +782,13 @@ const previewVideoFile = async (previewData) => {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           const task = await response.json();
           currentTaskProgress = task.progress || 0;
           isProgressComplete = currentTaskProgress >= 100;
           console.log(`当前任务进度: ${currentTaskProgress}%, 是否已完成: ${isProgressComplete}`);
-          
+
           if (isProgressComplete) {
             console.log('任务已完成，不再记录观看进度');
           }
@@ -797,31 +797,31 @@ const previewVideoFile = async (previewData) => {
         console.error('获取任务进度失败:', error);
       }
     };
-    
+
     // 初始化时获取当前进度
     await getCurrentTaskProgress();
-    
+
     // 格式化时间的辅助函数
     const formatTime = (seconds) => {
       const mins = Math.floor(seconds / 60);
       const secs = Math.floor(seconds % 60);
       return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
-    
+
     // 更新观看进度的函数
     const updateWatchProgress = () => {
       if (video.duration && taskId && !isProgressComplete && !isUserSeeking) {
         const currentTime = video.currentTime;
         const duration = video.duration;
         const percentage = Math.round((currentTime / duration) * 100);
-        
+
         // 记录最大观看进度，但不能低于当前任务进度
         const newProgress = Math.max(percentage, currentTaskProgress);
-        
+
         if (newProgress > maxWatchedProgress) {
           maxWatchedProgress = newProgress;
           console.log(`视频观看进度更新: ${maxWatchedProgress}%`);
-          
+
           // 每当进度增加5%时更新任务进度
           if (maxWatchedProgress % 5 === 0 || maxWatchedProgress === 100) {
             updateTaskProgress(taskId, maxWatchedProgress);
@@ -829,13 +829,13 @@ const previewVideoFile = async (previewData) => {
         }
       }
     };
-    
+
     // 更新任务进度到后端的函数
     const updateTaskProgress = async (taskId, progress) => {
       try {
         const token = localStorage.getItem('accessToken');
         console.log(`准备更新任务 ${taskId} 视频观看进度为 ${progress}%`);
-        
+
         const response = await fetch(`/api/tasks/${taskId}/progress`, {
           method: 'PUT',
           headers: {
@@ -844,7 +844,7 @@ const previewVideoFile = async (previewData) => {
           },
           body: JSON.stringify({ progress })
         });
-        
+
         if (response.ok) {
           console.log(`任务 ${taskId} 视频观看进度已更新为 ${progress}%`);
           // 触发任务进度更新事件，通知TaskManager更新显示
@@ -858,7 +858,7 @@ const previewVideoFile = async (previewData) => {
         console.error('更新任务进度时发生错误:', error);
       }
     };
-    
+
     video.onloadedmetadata = () => {
       const duration = Math.round(video.duration);
       const minutes = Math.floor(duration / 60);
@@ -870,25 +870,25 @@ const previewVideoFile = async (previewData) => {
           <span>文件大小: ${previewData.fileSize ? (previewData.fileSize / 1024 / 1024).toFixed(2) + ' MB' : '未知'}</span>
         </div>
       `;
-      
+
       console.log(`视频元数据加载完成，时长: ${duration}秒, 当前任务进度: ${currentTaskProgress}%`);
     };
-    
+
     // 在视频可以播放时设置进度（移到进度条创建之后）
     let videoCanPlayHandler = null;
-    
+
     // 监听时间更新事件
     video.addEventListener('timeupdate', updateWatchProgress);
-    
+
     // 监听播放状态变化
     video.addEventListener('play', () => {
       console.log('视频开始播放');
     });
-    
+
     video.addEventListener('pause', () => {
       console.log('视频暂停播放');
     });
-    
+
     video.addEventListener('ended', () => {
       console.log('视频播放完成');
       // 视频播放完成时确保进度为100%（仅当任务未完成时）
@@ -897,19 +897,19 @@ const previewVideoFile = async (previewData) => {
         updateTaskProgress(taskId, 100);
       }
     });
-    
+
     // 监听用户手动跳转进度
     video.addEventListener('seeked', () => {
       if (video.duration && taskId && !isProgressComplete) {
         const currentTime = video.currentTime;
         const duration = video.duration;
         const percentage = Math.round((currentTime / duration) * 100);
-        
+
         // 如果用户跳转到更高的进度，更新最大观看进度
         if (percentage > maxWatchedProgress) {
           maxWatchedProgress = percentage;
           console.log(`用户跳转到新进度: ${maxWatchedProgress}%`);
-          
+
           // 立即更新任务进度
           updateTaskProgress(taskId, maxWatchedProgress);
         }
@@ -942,7 +942,7 @@ const previewVideoFile = async (previewData) => {
     progressWrapper.style.width = '100%';
     progressWrapper.style.padding = '10px 0';
     progressWrapper.style.cursor = 'pointer';
-    
+
     const customProgressContainer = document.createElement('div');
     customProgressContainer.style.width = '100%';
     customProgressContainer.style.height = '6px';
@@ -950,14 +950,14 @@ const previewVideoFile = async (previewData) => {
     customProgressContainer.style.borderRadius = '3px';
     customProgressContainer.style.position = 'relative';
     customProgressContainer.style.cursor = 'pointer';
-    
+
     const customProgressBar = document.createElement('div');
     customProgressBar.style.width = '0%';
     customProgressBar.style.height = '100%';
     customProgressBar.style.backgroundColor = '#4CAF50';
     customProgressBar.style.borderRadius = '3px';
     customProgressBar.style.transition = 'width 0.1s';
-    
+
     // 创建拖拽手柄
     const progressHandle = document.createElement('div');
     progressHandle.style.width = '16px';
@@ -972,11 +972,11 @@ const previewVideoFile = async (previewData) => {
     progressHandle.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
     progressHandle.style.transform = 'translateX(-50%)';
     progressHandle.style.zIndex = '10';
-    
+
     customProgressContainer.appendChild(customProgressBar);
     customProgressContainer.appendChild(progressHandle);
     progressWrapper.appendChild(customProgressContainer);
-    
+
     // 更新自定义进度条和手柄位置
     const updateCustomProgress = () => {
       if (video.duration) {
@@ -985,23 +985,23 @@ const previewVideoFile = async (previewData) => {
         progressHandle.style.left = `${percentage}%`;
       }
     };
-    
+
     // 监听视频时间更新事件，更新自定义进度条
     video.addEventListener('timeupdate', updateCustomProgress);
-    
+
     // 拖拽状态管理
     let isDragging = false;
     let dragStartX = 0;
     let dragStartTime = 0;
     let isUserSeeking = false; // 标记用户是否在手动跳转
-    
+
     // 获取进度位置的辅助函数
     const getProgressPosition = (clientX) => {
       const rect = customProgressContainer.getBoundingClientRect();
       const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
       return pos;
     };
-    
+
     // 设置视频时间的辅助函数
     const setVideoTime = (position, isUserAction = false) => {
       if (video.duration) {
@@ -1016,7 +1016,7 @@ const previewVideoFile = async (previewData) => {
         }
         video.currentTime = position * video.duration;
         updateCustomProgress();
-        
+
         // 延迟重置标志，确保timeupdate事件能正确识别
         if (isUserAction) {
           setTimeout(() => {
@@ -1025,7 +1025,7 @@ const previewVideoFile = async (previewData) => {
         }
       }
     };
-    
+
     // 点击进度条跳转
     progressWrapper.addEventListener('click', (e) => {
       if (!isDragging) {
@@ -1033,7 +1033,7 @@ const previewVideoFile = async (previewData) => {
         setVideoTime(pos, true); // 标记为用户操作
       }
     });
-    
+
     // 鼠标拖拽事件
     const handleMouseDown = (e) => {
       isDragging = true;
@@ -1045,7 +1045,7 @@ const previewVideoFile = async (previewData) => {
       e.preventDefault();
       e.stopPropagation();
     };
-    
+
     const handleMouseMove = (e) => {
       if (isDragging) {
         const pos = getProgressPosition(e.clientX);
@@ -1053,14 +1053,14 @@ const previewVideoFile = async (previewData) => {
         e.preventDefault();
       }
     };
-    
+
     const handleMouseUp = () => {
       if (isDragging) {
         isDragging = false;
         progressHandle.style.cursor = 'grab';
       }
     };
-    
+
     // 触摸拖拽事件
     const handleTouchStart = (e) => {
       isDragging = true;
@@ -1072,7 +1072,7 @@ const previewVideoFile = async (previewData) => {
       e.preventDefault();
       e.stopPropagation();
     };
-    
+
     const handleTouchMove = (e) => {
       if (isDragging) {
         const touch = e.touches[0];
@@ -1081,27 +1081,27 @@ const previewVideoFile = async (previewData) => {
         e.preventDefault();
       }
     };
-    
+
     const handleTouchEnd = () => {
       isDragging = false;
     };
-    
+
     // 绑定事件监听器
     progressHandle.addEventListener('mousedown', handleMouseDown);
     progressWrapper.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    
+
     progressHandle.addEventListener('touchstart', handleTouchStart);
     progressWrapper.addEventListener('touchstart', handleTouchStart);
     document.addEventListener('touchmove', handleTouchMove);
     document.addEventListener('touchend', handleTouchEnd);
-    
+
     // 定义并绑定视频可播放事件处理器
     let hasInitializedProgress = false;
     videoCanPlayHandler = () => {
       console.log('视频可以播放，准备设置进度');
-      
+
       // 只在首次加载时设置进度，避免用户拖拽时被重置
       if (!hasInitializedProgress && currentTaskProgress > 0 && currentTaskProgress < 100) {
         const startTime = (currentTaskProgress / 100) * video.duration;
@@ -1109,15 +1109,15 @@ const previewVideoFile = async (previewData) => {
         maxWatchedProgress = currentTaskProgress;
         hasInitializedProgress = true;
         console.log(`从记录的进度开始播放: ${currentTaskProgress}% (${Math.round(startTime)}秒)`);
-        
+
         // 更新自定义进度条到正确位置
         updateCustomProgress();
       }
     };
-    
+
     // 绑定事件
     video.addEventListener('canplay', videoCanPlayHandler);
-    
+
     // 组装元素
     videoContainer.appendChild(loadingText);
     videoContainer.appendChild(video);
@@ -1165,18 +1165,25 @@ const createModal = (title) => {
   const content = document.createElement('div');
   content.className = 'modal-content';
   content.style.backgroundColor = 'white';
+  content.style.padding = '20px';
+  content.style.borderRadius = '8px';
+  content.style.width = '90%';
+  content.style.maxWidth = '900px';
+  content.style.maxHeight = '90vh';
+  content.style.overflow = 'auto';
+  content.style.position = 'relative';
   content.style.borderRadius = '8px';
   content.style.position = 'relative';
   content.style.boxSizing = 'border-box';
   content.style.display = 'flex';
   content.style.flexDirection = 'column';
-  
+
   // 响应式模态框尺寸设置
   const setModalSize = () => {
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     const isLandscape = windowWidth > windowHeight;
-    
+
     if (isLandscape) {
       // 横屏模式
       content.style.width = '95%';
@@ -1192,18 +1199,18 @@ const createModal = (title) => {
       content.style.maxHeight = '95vh';
       content.style.padding = '15px';
     }
-    
+
     content.style.overflow = 'auto';
   };
-  
+
   // 初始设置模态框尺寸
   setModalSize();
-  
+
   // 监听窗口大小变化
   const modalResizeHandler = () => {
     setModalSize();
   };
-  
+
   window.addEventListener('resize', modalResizeHandler);
   window.addEventListener('orientationchange', () => {
     setTimeout(modalResizeHandler, 100);
@@ -1218,6 +1225,7 @@ const createModal = (title) => {
   closeBtn.style.border = 'none';
   closeBtn.style.fontSize = '24px';
   closeBtn.style.cursor = 'pointer';
+  closeBtn.onclick = () => document.body.removeChild(modal);
   closeBtn.style.zIndex = '10';
   closeBtn.onclick = () => {
     // 移除模态框的事件监听器
@@ -1385,7 +1393,7 @@ const downloadMaterial = async (material) => {
 // 处理视频上传成功
 const handleVideoUploadSuccess = (response) => {
   console.log('视频上传成功:', response);
-  
+
   // 添加到文件列表
   materials.value.unshift({
     id: response.id,
@@ -1396,10 +1404,10 @@ const handleVideoUploadSuccess = (response) => {
     size: response.size,
     url: response.fileDownloadUri
   });
-  
+
   // 关闭上传模态框
   showUploadModal.value = false;
-  
+
   alert('视频上传成功！');
 };
 
@@ -1435,7 +1443,7 @@ const deleteMaterial = async (material) => {
 // 修改 onMounted 加载文件列表
 onMounted(() => {
   loadMaterials();
-  
+
   // 监听来自TaskManager的预览事件
   window.addEventListener('previewTaskFile', handleTaskFilePreview);
 });
@@ -1448,14 +1456,14 @@ onBeforeUnmount(() => {
 // 处理任务文件预览事件
 const handleTaskFilePreview = async (event) => {
   console.log('DataIntegration: 收到previewTaskFile事件', event.detail);
-  
+
   const { fileName, originalFileName, taskName, fileUrl, taskId } = event.detail;
-  
+
   try {
     // 检查文件类型
     const fileExtension = fileName.toLowerCase().split('.').pop();
     const videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'];
-    
+
     if (videoExtensions.includes(fileExtension)) {
       // 构造预览数据
       const previewData = {
@@ -1466,9 +1474,9 @@ const handleTaskFilePreview = async (event) => {
         contentType: `video/${fileExtension === 'mov' ? 'quicktime' : fileExtension}`,
         taskId: taskId // 添加任务ID用于进度跟踪
       };
-      
+
       console.log('DataIntegration: 开始预览视频文件', previewData);
-      
+
       // 调用视频预览函数
       previewVideoFile(previewData);
     } else {
@@ -1648,7 +1656,7 @@ const loadScript = (url) => {
     margin: 5px !important;
     border-radius: 4px !important;
   }
-  
+
   .file-preview-modal video {
     border-radius: 4px !important;
   }
@@ -1676,7 +1684,7 @@ const loadScript = (url) => {
     border-radius: 0 !important;
     padding: 10px !important;
   }
-  
+
   .file-preview-modal {
     padding: 0 !important;
   }
