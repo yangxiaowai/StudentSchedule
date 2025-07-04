@@ -6,7 +6,7 @@ import DataIntegration from '../components/DataIntegration.vue'
 import PlanManager from '../components/PlanManager.vue'
 import AIAnalysis from '../components/AIAnalysis.vue'
 import SocialLearning from '../components/SocialLearning.vue'
-import AIChatPage from '../pages/AIChat.vue'
+
 import AliCloudChat from '../components/AliCloudChat.vue'
 import Login from '../pages/Login.vue'
 import Register from '../pages/Register.vue'
@@ -46,7 +46,7 @@ const routes = [
       { path: 'data-integration', component: DataIntegration },
       { path: 'plan-manager', component: PlanManager },
       { path: 'ai-analysis', component: AIAnalysis },
-      { path: 'ai-chat', component: AIChatPage },
+      { path: 'ai-chat', component: AliCloudChat },
       { path: 'alicloud-chat', component: AliCloudChat },
       { path: 'social-learning', component: SocialLearning }
     ]
