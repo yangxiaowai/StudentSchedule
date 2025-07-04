@@ -19,6 +19,7 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="learning-habit-plan-backend" target="21" />
       <module name="schedule" target="1.5" />
       <module name="Schedule" target="1.8" />
     </bytecodeTargetLevel>

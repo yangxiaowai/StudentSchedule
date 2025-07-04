@@ -84,6 +84,86 @@ public class FileController {
                 .body(fileContent);
     }
 
+    @GetMapping("/download/{fileName:.+}")
+    public ResponseEntity<byte[]> downloadFileByPath(@PathVariable String fileName) {
+        try {
+            byte[] fileContent = fileStorageService.loadFileAsResource(fileName);
+
+            // 根据文件扩展名设置正确的Content-Type
+            String contentType = getContentType(fileName);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+                    .body(fileContent);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(null);
+        }
+    }
+
+    @GetMapping("/preview/{fileName:.+}")
+    public ResponseEntity<?> previewFile(@PathVariable String fileName) {
+        try {
+            // 获取文件扩展名
+            String extension = getFileExtension(fileName).toLowerCase();
+
+            // 构建预览响应
+            Map<String, Object> response = Map.of(
+                "fileName", fileName,
+                "fileType", extension,
+                "downloadUrl", "/api/files/download/" + fileName
+            );
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "预览失败: " + e.getMessage()));
+        }
+    }
+
+    private String getFileExtension(String fileName) {
+        int lastDotIndex = fileName.lastIndexOf('.');
+        if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
+            return fileName.substring(lastDotIndex + 1);
+        }
+        return "";
+    }
+
+    private String getContentType(String fileName) {
+        String extension = getFileExtension(fileName).toLowerCase();
+        switch (extension) {
+            case "mp4":
+                return "video/mp4";
+            case "avi":
+                return "video/x-msvideo";
+            case "mov":
+                return "video/quicktime";
+            case "wmv":
+                return "video/x-ms-wmv";
+            case "flv":
+                return "video/x-flv";
+            case "webm":
+                return "video/webm";
+            case "mkv":
+                return "video/x-matroska";
+            case "pdf":
+                return "application/pdf";
+            case "txt":
+                return "text/plain";
+            case "doc":
+                return "application/msword";
+            case "docx":
+                return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "ppt":
+                return "application/vnd.ms-powerpoint";
+            case "pptx":
+                return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            default:
+                return "application/octet-stream";
+        }
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getUserFiles(@PathVariable Long userId) {
         try {

@@ -184,13 +184,20 @@ public ResponseEntity<?> updateTaskProgress(
         
         Integer progress = (Integer) progressData.get("progress");
         if (progress != null) {
-            task.setProgress(progress);
-            // 如果进度达到100%，自动标记为完成
-            if (progress >= 100) {
-                task.setCompleted(true);
+            // 只有当新进度大于当前进度时才更新（保持最大进度）
+            Integer currentProgress = task.getProgress() != null ? task.getProgress() : 0;
+            if (progress > currentProgress) {
+                task.setProgress(progress);
+                // 如果进度达到100%，自动标记为完成
+                if (progress >= 100) {
+                    task.setCompleted(true);
+                }
+                Task updated = taskService.save(task);
+                return ResponseEntity.ok(updated);
+            } else {
+                // 进度没有增加，返回当前任务状态但不更新
+                return ResponseEntity.ok(task);
             }
-            Task updated = taskService.save(task);
-            return ResponseEntity.ok(updated);
         } else {
             ErrorResponse errorResponse = new ErrorResponse("参数错误", "进度值不能为空");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);

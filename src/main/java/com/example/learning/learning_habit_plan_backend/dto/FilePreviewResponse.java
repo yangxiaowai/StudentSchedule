@@ -5,11 +5,15 @@ import lombok.Data;
 @Data
 public class FilePreviewResponse {
     private String fileName;
-    private String fileType;  // txt/pdf/doc/ppt等
+    private String fileType;  // txt/pdf/doc/ppt/mp4等
     private String content;   // 文本内容或Base64编码的文件内容
     private boolean multiPage; // 是否为多页面文档（PDF、PPT等）
     private int pageCount;    // 页面数量
     private String error;     // 错误信息（如有）
+    private String previewType; // 预览类型：text/pdf/office/image/video等
+    private String contentType; // MIME类型
+    private String downloadUrl; // 下载URL
+    private long fileSize;    // 文件大小（字节）
 
     public static FilePreviewResponse success(String fileName, String fileType, String content) {
         FilePreviewResponse response = new FilePreviewResponse();
