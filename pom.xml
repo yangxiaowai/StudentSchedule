@@ -200,15 +200,6 @@
 			<artifactId>reactor-core</artifactId>
 			<version>3.6.6</version>
 		</dependency>
-		
-		<!-- MacOS DNS 解析支持 -->
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-resolver-dns-native-macos</artifactId>
-			<version>4.1.122.Final</version>
-			<classifier>osx-aarch_64</classifier>
-			<scope>runtime</scope>
-		</dependency>
 	</dependencies>
 
 	<build>
