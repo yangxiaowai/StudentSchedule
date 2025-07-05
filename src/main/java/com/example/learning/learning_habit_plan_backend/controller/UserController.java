@@ -96,26 +96,6 @@ public class UserController {
     }
     
     /**
-     * 根据用户ID获取用户信息
-     */
-    @GetMapping(value = "/info/{userId}", produces = "application/json")
-    public Result<LoginResponse.UserInfo> getUserById(@PathVariable Long userId) {
-        try {
-            User user = userService.findById(userId);
-            if (user == null) {
-                return Result.failure("用户不存在");
-            }
-            LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo();
-            userInfo.setId(user.getId());
-            userInfo.setUsername(user.getUsername());
-            userInfo.setEmail(user.getEmail());
-            return Result.success(userInfo);
-        } catch (Exception e) {
-            return Result.failure(e.getMessage());
-        }
-    }
-    
-    /**
      * 发送密码重置邮件
      */
     @PostMapping(value = "/forgot-password", produces = "application/json")

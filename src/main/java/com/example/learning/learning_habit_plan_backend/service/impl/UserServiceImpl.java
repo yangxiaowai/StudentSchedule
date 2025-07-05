@@ -140,11 +140,6 @@ public class UserServiceImpl implements UserService {
     }
     
     @Override
-    public User findById(Long userId) {
-        return userMapper.selectById(userId);
-    }
-    
-    @Override
     public void sendPasswordResetEmail(String email) {
         User user = userMapper.selectByEmail(email);
         if (user == null) {

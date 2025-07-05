@@ -1,5 +1,5 @@
 // 用户相关API
-const API_BASE_URL = '/api/user'
+const API_BASE_URL = 'http://localhost:8080/api/user'
 
 // 通用请求函数
 const request = async (url, options = {}) => {
