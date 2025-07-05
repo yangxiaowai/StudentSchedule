@@ -180,7 +180,6 @@ public class FileStorageServiceImpl implements FileStorageService {
                     subject,
                     type,
                     uploadTimeStr
-                    savedMaterial.getUploadTime().toString()
             );
         } catch (IOException e) {
             System.err.println("文件IO操作失败: " + e.getMessage());
@@ -192,7 +191,6 @@ public class FileStorageServiceImpl implements FileStorageService {
             System.err.println("未知异常: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("文件存储过程中发生未知错误: " + e.getMessage(), e);
-            throw new RuntimeException("文件存储失败: " + e.getMessage(), e);
         }
     }
         
@@ -329,7 +327,6 @@ public class FileStorageServiceImpl implements FileStorageService {
                 // 从文件路径中提取实际的UUID格式文件名
                 String actualFileName = Paths.get(material.getFilePath()).getFileName().toString();
                 response.setFileDownloadUri("/api/files/download?fileName=" + actualFileName);
-                response.setFileDownloadUri("/api/files/download?fileName=" + material.getFileName());
                 response.setFileType(material.getFileType());
                 response.setSize(material.getFileSize());
                 response.setSubject(material.getSubject());

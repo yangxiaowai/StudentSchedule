@@ -44,7 +44,6 @@ com\example\learning\learning_habit_plan_backend\repository\LikeRecordRepository
 com\example\learning\learning_habit_plan_backend\service\FilePreviewService.class
 com\example\learning\learning_habit_plan_backend\controller\TaskController.class
 com\example\learning\learning_habit_plan_backend\entity\User.class
-com\example\learning\learning_habit_plan_backend\service\impl\FileStorageServiceImpl.class
 com\example\learning\learning_habit_plan_backend\common\handler\GlobalExceptionHandler.class
 com\example\learning\learning_habit_plan_backend\controller\FilePreviewController.class
 com\example\learning\learning_habit_plan_backend\entity\QAQuestion.class
