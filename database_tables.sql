@@ -224,6 +224,20 @@ CREATE TABLE IF NOT EXISTS `user_learning_stats` (
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户学习统计表';
 
+-- 15. 学习资料表
+CREATE TABLE IF NOT EXISTS `learning_materials` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `file_name` VARCHAR(255) NOT NULL COMMENT '文件名',
+    `file_path` VARCHAR(500) NOT NULL COMMENT '文件路径',
+    `file_type` VARCHAR(50) NOT NULL COMMENT '文件类型',
+    `file_size` BIGINT NOT NULL COMMENT '文件大小',
+    `subject` VARCHAR(100) NOT NULL COMMENT '学科',
+    `content_type` VARCHAR(100) NOT NULL COMMENT '内容类型',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `upload_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学习资料表';
+
 -- 插入初始数据
 
 -- 清理现有数据（按外键依赖顺序）
@@ -235,6 +249,7 @@ DELETE FROM `group_member`;
 DELETE FROM `study_group_member`;
 DELETE FROM `user_stats`;
 DELETE FROM `user_learning_stats`;
+DELETE FROM `learning_materials`;
 DELETE FROM `user` WHERE `username` IN ('admin', 'student1', 'student2');
 DELETE FROM `study_group` WHERE `name` IN ('数学学习小组', '英语口语练习', '编程入门');
 DELETE FROM `achievement` WHERE `name` IN ('初学者', '勤奋学习者', '学习之星');
@@ -448,3 +463,4 @@ INSERT INTO `task` (`name`, `subject`, `content`, `start_time`, `end_time`, `pro
 ('背诵英语单词', '英语', '背诵Unit 5的新单词', NOW(), DATE_ADD(NOW(), INTERVAL 1 DAY), 80, FALSE, (SELECT `id` FROM `user` WHERE `username` = 'student1')),
 ('编程练习', '编程', '完成Python基础练习题', NOW(), DATE_ADD(NOW(), INTERVAL 5 DAY), 30, FALSE, (SELECT `id` FROM `user` WHERE `username` = 'student2')),
 ('复习物理知识点', '物理', '复习力学相关知识点', NOW(), DATE_ADD(NOW(), INTERVAL 2 DAY), 100, TRUE, (SELECT `id` FROM `user` WHERE `username` = 'admin'));
+
