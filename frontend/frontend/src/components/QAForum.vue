@@ -852,9 +852,6 @@ export default {
 <style scoped>
 .qa-forum {
   padding: 20px;
-  width: calc(90vw - 96px);
-  margin: 0 14px;
-  box-sizing: border-box;
 }
 
 .header {

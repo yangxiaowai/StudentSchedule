@@ -3,11 +3,8 @@
     <!-- 侧边栏 -->
     <div class="sidebar">
       <div class="sidebar-header">
-        <h3 class="sidebar-title-highlight">{{ isReadOnly ? `${targetUserName}的任务` : '任务管理' }}</h3>
-        <button v-if="!isReadOnly" @click="showModal = true" class="add-task-btn">
-          <i class="fas fa-plus"></i> 添加任务
-        </button>
-        <button v-else class="add-task-btn disabled" disabled>
+        <h3 class="sidebar-title-highlight">任务管理</h3>
+        <button @click="showModal = true" class="add-task-btn">
           <i class="fas fa-plus"></i> 添加任务
         </button>
       </div>
@@ -165,19 +162,13 @@
                 </td>
                 
                 <td class="edit-cell">
-                  <button v-if="!isReadOnly" @click="editTask(task)" class="icon-button edit" title="编辑">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button v-else class="icon-button edit disabled" disabled title="只读模式">
+                  <button @click="editTask(task)" class="icon-button edit" title="编辑">
                     <i class="fas fa-edit"></i>
                   </button>
                 </td>
                 
                 <td class="delete-cell">
-                  <button v-if="!isReadOnly" @click="deleteTask(task.id)" class="icon-button delete" title="删除">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                  <button v-else class="icon-button delete disabled" disabled title="只读模式">
+                  <button @click="deleteTask(task.id)" class="icon-button delete" title="删除">
                     <i class="fas fa-trash"></i>
                   </button>
                 </td>
@@ -400,7 +391,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { uploadForTask } from '@/utils/fileUpload'
 
 function formatDateTime(dateStr) {
@@ -472,40 +463,10 @@ function getContentTypeLabel(type) {
 }
 
 const router = useRouter()
-const route = useRoute()
 const isComponentMounted = ref(false)
 const searchQuery = ref('')
 const filteredTasks = ref([])
 const activeCategory = ref('all')
-
-// 只读模式相关状态
-const isReadOnly = ref(false)
-const targetUserId = ref(null)
-const targetUserName = ref('')
-
-// 检查只读模式
-const checkReadOnlyMode = () => {
-  if ((route.query.userId || route.query.targetUserId) && (route.query.readOnly === 'true' || route.query.readonly === 'true')) {
-    isReadOnly.value = true
-    targetUserId.value = route.query.userId || route.query.targetUserId
-    targetUserName.value = route.query.userName || `用户${targetUserId.value}`
-    console.log('设置为只读模式:', { isReadOnly: isReadOnly.value, targetUserId: targetUserId.value, targetUserName: targetUserName.value })
-  } else {
-    isReadOnly.value = false
-    targetUserId.value = null
-    targetUserName.value = ''
-    console.log('设置为正常模式')
-  }
-}
-
-// 初始检查
-checkReadOnlyMode()
-
-// 监听路由变化
-watch(() => route.query, () => {
-  checkReadOnlyMode()
-  fetchTasks()
-}, { immediate: false })
 const categories = ref([
   { key: 'all', label: '全部', icon: 'fas fa-list' },
   { key: 'today', label: '今日', icon: 'fas fa-calendar-day' },
@@ -673,14 +634,7 @@ const validateForm = () => {
 async function fetchTasks() {
   try {
     const token = localStorage.getItem('accessToken')
-    let url = 'http://localhost:8080/api/tasks'
-    
-    // 如果是只读模式，获取指定用户的任务
-    if (isReadOnly.value && targetUserId.value) {
-      url = `http://localhost:8080/api/tasks/user/${targetUserId.value}`
-    }
-    
-    const response = await fetch(url, {
+    const response = await fetch('http://localhost:8080/api/tasks', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -3885,33 +3839,6 @@ input[type="file"]:hover {
     border-left: 6px solid #ffc107;
     transform: scale(1.02); /* 添加轻微缩放效果 */
   }
-}
-
-/* 禁用按钮样式 */
-.icon-button.disabled {
-  background-color: #f5f5f5 !important;
-  color: #ccc !important;
-  cursor: not-allowed !important;
-  opacity: 0.6;
-}
-
-.icon-button.disabled:hover {
-  background-color: #f5f5f5 !important;
-  transform: none !important;
-}
-
-/* 禁用的添加任务按钮样式 */
-.add-task-btn.disabled {
-  background-color: #7f7f7f !important;
-  color: white !important;
-  cursor: not-allowed !important;
-  opacity: 1;
-}
-
-.add-task-btn.disabled:hover {
-  background-color: #7f7f7f !important;
-  transform: none !important;
-  box-shadow: none !important;
 }
 
 </style>
