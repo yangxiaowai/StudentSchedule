@@ -4,9 +4,11 @@ import com.example.learning.learning_habit_plan_backend.entity.LearningMaterial;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+@Repository
 public interface LearningMaterialRepository extends JpaRepository<LearningMaterial, Long> {
     List<LearningMaterial> findByUserId(Long userId);
     List<LearningMaterial> findByUserIdAndSubject(Long userId, String subject);
