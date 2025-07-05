@@ -14,12 +14,12 @@
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.32/lombok-1.18.32.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.32/lombok-1.18.32.jar" />
         </processorPath>
         <module name="learning-habit-plan-backend" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="learning-habit-plan-backend" target="21" />
       <module name="schedule" target="1.5" />
       <module name="Schedule" target="1.8" />
     </bytecodeTargetLevel>
