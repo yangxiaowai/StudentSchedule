@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
-import com.example.learning.learning_habit_plan_backend.util.VideoFileValidator;
+import com.example.learning.learning_habit_plan_backend.utils.VideoFileValidator;
 
 import java.io.IOException;
 import java.nio.file.Files;
