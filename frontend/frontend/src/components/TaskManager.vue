@@ -965,6 +965,15 @@ const openFile = async (fileUrl, task) => {
       
       // 延迟触发事件确保事件监听器已设置
       setTimeout(() => {
+        // 首先设置当前任务ID
+        const setTaskIdEvent = new CustomEvent('setTaskId', {
+          detail: {
+            taskId: task.id
+          }
+        })
+        window.dispatchEvent(setTaskIdEvent)
+        console.log('TaskManager: setTaskId事件已触发，任务ID:', task.id)
+        
         console.log('TaskManager: 准备触发previewTaskFile事件', {
           fileName: fileName,
           taskName: task.name,
@@ -1210,7 +1219,7 @@ const createModal = (title) => {
   modal.appendChild(content)
 
   document.body.appendChild(modal)
-  return modal
+  return { modal, content }
 }
 
 const createLoadingModal = (fileName) => {
@@ -1318,8 +1327,7 @@ const createLoadingModal = (fileName) => {
 const previewPdfFile = async (previewData, task) => {
   try {
     // 创建预览模态框
-    const modal = createModal(previewData.fileName)
-    const content = modal.querySelector('.modal-content')
+    const { modal, content } = createModal(previewData.fileName)
     
     // 创建PDF容器
     const pdfContainer = document.createElement('div')
@@ -1452,8 +1460,8 @@ const previewPdfFile = async (previewData, task) => {
     
   } catch (error) {
     console.error('PDF渲染失败:', error)
-    const modal = createModal(previewData.fileName)
-    modal.querySelector('.modal-content').innerHTML = `
+    const { modal, content } = createModal(previewData.fileName)
+    content.innerHTML = `
       <p>PDF预览失败: ${error.message}</p>
       <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
          target="_blank" class="download-link">
@@ -1501,8 +1509,7 @@ const updateTaskProgress = async (taskId, progress) => {
 
 // 文本文件预览
 const previewTextFile = async (previewData) => {
-  const modal = createModal(previewData.fileName)
-  const content = modal.querySelector('.modal-content')
+  const { modal, content } = createModal(previewData.fileName)
   
   const textContainer = document.createElement('div')
   textContainer.style.maxHeight = '600px'
@@ -1522,8 +1529,7 @@ const previewTextFile = async (previewData) => {
 
 // Office文件预览
 const previewOfficeFile = async (previewData) => {
-  const modal = createModal(previewData.fileName)
-  const content = modal.querySelector('.modal-content')
+  const { modal, content } = createModal(previewData.fileName)
   
   if (previewData.content && previewData.content.trim()) {
     const docContainer = document.createElement('div')
@@ -1533,7 +1539,19 @@ const previewOfficeFile = async (previewData) => {
     docContainer.style.lineHeight = '1.6'
     
     try {
-      const htmlContent = atob(previewData.content)
+      // 使用正确的UTF-8解码方法处理中文字符
+      let htmlContent = ''
+      try {
+        const binaryString = atob(previewData.content)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i)
+        }
+        htmlContent = new TextDecoder('utf-8').decode(bytes)
+      } catch (decodeError) {
+        console.warn('UTF-8解码失败，尝试直接解码:', decodeError)
+        htmlContent = atob(previewData.content)
+      }
       docContainer.innerHTML = htmlContent
     } catch (error) {
       docContainer.textContent = previewData.content
@@ -1555,8 +1573,7 @@ const previewOfficeFile = async (previewData) => {
 
 // Excel文件预览
 const previewExcelFile = async (previewData) => {
-  const modal = createModal(previewData.fileName)
-  const content = modal.querySelector('.modal-content')
+  const { modal, content } = createModal(previewData.fileName)
   
   content.innerHTML = `
     <div style="text-align: center; padding: 20px;">
@@ -1571,8 +1588,7 @@ const previewExcelFile = async (previewData) => {
 
 // 图片文件预览
 const previewImageFile = async (previewData) => {
-  const modal = createModal(previewData.fileName)
-  const content = modal.querySelector('.modal-content')
+  const { modal, content } = createModal(previewData.fileName)
   
   const img = document.createElement('img')
   img.src = `data:image/${previewData.fileType};base64,${previewData.content}`

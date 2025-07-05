@@ -51,5 +51,10 @@ public interface UserService {
      * 通过邮箱重置密码
      */
     void resetPasswordByEmail(String email, String newPassword);
+    
+    /**
+     * 根据用户ID查找用户
+     */
+    User findById(Long userId);
 }
 

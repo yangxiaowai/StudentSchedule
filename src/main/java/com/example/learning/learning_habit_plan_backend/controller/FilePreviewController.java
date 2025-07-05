@@ -43,19 +43,19 @@ public class FilePreviewController {
             String actualFileName = Paths.get(material.getFilePath()).getFileName().toString();
             
             // 调用预览服务
-            FilePreviewResponse response = filePreviewService.previewFile(actualFileName);
+            FilePreviewResponse previewResponse = filePreviewService.previewFile(actualFileName);
             
             // 设置文件类型信息
-            if (response.getFileType() == null || response.getFileType().isEmpty()) {
+            if (previewResponse.getFileType() == null || previewResponse.getFileType().isEmpty()) {
                 String fileExtension = getFileExtension(material.getFileName());
-                response.setFileType(fileExtension);
+                previewResponse.setFileType(fileExtension);
             }
             
-            if (response.getError() != null) {
-                return ResponseEntity.badRequest().body(response);
+            if (previewResponse.getError() != null) {
+                return ResponseEntity.badRequest().body(previewResponse);
             }
             
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(previewResponse);
         } catch (Exception e) {
             FilePreviewResponse errorResponse = FilePreviewResponse.error("", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);

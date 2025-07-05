@@ -11,6 +11,8 @@ public interface LearningMaterialRepository extends JpaRepository<LearningMateri
     List<LearningMaterial> findByUserId(Long userId);
     List<LearningMaterial> findByUserIdAndSubject(Long userId, String subject);
     List<LearningMaterial> findByUserIdAndContentType(Long userId, String contentType);
+    List<LearningMaterial> findByUserIdIn(List<Long> userIds);
+    List<LearningMaterial> findByUserIdInAndSubject(List<Long> userIds, String subject);
 
     @Query("SELECT m FROM LearningMaterial m WHERE m.filePath LIKE %:fileName%")
     List<LearningMaterial> findByFilePathContaining(@Param("fileName") String fileName);

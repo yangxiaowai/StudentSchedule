@@ -90,14 +90,14 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                         return FilePreviewResponse.error(fileName,
                                 String.format("文本文件超过%dMB限制，请下载查看", MAX_TEXT_SIZE));
                     }
-                    return previewTextFile(filePath, fileName, fileExtension);
+                    return previewTextFile(filePath, fileName, fileExtension, fileSizeBytes);
                     
                 case "pdf":
                     if (fileSize > MAX_PDF_SIZE) {
                         return FilePreviewResponse.error(fileName,
                                 String.format("PDF文件超过%dMB限制，请下载查看", MAX_PDF_SIZE));
                     }
-                    return previewPdfFile(filePath, fileName, fileExtension);
+                    return previewPdfFile(filePath, fileName, fileExtension, fileSizeBytes);
                     
                 case "doc":
                 case "docx":
@@ -105,7 +105,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                         return FilePreviewResponse.error(fileName,
                                 String.format("Word文件超过%dMB限制，请下载查看", MAX_OFFICE_SIZE));
                     }
-                    return previewWordFile(filePath, fileName, fileExtension);
+                    return previewWordFile(filePath, fileName, fileExtension, fileSizeBytes);
                     
                 case "ppt":
                 case "pptx":
@@ -113,7 +113,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                         return FilePreviewResponse.error(fileName,
                                 String.format("PowerPoint文件超过%dMB限制，请下载查看", MAX_OFFICE_SIZE));
                     }
-                    return previewPptFile(filePath, fileName, fileExtension);
+                    return previewPptFile(filePath, fileName, fileExtension, fileSizeBytes);
                     
                 case "xls":
                 case "xlsx":
@@ -121,7 +121,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                         return FilePreviewResponse.error(fileName,
                                 String.format("Excel文件超过%dMB限制，请下载查看", MAX_OFFICE_SIZE));
                     }
-                    return previewExcelFile(filePath, fileName, fileExtension);
+                    return previewExcelFile(filePath, fileName, fileExtension, fileSizeBytes);
                     
                 case "jpg":
                 case "jpeg":
@@ -133,7 +133,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                         return FilePreviewResponse.error(fileName,
                                 String.format("图片文件超过%dMB限制，请下载查看", MAX_IMAGE_SIZE));
                     }
-                    return previewImageFile(filePath, fileName, fileExtension);
+                    return previewImageFile(filePath, fileName, fileExtension, fileSizeBytes);
                     
                 case "mp4":
                 case "avi":
@@ -180,7 +180,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     /**
      * 预览文本文件（TXT等）- 优化版本，支持智能格式化
      */
-    private FilePreviewResponse previewTextFile(Path filePath, String fileName, String fileExtension) throws IOException {
+    private FilePreviewResponse previewTextFile(Path filePath, String fileName, String fileExtension, long fileSizeBytes) throws IOException {
         // 读取文本内容，对大文件进行截断
         byte[] fileBytes = Files.readAllBytes(filePath);
         String rawContent;
@@ -205,6 +205,12 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                 fileExtension,
                 Base64.getEncoder().encodeToString(htmlContent.getBytes(StandardCharsets.UTF_8))
         );
+        
+        // 设置完整的响应字段
+        response.setPreviewType("text");
+        response.setContentType("text/plain");
+        response.setDownloadUrl("/api/files/download/" + fileName);
+        response.setFileSize(fileSizeBytes);
         
         // 缓存结果
         cachePreviewResult(fileName, response);
@@ -485,7 +491,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     /**
      * 预览PDF文件 - 转换为图片序列
      */
-    private FilePreviewResponse previewPdfFile(Path filePath, String fileName, String fileExtension) throws IOException {
+    private FilePreviewResponse previewPdfFile(Path filePath, String fileName, String fileExtension, long fileSizeBytes) throws IOException {
         try (PDDocument document = PDDocument.load(filePath.toFile())) {
             PDFRenderer renderer = new PDFRenderer(document);
             int pageCount = Math.min(document.getNumberOfPages(), MAX_PDF_PAGES);
@@ -524,6 +530,12 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                     pdfContent
             );
             
+            // 设置完整的响应字段
+            response.setPreviewType("pdf");
+            response.setContentType("application/pdf");
+            response.setDownloadUrl("/api/files/download/" + fileName);
+            response.setFileSize(fileSizeBytes);
+            
             // 缓存结果
             cachePreviewResult(fileName, response);
             return response;
@@ -533,10 +545,10 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     /**
      * 预览Word文件 - 直接转换为HTML
      */
-    private FilePreviewResponse previewWordFile(Path filePath, String fileName, String fileExtension) throws IOException {
+    private FilePreviewResponse previewWordFile(Path filePath, String fileName, String fileExtension, long fileSizeBytes) throws IOException {
         try {
             // 统一使用HTML方式预览，确保中文字符正确显示
-            return convertDocToHtml(filePath, fileName, fileExtension);
+            return convertDocToHtml(filePath, fileName, fileExtension, fileSizeBytes);
         } catch (Exception e) {
             logger.warning("Word文档转换失败: " + e.getMessage());
             throw new IOException("Word文档预览失败: " + e.getMessage(), e);
@@ -548,7 +560,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     /**
      * DOC文件转换为HTML（保留原有逻辑作为备用方案）
      */
-    private FilePreviewResponse convertDocToHtml(Path filePath, String fileName, String fileExtension) throws IOException {
+    private FilePreviewResponse convertDocToHtml(Path filePath, String fileName, String fileExtension, long fileSizeBytes) throws IOException {
         StringBuilder htmlContent = new StringBuilder();
         htmlContent.append("<div style='font-family: Arial, sans-serif; line-height: 1.6; padding: 20px;'>");
         
@@ -658,17 +670,27 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         
         htmlContent.append("</div>");
         
-        return FilePreviewResponse.success(
+        FilePreviewResponse response = FilePreviewResponse.success(
                 fileName,
                 fileExtension,
                 Base64.getEncoder().encodeToString(htmlContent.toString().getBytes(StandardCharsets.UTF_8))
         );
+        
+        // 设置完整的响应字段
+        response.setPreviewType("document");
+        response.setContentType("application/" + ("doc".equals(fileExtension) ? "msword" : "vnd.openxmlformats-officedocument.wordprocessingml.document"));
+        response.setDownloadUrl("/api/files/download/" + fileName);
+        response.setFileSize(fileSizeBytes);
+        
+        // 缓存结果
+        cachePreviewResult(fileName, response);
+        return response;
     }
     
     /**
      * 预览PowerPoint文件 - 转换为高质量图片序列
      */
-    private FilePreviewResponse previewPptFile(Path filePath, String fileName, String fileExtension) throws IOException {
+    private FilePreviewResponse previewPptFile(Path filePath, String fileName, String fileExtension, long fileSizeBytes) throws IOException {
         List<String> slideImages = new ArrayList<>();
         
         try (InputStream is = Files.newInputStream(filePath)) {
@@ -766,6 +788,12 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                 pptContent
         );
         
+        // 设置完整的响应字段
+        response.setPreviewType("presentation");
+        response.setContentType("application/" + ("ppt".equals(fileExtension) ? "vnd.ms-powerpoint" : "vnd.openxmlformats-officedocument.presentationml.presentation"));
+        response.setDownloadUrl("/api/files/download/" + fileName);
+        response.setFileSize(fileSizeBytes);
+        
         // 缓存结果
         cachePreviewResult(fileName, response);
         return response;
@@ -774,7 +802,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     /**
      * 预览图片文件
      */
-    private FilePreviewResponse previewImageFile(Path filePath, String fileName, String fileExtension) throws IOException {
+    private FilePreviewResponse previewImageFile(Path filePath, String fileName, String fileExtension, long fileSizeBytes) throws IOException {
         // 直接读取图片文件并转为Base64
         byte[] fileContent = Files.readAllBytes(filePath);
         
@@ -783,6 +811,12 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                 fileExtension,
                 Base64.getEncoder().encodeToString(fileContent)
         );
+        
+        // 设置完整的响应字段
+        response.setPreviewType("image");
+        response.setContentType("image/" + fileExtension);
+        response.setDownloadUrl("/api/files/download/" + fileName);
+        response.setFileSize(fileSizeBytes);
         
         // 缓存结果
         cachePreviewResult(fileName, response);
@@ -802,7 +836,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     /**
      * 预览Excel文件 - 转换为HTML表格（优化版）
      */
-    private FilePreviewResponse previewExcelFile(Path filePath, String fileName, String fileExtension) throws IOException {
+    private FilePreviewResponse previewExcelFile(Path filePath, String fileName, String fileExtension, long fileSizeBytes) throws IOException {
         StringBuilder htmlContent = new StringBuilder();
         htmlContent.append("<div style='font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; padding: 20px; background-color: #f8f9fa;'>");
         
@@ -933,6 +967,12 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                 fileExtension,
                 Base64.getEncoder().encodeToString(htmlContent.toString().getBytes(StandardCharsets.UTF_8))
         );
+        
+        // 设置完整的响应字段
+        response.setPreviewType("spreadsheet");
+        response.setContentType("application/" + ("xls".equals(fileExtension) ? "vnd.ms-excel" : "vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        response.setDownloadUrl("/api/files/download/" + fileName);
+        response.setFileSize(fileSizeBytes);
         
         // 缓存结果
         cachePreviewResult(fileName, response);

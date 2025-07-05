@@ -215,5 +215,10 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("密码重置失败: " + e.getMessage());
         }
     }
+    
+    @Override
+    public User findById(Long userId) {
+        return userMapper.selectById(userId);
+    }
 }
 
