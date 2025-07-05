@@ -15,10 +15,11 @@ C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\LeaderboardController.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\AnalysisController.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\AISearchController.java
+C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\utils\VideoFileValidator.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\QAQuestion.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\LearningHabitPlanBackendApplication.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\AIResourceResponse.java
-C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\util\VideoFileValidator.java
+C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\Achievement.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\model\ErrorResponse.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\aitalk\service\ChatService.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\StudyGroupMember.java
@@ -41,6 +42,7 @@ C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\RestTemplateConfig.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\UserService.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\FilePreviewServiceImpl.java
+C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\UserAchievement.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\common\Result.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\WebConfig.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\MyBatisConfig.java
@@ -48,6 +50,7 @@ C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\LikeRecord.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\EmailService.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\StudyGroup.java
+C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\StudyRecord.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\AISearchServiceImpl.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\controller\QAController.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\TaskService.java
@@ -63,10 +66,12 @@ C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\LearningMaterialRepository.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\impl\VerificationCodeServiceImpl.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\SwaggerConfig.java
+C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\Comment.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\service\AISearchService.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\config\JwtAuthenticationFilter.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\LikeRecordRepository.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\mapper\UserMapper.java
+C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\UserStats.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\repository\QAQuestionRepository.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\dto\FileUploadResponse.java
 C:\Users\asus\StudentSchedule\src\main\java\com\example\learning\learning_habit_plan_backend\entity\LearningMaterial.java

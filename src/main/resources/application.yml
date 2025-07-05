@@ -1,19 +1,19 @@
 server:
-  port: 8081
+  port: 8080
+  address: localhost
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/learning_plan?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3306/learning_plan?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
     username: zky
     password: Zky050724
-    # Root@123456
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  data:
-    redis:
-      database: 0
-      timeout: 2000ms
-      host: localhost
-      port: 6379
+  # data:
+  #   redis:
+  #     database: 0
+  #     timeout: 2000ms
+  #     host: localhost
+  #     port: 6379
   servlet:
     multipart:
       max-file-size: 50MB      # 单个文件最大大小
@@ -37,7 +37,7 @@ spring:
       ddl-auto: update
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+        dialect: org.hibernate.dialect.MySQLDialect
         show_sql: true
         format_sql: true
 
