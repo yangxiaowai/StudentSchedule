@@ -1,5 +1,8 @@
 package com.example.learning.learning_habit_plan_backend.dto;
 
+import lombok.Data;
+
+@Data
 public class FilePreviewResponse {
     private String fileName;
     private String fileType;  // txt/pdf/doc/ppt/mp4等
@@ -39,86 +42,5 @@ public class FilePreviewResponse {
         response.setMultiPage(false);
         response.setPageCount(0);
         return response;
-    }
-
-    // Getter and Setter methods
-    public String getFileName() {
-        return fileName;
-    }
-
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
-
-    public String getFileType() {
-        return fileType;
-    }
-
-    public void setFileType(String fileType) {
-        this.fileType = fileType;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public boolean isMultiPage() {
-        return multiPage;
-    }
-
-    public void setMultiPage(boolean multiPage) {
-        this.multiPage = multiPage;
-    }
-
-    public int getPageCount() {
-        return pageCount;
-    }
-
-    public void setPageCount(int pageCount) {
-        this.pageCount = pageCount;
-    }
-
-    public String getError() {
-        return error;
-    }
-
-    public void setError(String error) {
-        this.error = error;
-    }
-
-    public String getPreviewType() {
-        return previewType;
-    }
-
-    public void setPreviewType(String previewType) {
-        this.previewType = previewType;
-    }
-
-    public String getContentType() {
-        return contentType;
-    }
-
-    public void setContentType(String contentType) {
-        this.contentType = contentType;
-    }
-
-    public String getDownloadUrl() {
-        return downloadUrl;
-    }
-
-    public void setDownloadUrl(String downloadUrl) {
-        this.downloadUrl = downloadUrl;
-    }
-
-    public long getFileSize() {
-        return fileSize;
-    }
-
-    public void setFileSize(long fileSize) {
-        this.fileSize = fileSize;
     }
 }

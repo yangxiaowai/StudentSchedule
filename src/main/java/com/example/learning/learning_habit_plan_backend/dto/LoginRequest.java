@@ -1,8 +1,10 @@
 package com.example.learning.learning_habit_plan_backend.dto;
 
+import lombok.Data;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+@Data
 public class LoginRequest {
     
     @NotBlank(message = "用户名不能为空")

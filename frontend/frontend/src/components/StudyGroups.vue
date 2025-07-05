@@ -309,7 +309,6 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, User, Reading, Aim, QuestionFilled, Check, Close, Folder, Delete } from '@element-plus/icons-vue'
 import socialAPI from '../api/social.js'
@@ -384,13 +383,6 @@ export default {
     }
     
     const currentUserId = ref(getCurrentUserId())
-    
-    // 过滤成员列表，排除当前用户
-    const filteredGroupMembers = computed(() => {
-      return groupMembers.value.filter(member => 
-        member.userId.toString() !== currentUserId.value.toString()
-      )
-    })
     
     // 加载小组列表
     const loadGroups = async () => {
@@ -787,7 +779,6 @@ export default {
     return {
       groups,
       groupMembers,
-      filteredGroupMembers,
       myGroups,
       currentPage,
       pageSize,
@@ -833,9 +824,6 @@ export default {
   padding: 24px;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   min-height: 100vh;
-  width: calc(90vw - 96px);
-  margin: 0 14px;
-  box-sizing: border-box;
 }
 
 .header {

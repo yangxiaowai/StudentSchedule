@@ -1,12 +1,14 @@
 package com.example.learning.learning_habit_plan_backend.entity;
 
 import jakarta.persistence.*;
+import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Data
 @Entity
 @Table(name = "study_group")
 public class StudyGroup {
@@ -72,126 +74,5 @@ public class StudyGroup {
         this.description = description;
         this.creatorId = creatorId;
         this.subject = subject;
-    }
-
-    // Getter and Setter methods
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Long getCreatorId() {
-        return creatorId;
-    }
-
-    public void setCreatorId(Long creatorId) {
-        this.creatorId = creatorId;
-    }
-
-    public Integer getMaxMembers() {
-        return maxMembers;
-    }
-
-    public void setMaxMembers(Integer maxMembers) {
-        this.maxMembers = maxMembers;
-    }
-
-    public Integer getCurrentMembers() {
-        return currentMembers;
-    }
-
-    public void setCurrentMembers(Integer currentMembers) {
-        this.currentMembers = currentMembers;
-    }
-
-    public Boolean getIsPublic() {
-        return isPublic;
-    }
-
-    public void setIsPublic(Boolean isPublic) {
-        this.isPublic = isPublic;
-    }
-
-    public String getInviteCode() {
-        return inviteCode;
-    }
-
-    public void setInviteCode(String inviteCode) {
-        this.inviteCode = inviteCode;
-    }
-
-    public String getSubject() {
-        return subject;
-    }
-
-    public void setSubject(String subject) {
-        this.subject = subject;
-    }
-
-    public String getStudyGoal() {
-        return studyGoal;
-    }
-
-    public void setStudyGoal(String studyGoal) {
-        this.studyGoal = studyGoal;
-    }
-
-    public Boolean getTaskSharingEnabled() {
-        return taskSharingEnabled;
-    }
-
-    public void setTaskSharingEnabled(Boolean taskSharingEnabled) {
-        this.taskSharingEnabled = taskSharingEnabled;
-    }
-
-    public Boolean getResourceSharingEnabled() {
-        return resourceSharingEnabled;
-    }
-
-    public void setResourceSharingEnabled(Boolean resourceSharingEnabled) {
-        this.resourceSharingEnabled = resourceSharingEnabled;
-    }
-
-    public GroupStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(GroupStatus status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

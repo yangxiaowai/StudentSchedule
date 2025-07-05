@@ -1,11 +1,13 @@
 package com.example.learning.learning_habit_plan_backend.entity;
 
 import jakarta.persistence.*;
+import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+@Data
 @Entity
 @Table(name = "user_learning_stats")
 public class UserLearningStats {
@@ -105,174 +107,5 @@ public class UserLearningStats {
         } else {
             this.level = UserLevel.BEGINNER;
         }
-    }
-
-    // Getter and Setter methods
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public Double getTotalStudyHours() {
-        return totalStudyHours;
-    }
-
-    public void setTotalStudyHours(Double totalStudyHours) {
-        this.totalStudyHours = totalStudyHours;
-    }
-
-    public Integer getTotalTasksCompleted() {
-        return totalTasksCompleted;
-    }
-
-    public void setTotalTasksCompleted(Integer totalTasksCompleted) {
-        this.totalTasksCompleted = totalTasksCompleted;
-    }
-
-    public Integer getTotalPoints() {
-        return totalPoints;
-    }
-
-    public void setTotalPoints(Integer totalPoints) {
-        this.totalPoints = totalPoints;
-    }
-
-    public Integer getCurrentStreak() {
-        return currentStreak;
-    }
-
-    public void setCurrentStreak(Integer currentStreak) {
-        this.currentStreak = currentStreak;
-    }
-
-    public Integer getMaxStreak() {
-        return maxStreak;
-    }
-
-    public void setMaxStreak(Integer maxStreak) {
-        this.maxStreak = maxStreak;
-    }
-
-    public Integer getQuestionsAsked() {
-        return questionsAsked;
-    }
-
-    public void setQuestionsAsked(Integer questionsAsked) {
-        this.questionsAsked = questionsAsked;
-    }
-
-    public Integer getQuestionsAnswered() {
-        return questionsAnswered;
-    }
-
-    public void setQuestionsAnswered(Integer questionsAnswered) {
-        this.questionsAnswered = questionsAnswered;
-    }
-
-    public Integer getBestAnswersCount() {
-        return bestAnswersCount;
-    }
-
-    public void setBestAnswersCount(Integer bestAnswersCount) {
-        this.bestAnswersCount = bestAnswersCount;
-    }
-
-    public Integer getSharesCount() {
-        return sharesCount;
-    }
-
-    public void setSharesCount(Integer sharesCount) {
-        this.sharesCount = sharesCount;
-    }
-
-    public Integer getLikesReceived() {
-        return likesReceived;
-    }
-
-    public void setLikesReceived(Integer likesReceived) {
-        this.likesReceived = likesReceived;
-    }
-
-    public Integer getGroupsJoined() {
-        return groupsJoined;
-    }
-
-    public void setGroupsJoined(Integer groupsJoined) {
-        this.groupsJoined = groupsJoined;
-    }
-
-    public Integer getGroupsCreated() {
-        return groupsCreated;
-    }
-
-    public void setGroupsCreated(Integer groupsCreated) {
-        this.groupsCreated = groupsCreated;
-    }
-
-    public Double getWeeklyStudyHours() {
-        return weeklyStudyHours;
-    }
-
-    public void setWeeklyStudyHours(Double weeklyStudyHours) {
-        this.weeklyStudyHours = weeklyStudyHours;
-    }
-
-    public Double getMonthlyStudyHours() {
-        return monthlyStudyHours;
-    }
-
-    public void setMonthlyStudyHours(Double monthlyStudyHours) {
-        this.monthlyStudyHours = monthlyStudyHours;
-    }
-
-    public LocalDateTime getLastStudyDate() {
-        return lastStudyDate;
-    }
-
-    public void setLastStudyDate(LocalDateTime lastStudyDate) {
-        this.lastStudyDate = lastStudyDate;
-    }
-
-    public UserLevel getLevel() {
-        return level;
-    }
-
-    public void setLevel(UserLevel level) {
-        this.level = level;
-    }
-
-    public Integer getExperiencePoints() {
-        return experiencePoints;
-    }
-
-    public void setExperiencePoints(Integer experiencePoints) {
-        this.experiencePoints = experiencePoints;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

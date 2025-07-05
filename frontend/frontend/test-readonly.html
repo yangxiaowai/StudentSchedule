@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>只读模式测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-links {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .test-link {
+            display: block;
+            padding: 15px 20px;
+            background: #4a6cf7;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+        .test-link:hover {
+            background: #3a5ce4;
+        }
+        .readonly-link {
+            background: #28a745;
+        }
+        .readonly-link:hover {
+            background: #218838;
+        }
+        .instructions {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .instructions ol {
+            margin: 10px 0;
+        }
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>只读模式功能测试</h1>
+        
+        <div class="test-links">
+            <a href="http://localhost:5173/task-manager" class="test-link">
+                正常任务管理页面
+            </a>
+            
+            <a href="http://localhost:5173/task-manager?userId=123&readOnly=true&userName=测试用户" class="test-link readonly-link">
+                只读模式任务页面 (用户ID: 123)
+            </a>
+            
+            <a href="http://localhost:5173/data-integration" class="test-link">
+                正常资料管理页面
+            </a>
+            
+            <a href="http://localhost:5173/data-integration?userId=123&readOnly=true&userName=测试用户" class="test-link readonly-link">
+                只读模式资料页面 (用户ID: 123)
+            </a>
+        </div>
+        
+        <div class="instructions">
+            <h3>测试说明：</h3>
+            <ol>
+                <li>首先点击"正常任务管理页面"或"正常资料管理页面"，确保正常功能可用</li>
+                <li>然后点击对应的"只读模式"链接</li>
+                <li>在只读模式下，应该看到：
+                    <ul>
+                        <li>页面标题显示"测试用户的任务/资料库"</li>
+                        <li>显示蓝色的"只读模式"标识</li>
+                        <li>隐藏添加/上传按钮</li>
+                        <li>隐藏搜索和排序功能（资料页面）</li>
+                        <li>隐藏AI搜索功能（资料页面）</li>
+                        <li>操作按钮被禁用或显示"只读模式"文字</li>
+                    </ul>
+                </li>
+                <li>打开浏览器开发者工具的控制台，查看调试信息</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>
