@@ -1,76 +1,114 @@
 <template>
-  <div class="material-container">
-    <!-- 顶部搜索栏 - 只读模式下隐藏 -->
-    <div v-if="!isReadOnly" class="search-section">
-      <div class="search-bar">
-        <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="输入关键词搜索资料..."
-            @keyup.enter="handleSearch"
-        />
-        <button @click="handleSearch">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-          </svg>
-          搜索
-        </button>
+  <div class="data-integration">
+    <!-- 侧边栏 -->
+    <div class="sidebar" :class="{ 'readonly': isReadOnly }">
+      <!-- 搜索区域 -->
+      <div v-if="!isReadOnly" class="sidebar-search">
+        <div class="search-input-wrapper">
+          <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="搜索资料..."
+              @keyup.enter="handleSearch"
+              class="sidebar-search-input"
+          />
+          <button @click="handleSearch" class="search-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <div class="search-options" v-if="showAdvancedSearch">
-        <div class="filter-group">
-          <label>学科分类：</label>
-          <select v-model="selectedSubject">
-            <option value="">全部</option>
-            <option v-for="subject in subjects" :value="subject.value">{{ subject.label }}</option>
-          </select>
-        </div>
-        <!-- 在上传模态框的modal-body中添加 -->
-        <div v-if="uploadProgress > 0" class="upload-progress">
-          <progress :value="uploadProgress" max="100"></progress>
-          <span>{{ uploadProgress }}%</span>
-        </div>
-
-        <div class="filter-group">
-          <label>内容类型：</label>
-          <select v-model="selectedType">
-            <option value="">全部</option>
-            <option v-for="type in contentTypes" :value="type.value">{{ type.label }}</option>
-          </select>
-        </div>
-
-        <button class="toggle-advanced" @click="showAdvancedSearch = false">
-          简化搜索
-        </button>
-      </div>
-      <button v-else class="toggle-advanced" @click="showAdvancedSearch = true">
-        高级搜索
-      </button>
-    </div>
-
-    <!-- 资料库展示区域 -->
-    <div class="material-library">
-      <div class="library-header">
-        <div v-if="!isReadOnly" class="normal-header">
-          <h2>我的资料库</h2>
-          <div class="sort-options">
-            <span>排序方式：</span>
-            <select v-model="sortOption">
-              <option value="time-desc">最近上传</option>
-              <option value="time-asc">最早上传</option>
-              <option value="name-asc">名称(A-Z)</option>
-              <option value="name-desc">名称(Z-A)</option>
-              <option value="subject-asc">学科(A-Z)</option>
-              <option value="subject-desc">学科(Z-A)</option>
-            </select>
+      <!-- 学科分类 -->
+      <div class="subject-categories">
+        <h3 class="sidebar-title">学科分类</h3>
+        <div class="category-list">
+          <div 
+            class="category-item" 
+            :class="{ 'active': selectedSubject === '' }"
+            @click="selectSubject('')"
+          >
+            <span class="category-icon">📚</span>
+            <span class="category-name">全部学科</span>
+            <span class="category-count">({{ getTotalCount() }})</span>
+          </div>
+          <div 
+            v-for="subject in subjects" 
+            :key="subject.value"
+            class="category-item" 
+            :class="{ 'active': selectedSubject === subject.value }"
+            @click="selectSubject(subject.value)"
+          >
+            <span class="category-icon">{{ getSubjectIcon(subject.value) }}</span>
+            <span class="category-name">{{ subject.label }}</span>
+            <span class="category-count">({{ getSubjectCount(subject.value) }})</span>
           </div>
         </div>
-        
-        <div v-else class="readonly-header">
-          <h2>{{ targetUserName }}的资料库</h2>
-          <div class="readonly-badge">只读模式</div>
-        </div>
       </div>
+
+      <!-- 高级筛选 -->
+      <div v-if="!isReadOnly" class="advanced-filters">
+        <h3 class="sidebar-title">筛选条件</h3>
+        
+        <div class="filter-section">
+          <label class="filter-label">内容类型</label>
+          <select v-model="selectedType" class="filter-select">
+            <option value="">全部类型</option>
+            <option v-for="type in contentTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
+          </select>
+        </div>
+
+        <div class="filter-section">
+          <label class="filter-label">排序方式</label>
+          <select v-model="sortOption" class="filter-select">
+            <option value="time-desc">最近上传</option>
+            <option value="time-asc">最早上传</option>
+            <option value="name-asc">名称(A-Z)</option>
+            <option value="name-desc">名称(Z-A)</option>
+            <option value="subject-asc">学科(A-Z)</option>
+            <option value="subject-desc">学科(Z-A)</option>
+          </select>
+        </div>
+
+        <button class="clear-filters-btn" @click="clearFilters">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
+          </svg>
+          清除筛选
+        </button>
+      </div>
+
+      <!-- 上传按钮 -->
+      <div v-if="!isReadOnly" class="sidebar-upload">
+        <button class="sidebar-upload-btn" @click="showUploadModal = true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+            <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+          </svg>
+          上传资料
+        </button>
+      </div>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="main-content">
+
+      <!-- 资料库展示区域 -->
+      <div class="material-library">
+        <div class="library-header">
+          <div v-if="!isReadOnly" class="normal-header">
+            <h2>我的资料库</h2>
+            <div class="result-info">
+              <span>共找到 {{ filteredMaterials.length }} 个资料</span>
+            </div>
+          </div>
+          
+          <div v-else class="readonly-header">
+            <h2>{{ targetUserName }}的资料库</h2>
+            <div class="readonly-badge">只读模式</div>
+          </div>
+        </div>
 
       <div class="material-grid">
         <div
@@ -113,17 +151,7 @@
           <p>暂无资料，请上传或搜索资料</p>
         </div>
       </div>
-    </div>
-
-    <!-- 底部上传按钮 -->
-    <div v-if="!isReadOnly" class="upload-section">
-      <button class="upload-btn" @click="showUploadModal = true">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-          <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
-        </svg>
-        上传资料
-      </button>
+      </div>
     </div>
 
     <!-- 上传资料模态框 -->
@@ -301,7 +329,6 @@ watch(() => route.query, () => {
 const searchQuery = ref('')
 const selectedSubject = ref('')
 const selectedType = ref('')
-const showAdvancedSearch = ref(false)
 
 // 资料库相关状态
 const sortOption = ref('time-desc')
@@ -399,20 +426,54 @@ const handleSearch = () => {
   // 实际项目中这里会调用API
 }
 
+// 侧边栏相关方法
+const selectSubject = (subjectValue) => {
+  selectedSubject.value = subjectValue
+  console.log('选择学科:', subjectValue)
+}
+
+const getTotalCount = () => {
+  return materials.value.length
+}
+
+const getSubjectCount = (subjectValue) => {
+  return materials.value.filter(m => m.subject === subjectValue).length
+}
+
+const clearFilters = () => {
+  selectedSubject.value = ''
+  selectedType.value = ''
+  searchQuery.value = ''
+  console.log('清除所有筛选条件')
+}
+
 const openMaterial = async (material) => {
+  // 创建预览加载界面
+  const loadingModal = createPreviewLoadingModal(material.name);
+  
   try {
     const token = localStorage.getItem('accessToken');
+    
+    // 更新加载状态
+    updateLoadingProgress(loadingModal, 20, '正在加载...');
+    
     const response = await fetch(`/api/preview/file/${material.id}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
-
+    updateLoadingProgress(loadingModal, 50, '正在获取文件数据...');
+    
     const previewData = await response.json();
 
     if (previewData.error) {
       throw new Error(previewData.error);
     }
+
+    updateLoadingProgress(loadingModal, 80, '正在准备预览...');
+    
+    // 关闭加载界面
+    document.body.removeChild(loadingModal);
 
     // 根据文件类型调用不同的预览方法
     switch (previewData.fileType) {
@@ -454,8 +515,12 @@ const openMaterial = async (material) => {
         throw new Error('不支持预览此文件类型');
     }
   } catch (error) {
+    // 关闭加载界面
+    if (document.body.contains(loadingModal)) {
+      document.body.removeChild(loadingModal);
+    }
     console.error('预览失败:', error);
-    alert(`预览失败: ${error.message}`);
+    showErrorModal('预览失败', error.message);
   }
 };
 
@@ -2149,6 +2214,226 @@ const previewVideoFile = async (previewData) => {
 
 
 
+// 创建预览加载模态框
+const createPreviewLoadingModal = (fileName) => {
+  const modal = document.createElement('div');
+  modal.className = 'preview-loading-modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(74, 108, 247, 0.9), rgba(74, 108, 247, 0.7));
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(10px);
+  `;
+
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+    animation: modalSlideIn 0.3s ease-out;
+  `;
+
+  // 添加动画样式
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // 文件图标
+  const fileIcon = document.createElement('div');
+  fileIcon.style.cssText = `
+    font-size: 48px;
+    margin-bottom: 20px;
+    animation: pulse 2s infinite;
+  `;
+  fileIcon.textContent = '📄';
+
+  // 加载动画
+  const spinner = document.createElement('div');
+  spinner.style.cssText = `
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #4a6cf7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+  `;
+
+  // 文件名
+  const fileNameEl = document.createElement('h3');
+  fileNameEl.textContent = fileName;
+  fileNameEl.style.cssText = `
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+  `;
+
+  // 进度条容器
+  const progressContainer = document.createElement('div');
+  progressContainer.style.cssText = `
+    width: 100%;
+    height: 6px;
+    background-color: #e9ecef;
+    border-radius: 3px;
+    margin: 20px 0;
+    overflow: hidden;
+  `;
+
+  // 进度条
+  const progressBar = document.createElement('div');
+  progressBar.className = 'progress-bar';
+  progressBar.style.cssText = `
+    height: 100%;
+    background: linear-gradient(90deg, #4a6cf7, #6c5ce7);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.3s ease;
+  `;
+  progressContainer.appendChild(progressBar);
+
+  // 状态文本
+  const statusText = document.createElement('div');
+  statusText.className = 'status-text';
+  statusText.textContent = '正在初始化...';
+  statusText.style.cssText = `
+    color: #666;
+    font-size: 14px;
+    margin-top: 15px;
+  `;
+
+  content.appendChild(fileIcon);
+  content.appendChild(spinner);
+  content.appendChild(fileNameEl);
+  content.appendChild(progressContainer);
+  content.appendChild(statusText);
+  modal.appendChild(content);
+
+  document.body.appendChild(modal);
+  return modal;
+};
+
+// 更新加载进度
+const updateLoadingProgress = (modal, progress, status) => {
+  const progressBar = modal.querySelector('.progress-bar');
+  const statusText = modal.querySelector('.status-text');
+  
+  if (progressBar) {
+    progressBar.style.width = `${progress}%`;
+  }
+  
+  if (statusText) {
+    statusText.textContent = status;
+  }
+};
+
+// 创建错误提示模态框
+const showErrorModal = (title, message) => {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 10001;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  `;
+
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    max-width: 400px;
+    width: 90%;
+    animation: modalSlideIn 0.3s ease-out;
+  `;
+
+  const errorIcon = document.createElement('div');
+  errorIcon.style.cssText = `
+    font-size: 48px;
+    color: #dc3545;
+    margin-bottom: 15px;
+  `;
+  errorIcon.textContent = '⚠️';
+
+  const titleEl = document.createElement('h3');
+  titleEl.textContent = title;
+  titleEl.style.cssText = `
+    margin: 0 0 15px 0;
+    color: #dc3545;
+    font-size: 20px;
+  `;
+
+  const messageEl = document.createElement('p');
+  messageEl.textContent = message;
+  messageEl.style.cssText = `
+    margin: 0 0 20px 0;
+    color: #666;
+    line-height: 1.5;
+  `;
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '确定';
+  closeBtn.style.cssText = `
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+  `;
+  closeBtn.onmouseover = () => closeBtn.style.background = '#c82333';
+  closeBtn.onmouseout = () => closeBtn.style.background = '#dc3545';
+  closeBtn.onclick = () => document.body.removeChild(modal);
+
+  content.appendChild(errorIcon);
+  content.appendChild(titleEl);
+  content.appendChild(messageEl);
+  content.appendChild(closeBtn);
+  modal.appendChild(content);
+
+  document.body.appendChild(modal);
+};
+
 // 创建模态框的通用方法
 const createModal = (title, contentElement) => {
   const modal = document.createElement('div');
@@ -2744,6 +3029,726 @@ const loadScript = (url) => {
 </script>
 
 <style scoped>
+/* 主容器样式 */
+.data-integration {
+  display: flex;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+}
+
+.data-integration::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="%23ffffff" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>') repeat;
+  pointer-events: none;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+  width: 320px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+  padding: 25px;
+  overflow-y: auto;
+  position: relative;
+  z-index: 2;
+}
+
+.sidebar.readonly {
+  width: 280px;
+}
+
+/* 侧边栏搜索 */
+.sidebar-search {
+  margin-bottom: 30px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-search-input {
+  width: 100%;
+  padding: 12px 45px 12px 15px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.8);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-search-input:focus {
+  outline: none;
+  border-color: #4a6cf7;
+  background: white;
+  box-shadow: 0 4px 15px rgba(74, 108, 247, 0.2);
+}
+
+.search-btn {
+  position: absolute;
+  right: 8px;
+  background: linear-gradient(135deg, #4a6cf7, #6c5ce7);
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.search-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(74, 108, 247, 0.3);
+}
+
+/* 侧边栏标题 */
+.sidebar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 15px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #4a6cf7;
+  position: relative;
+}
+
+.sidebar-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 30px;
+  height: 2px;
+  background: linear-gradient(135deg, #4a6cf7, #6c5ce7);
+}
+
+/* 学科分类 */
+.subject-categories {
+  margin-bottom: 30px;
+}
+
+.category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid transparent;
+}
+
+.category-item:hover {
+  background: rgba(74, 108, 247, 0.1);
+  transform: translateX(5px);
+  border-color: rgba(74, 108, 247, 0.2);
+}
+
+.category-item.active {
+  background: linear-gradient(135deg, #4a6cf7, #6c5ce7);
+  color: white;
+  box-shadow: 0 4px 15px rgba(74, 108, 247, 0.3);
+  transform: translateX(5px);
+}
+
+.category-icon {
+  font-size: 18px;
+  margin-right: 12px;
+  min-width: 24px;
+}
+
+.category-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.category-count {
+  font-size: 12px;
+  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.category-item.active .category-count {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 高级筛选 */
+.advanced-filters {
+  margin-bottom: 30px;
+}
+
+.filter-section {
+  margin-bottom: 20px;
+}
+
+.filter-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.filter-select {
+  width: 100%;
+  padding: 10px 15px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #4a6cf7;
+  background: white;
+  box-shadow: 0 4px 12px rgba(74, 108, 247, 0.2);
+}
+
+.clear-filters-btn {
+  width: 100%;
+  padding: 10px 15px;
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.clear-filters-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+/* 侧边栏上传按钮 */
+.sidebar-upload {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-upload-btn {
+  width: 100%;
+  padding: 15px 20px;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.sidebar-upload-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+}
+
+/* 主内容区域 */
+.main-content {
+  flex: 1;
+  padding: 25px;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* 资料库样式 */
+.material-library {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.library-header {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  padding: 25px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.normal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.normal-header h2 {
+  margin: 0;
+  font-weight: 700;
+  color: #333;
+  font-size: 24px;
+}
+
+.result-info {
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.readonly-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.readonly-header h2 {
+  margin: 0;
+  font-weight: 700;
+  color: #333;
+  font-size: 24px;
+}
+
+.readonly-badge {
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  color: #1976d2;
+  padding: 8px 16px;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid #bbdefb;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+}
+
+/* 资料网格样式 */
+.material-grid {
+  padding: 25px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.material-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.material-grid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.material-grid::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #4a6cf7, #6c5ce7);
+  border-radius: 4px;
+}
+
+.material-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 15px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.material-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(135deg, #4a6cf7, #6c5ce7);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.material-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  background: white;
+}
+
+.material-card:hover::before {
+  transform: scaleX(1);
+}
+
+.material-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 12px;
+  margin-bottom: 15px;
+  font-size: 24px;
+}
+
+.material-info {
+  flex: 1;
+  margin-bottom: 15px;
+}
+
+.material-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.material-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.material-meta span {
+  display: block;
+}
+
+.material-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.material-actions button {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.material-actions button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+}
+
+.material-actions button:first-child {
+  background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.material-actions button:first-child:hover {
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.material-actions button:last-child {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+.material-actions button:last-child:hover {
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.read-only-text {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 12px;
+  padding: 4px 8px;
+  background: rgba(108, 117, 125, 0.1);
+  border-radius: 4px;
+}
+
+/* 空资料库样式 */
+.empty-library {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.empty-library svg {
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.empty-library p {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .sidebar {
+    width: 280px;
+  }
+  
+  .material-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .data-integration {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .sidebar-search {
+    margin-bottom: 20px;
+  }
+  
+  .subject-categories {
+    margin-bottom: 20px;
+  }
+  
+  .category-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  
+  .category-item {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .category-icon {
+    font-size: 16px;
+    margin-right: 8px;
+  }
+  
+  .category-name {
+    font-size: 12px;
+  }
+  
+  .category-count {
+    font-size: 10px;
+  }
+  
+  .advanced-filters {
+    display: none;
+  }
+  
+  .sidebar-upload {
+    margin-top: 20px;
+    padding-top: 15px;
+  }
+  
+  .main-content {
+    padding: 15px;
+  }
+  
+  .material-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    max-height: none;
+  }
+  
+  .library-header {
+    padding: 20px;
+  }
+  
+  .normal-header h2,
+  .readonly-header h2 {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    padding: 15px;
+  }
+  
+  .main-content {
+    padding: 10px;
+  }
+  
+  .material-card {
+    padding: 15px;
+  }
+  
+  .material-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+  
+  .material-info h3 {
+    font-size: 14px;
+  }
+  
+  .library-header {
+    padding: 15px;
+  }
+  
+  .normal-header,
+  .readonly-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
+.material-item {
+  transition: width 0.3s ease;
+}
+
+.material-item:hover {
+  background: rgba(74, 108, 247, 0.05);
+  transform: translateX(5px);
+}
+
+.material-item:hover::before {
+  width: 4px;
+}
+
+.material-item:last-child {
+  border-bottom: none;
+}
+
+.file-icon {
+  width: 50px;
+  height: 50px;
+  margin-right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 20px;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.material-item:hover .file-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.file-icon.txt { background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: #1976d2; }
+.file-icon.pdf { background: linear-gradient(135deg, #ffebee, #ffcdd2); color: #d32f2f; }
+.file-icon.doc { background: linear-gradient(135deg, #e8f5e8, #c8e6c9); color: #388e3c; }
+.file-icon.xls { background: linear-gradient(135deg, #fff3e0, #ffe0b2); color: #f57c00; }
+.file-icon.jpg { background: linear-gradient(135deg, #f3e5f5, #e1bee7); color: #7b1fa2; }
+.file-icon.mp4 { background: linear-gradient(135deg, #e0f2f1, #b2dfdb); color: #00796b; }
+.file-icon.default { background: linear-gradient(135deg, #f5f5f5, #eeeeee); color: #757575; }
+
+.file-info {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.file-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 16px;
+  letter-spacing: 0.3px;
+}
+
+.file-meta {
+  font-size: 13px;
+  color: #666;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.file-meta span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.file-meta span::before {
+  content: '•';
+  color: #4a6cf7;
+  font-weight: bold;
+}
+
+.file-meta span:first-child::before {
+  display: none;
+}
+
+.no-materials {
+  text-align: center;
+  padding: 60px 40px;
+  color: #666;
+  font-size: 18px;
+}
+
+.no-materials::before {
+  content: '📁';
+  display: block;
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 40px;
+  color: #666;
+  font-size: 18px;
+}
+
+.loading::before {
+  content: '⏳';
+  display: block;
+  font-size: 64px;
+  margin-bottom: 20px;
+  animation: pulse 2s infinite;
+}
+
 /* 视频预览模态框响应式样式 */
 .file-preview-modal {
   touch-action: manipulation;
@@ -2801,6 +3806,7 @@ video::-webkit-media-controls {
 video::-webkit-media-controls-panel {
   display: flex !important;
 }
+
 .material-container {
   display: flex;
   flex-direction: column;
@@ -2964,13 +3970,15 @@ video::-webkit-media-controls-panel {
 
 .material-actions button {
   width: auto;
-  padding: 6px 12px;
-  border-radius: 20px;
+  padding: 8px 16px;
+  border-radius: 25px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .material-actions button:first-child {
@@ -2979,7 +3987,8 @@ video::-webkit-media-controls-panel {
 
 .material-actions button:first-child:hover {
   background: linear-gradient(135deg, #3a5ce4, #5b7cff);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(74, 108, 247, 0.3);
 }
 
 .material-actions button:nth-child(2) {
@@ -2988,7 +3997,8 @@ video::-webkit-media-controls-panel {
 
 .material-actions button:nth-child(2):hover {
   background: linear-gradient(135deg, #ff5252, #ff6b6b);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
 }
 
 .empty-library {
@@ -2997,8 +4007,15 @@ video::-webkit-media-controls-panel {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 50px 0;
+  padding: 80px 0;
   color: #999;
+}
+
+.empty-library::before {
+  content: '📚';
+  font-size: 80px;
+  margin-bottom: 20px;
+  opacity: 0.6;
 }
 
 .empty-library img {
@@ -3014,26 +4031,6 @@ video::-webkit-media-controls-panel {
   justify-content: center;
 }
 
-.upload-btn {
-  padding: 12px 30px;
-  background-color: #4a6cf7;
-  color: white;
-  border: none;
-  border-radius: 30px;
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(74, 108, 247, 0.3);
-  transition: all 0.2s;
-}
-
-.upload-btn:hover {
-  background-color: #3a5ce4;
-  transform: translateY(-2px);
-}
-
 .subject-icon {
   font-size: 24px;
   font-weight: bold;
@@ -3047,118 +4044,246 @@ video::-webkit-media-controls-panel {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow: auto;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
 }
 
 .upload-modal {
-  background-color: white;
-  border-radius: 8px;
+  background: white;
+  border-radius: 20px;
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
 }
 
 .modal-header {
-  padding: 15px 20px;
-  border-bottom: 1px solid #eee;
+  padding: 25px;
+  border-bottom: 1px solid #dee2e6;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 20px 20px 0 0;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #333;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #333;
 }
 
 .close-btn {
-  background: none;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
   border: none;
-  font-size: 24px;
+  font-size: 18px;
   cursor: pointer;
-  color: #666;
+  color: white;
+  padding: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 30px;
   flex: 1;
   overflow-y: auto;
 }
 
 .upload-area {
-  border: 2px dashed #ddd;
-  border-radius: 6px;
-  padding: 30px;
+  border: 3px dashed #dee2e6;
+  border-radius: 15px;
+  padding: 50px;
   text-align: center;
-  margin-bottom: 20px;
-  transition: all 0.2s;
+  margin-bottom: 25px;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
 }
 
 .upload-area:hover {
   border-color: #4a6cf7;
+  background: linear-gradient(135deg, rgba(74, 108, 247, 0.05), rgba(255, 255, 255, 0.8));
+  transform: translateY(-2px);
+}
+
+.upload-area.dragover {
+  border-color: #4a6cf7;
+  background: linear-gradient(135deg, rgba(74, 108, 247, 0.1), rgba(255, 255, 255, 0.9));
+  transform: scale(1.02);
+}
+
+.upload-icon {
+  font-size: 64px;
+  color: #dee2e6;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.upload-area:hover .upload-icon {
+  color: #4a6cf7;
+  transform: scale(1.1);
+}
+
+.upload-text {
+  color: #666;
+  margin-bottom: 15px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.upload-hint {
+  font-size: 14px;
+  color: #999;
 }
 
 .drop-zone {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
   color: #666;
 }
 
 .drop-zone button {
-  background: none;
+  background: linear-gradient(135deg, #4a6cf7, #6c5ce7);
+  color: white;
   border: none;
-  color: #4a6cf7;
-  text-decoration: underline;
+  padding: 12px 24px;
+  border-radius: 25px;
   cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(74, 108, 247, 0.3);
+}
+
+.drop-zone button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(74, 108, 247, 0.4);
 }
 
 .file-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 15px;
 }
 
 .file-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
+  padding: 15px;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.file-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .file-item button {
-  background: none;
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
   border: none;
-  color: #ff4d4f;
+  border-radius: 8px;
+  padding: 8px 15px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.file-item button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
 }
 
 .upload-options {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
 .form-group label {
   font-size: 14px;
   color: #666;
+  font-weight: 600;
+}
+
+.form-group select,
+.form-group input {
+  padding: 12px 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #4a6cf7;
+  box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.1);
 }
 
 .form-group select {
@@ -3307,6 +4432,56 @@ video::-webkit-media-controls-panel {
   font-size: 14px;
 }
 
+/* 模态框底部按钮样式 */
+.upload-modal-footer {
+  padding: 25px;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  background: #f8f9fa;
+  border-radius: 0 0 20px 20px;
+}
+
+.cancel-btn {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.cancel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #28a745, #218838);
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.confirm-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.confirm-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* 文件预览模态框样式 */
 .file-preview-modal {
   position: fixed;
@@ -3314,108 +4489,150 @@ video::-webkit-media-controls-panel {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.8);
   z-index: 1000;
   display: flex;
   justify-content: center;
   align-items: center;
+  backdrop-filter: blur(5px);
 }
 
 .file-preview-modal .modal-content {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
+  background: white;
+  padding: 25px;
+  border-radius: 20px;
   width: 90%;
   max-width: 900px;
   max-height: 90vh;
   overflow: auto;
   position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
 }
 
 .file-preview-modal .modal-content h3 {
   margin-top: 0;
   color: #333;
+  font-weight: 700;
+  font-size: 20px;
 }
 
 .file-preview-modal .close-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
+  top: 15px;
+  right: 15px;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
   border: none;
-  font-size: 24px;
+  font-size: 18px;
   cursor: pointer;
-  color: #666;
+  color: white;
+  padding: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
 }
 
 .file-preview-modal .close-btn:hover {
-  color: #333;
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
 }
 
 /* PDF容器 */
 .pdf-container {
   width: 100%;
-  padding: 20px;
+  padding: 25px;
   overflow-y: auto;
 }
 
 /* PDF页面画布 */
 .pdf-container canvas {
   display: block;
-  margin: 0 auto 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 0 auto 25px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   max-width: 100%;
+  border-radius: 8px;
 }
 
 /* 下载链接 */
 .download-link {
   display: inline-block;
-  margin-top: 10px;
-  padding: 8px 16px;
-  background-color: #4a6cf7;
+  margin-top: 15px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #4a6cf7, #6c5ce7);
   color: white;
   text-decoration: none;
-  border-radius: 4px;
+  border-radius: 25px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(74, 108, 247, 0.3);
 }
 
 .download-link:hover {
-  background-color: #3a5ce4;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(74, 108, 247, 0.4);
 }
+
 .office-preview-notice {
   text-align: center;
-  padding: 20px;
+  padding: 40px;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  border-radius: 15px;
+  margin: 20px 0;
 }
 
 .office-preview-notice p {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   font-size: 16px;
   color: #666;
+  line-height: 1.6;
 }
 
 /* 添加上传进度条样式 */
 .upload-progress {
-  margin-top: 15px;
+  margin-top: 20px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
 }
 
 .upload-progress progress {
   flex: 1;
-  height: 10px;
-  border-radius: 5px;
+  height: 12px;
+  border-radius: 6px;
+  border: none;
+  background: #e9ecef;
+}
+
+.upload-progress progress::-webkit-progress-bar {
+  background: #e9ecef;
+  border-radius: 6px;
+}
+
+.upload-progress progress::-webkit-progress-value {
+  background: linear-gradient(135deg, #4a6cf7, #6c5ce7);
+  border-radius: 6px;
 }
 
 .upload-progress span {
   font-size: 14px;
   color: #666;
+  font-weight: 600;
+  min-width: 50px;
 }
 
 /* 错误提示样式 */
 .error-message {
-  color: #ff4d4f;
-  margin-top: 10px;
+  color: #dc3545;
+  margin-top: 15px;
   font-size: 14px;
+  padding: 12px 15px;
+  background: rgba(220, 53, 69, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #dc3545;
 }
 
 /* 只读模式样式 */
@@ -3423,27 +4640,28 @@ video::-webkit-media-controls-panel {
   color: #6c757d;
   font-style: italic;
   font-size: 0.9rem;
-  padding: 0.5rem;
-  background: #f8f9fa;
-  border-radius: 4px;
+  padding: 12px 15px;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  border-radius: 10px;
   border: 1px solid #e9ecef;
 }
 
 .readonly-header {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 20px;
+  margin-bottom: 25px;
 }
 
 .readonly-badge {
-  background: #e3f2fd;
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
   color: #1976d2;
-  padding: 6px 12px;
-  border-radius: 20px;
+  padding: 8px 16px;
+  border-radius: 25px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   border: 1px solid #bbdefb;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
 }
 
 .normal-header {
@@ -3455,54 +4673,153 @@ video::-webkit-media-controls-panel {
 
 .normal-header h2 {
   margin: 0;
+  font-weight: 700;
+  color: #333;
 }
 
 /* 上传标签页样式 */
 .upload-tabs {
   display: flex;
   border-bottom: 1px solid #eee;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
+  background: #f8f9fa;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
 }
 
 .tab-btn {
   flex: 1;
-  padding: 12px 16px;
+  padding: 15px 20px;
   border: none;
-  background: #f8f9fa;
+  background: transparent;
   color: #666;
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.3s;
+  font-weight: 600;
+  transition: all 0.3s ease;
   border-bottom: 3px solid transparent;
-}
-
-.tab-btn:first-child {
-  border-top-left-radius: 6px;
-}
-
-.tab-btn:last-child {
-  border-top-right-radius: 6px;
+  position: relative;
 }
 
 .tab-btn:hover {
-  background: #e9ecef;
-  color: #333;
+  background: rgba(74, 108, 247, 0.1);
+  color: #4a6cf7;
 }
 
 .tab-btn.active {
   background: white;
   color: #4a6cf7;
   border-bottom-color: #4a6cf7;
-  font-weight: 500;
+  box-shadow: 0 -2px 8px rgba(74, 108, 247, 0.1);
 }
 
 /* 视频上传区域样式 */
 .video-upload-section {
   min-height: 400px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  border-radius: 15px;
 }
 
 .file-upload-section {
   min-height: 300px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  border-radius: 15px;
+}
+
+/* 动画效果 */
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .data-integration {
+    padding: 15px;
+  }
+  
+  .search-bar {
+    padding: 20px;
+    border-radius: 15px;
+  }
+  
+  .search-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  .search-input {
+    min-width: auto;
+  }
+  
+  .material-item {
+    padding: 15px 20px;
+  }
+  
+  .file-meta {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  .upload-modal {
+    width: 95%;
+    margin: 10px;
+  }
+  
+  .upload-area {
+    padding: 30px 20px;
+  }
+  
+  .upload-icon {
+    font-size: 48px;
+  }
+  
+  .file-preview-modal .modal-content {
+    width: 95%;
+    margin: 10px;
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-controls {
+    gap: 10px;
+  }
+  
+  .upload-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  .material-item {
+    padding: 12px 15px;
+  }
+  
+  .file-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
 }
 
 </style>

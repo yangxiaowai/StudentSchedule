@@ -29,7 +29,6 @@
         <router-link to="/data-integration" class="top-nav-link" active-class="top-nav-link-active">Resources</router-link>
         <router-link to="/ai-analysis" class="top-nav-link" active-class="top-nav-link-active">AI Analysis</router-link>
         <router-link to="/alicloud-chat" class="top-nav-link" active-class="top-nav-link-active">AliCloud AI</router-link>
-        <router-link to="/social-learning" class="top-nav-link" active-class="top-nav-link-active">Social</router-link>
       </nav>
       <div v-if="isReadOnly" class="readonly-indicator">
         <span class="readonly-badge">只读模式</span>
