@@ -153,7 +153,7 @@
                 
                 <td class="file-cell">
                   <div v-if="task.fileName" class="file-info">
-                    <button @click="openFile(task.fileUrl, task)" class="file-button">
+                    <button @click="openFile(task)" class="file-button">
                       <i class="fas fa-file"></i>
                       {{ task.fileName.length > 10 ? task.fileName.substring(0, 10) + '...' : task.fileName }}
                     </button>
@@ -910,109 +910,145 @@ const handleFileUpload = async (event) => {
   }
 }
 
-// 打开文件 - 跳转到资料库预览
-const openFile = async (fileUrl, task) => {
-  if (!fileUrl) return
-  
-  // 从fileUrl中提取文件名
-  const fileName = fileUrl.split('/').pop()
-  if (!fileName) {
-    alert('无法获取文件信息')
+// 获取文件扩展名的辅助函数
+const getFileExtension = (fileName) => {
+  return fileName.split('.').pop().toLowerCase()
+}
+
+// 打开文件 - 修复API路径，使其与资料库一致
+const openFile = async (task) => {
+  if (!task.fileName) {
+    showErrorModal('文件信息不完整', '无法获取文件信息')
     return
   }
   
+  console.log('开始预览文件:', task.fileName)
+  console.log('完整任务信息:', task)
+  
+  // 从 filePath 或 fileUrl 中提取实际的文件名
+  let actualFileName;
+  if (task.filePath) {
+    // 从路径中提取文件名，例如从 "/api/files/download?fileName=uuid_filename.pdf" 中提取
+    const match = task.filePath.match(/fileName=([^&]+)/) || task.filePath.match(/\/([^/]+)$/);
+    actualFileName = match ? decodeURIComponent(match[1]) : task.fileName;
+  } else {
+    actualFileName = task.fileName;
+  }
+  
+  console.log('实际文件名:', actualFileName)
+  
+  // 创建预览加载界面
+  const loadingModal = createPreviewLoadingModal(actualFileName)
+  
   try {
-    // 跳转到资料库页面
-    await router.push('/data-integration')
+    const token = localStorage.getItem('accessToken')
+    console.log('Token存在:', !!token)
     
-    // 使用nextTick确保DOM完全渲染后再触发事件
-     await nextTick()
-     
-     // 等待DataIntegration组件完全加载的函数
-      const waitForDataIntegration = () => {
-        return new Promise((resolve) => {
-          let attempts = 0;
-          const maxAttempts = 30; // 最多尝试30次，每次100ms
-          
-          const checkInterval = setInterval(() => {
-            attempts++;
-            console.log(`TaskManager: 检查DataIntegration组件加载状态 (${attempts}/${maxAttempts})`);
-            
-            // 检查DataIntegration组件是否已加载（通过检查特定元素）
-            const dataIntegrationElement = document.querySelector('.data-integration-container') || 
-                                         document.querySelector('[data-component="data-integration"]') ||
-                                         document.querySelector('.materials-grid');
-            
-            if (dataIntegrationElement) {
-              console.log('TaskManager: DataIntegration组件已检测到');
-              clearInterval(checkInterval);
-              resolve(true);
-            } else if (attempts >= maxAttempts) {
-              console.log('TaskManager: 达到最大检测次数，继续执行');
-              clearInterval(checkInterval);
-              resolve(false);
-            }
-          }, 100);
-        });
-      };
-     
-     // 等待组件加载完成后触发事件
-      const componentDetected = await waitForDataIntegration();
-      
-      // 根据检测结果调整延迟时间
-      const delay = componentDetected ? 300 : 1000;
-      console.log(`TaskManager: 组件检测${componentDetected ? '成功' : '失败'}，将在${delay}ms后触发事件`);
-      
-      // 延迟触发事件确保事件监听器已设置
-      setTimeout(() => {
-        // 首先设置当前任务ID
-        const setTaskIdEvent = new CustomEvent('setTaskId', {
-          detail: {
-            taskId: task.id
-          }
-        })
-        window.dispatchEvent(setTaskIdEvent)
-        console.log('TaskManager: setTaskId事件已触发，任务ID:', task.id)
-        
-        console.log('TaskManager: 准备触发previewTaskFile事件', {
-          fileName: fileName,
-          taskName: task.name,
-          fileUrl: fileUrl
-        })
-        
-        const event = new CustomEvent('previewTaskFile', {
-          detail: {
-            fileName: fileName,
-            originalFileName: task.fileName, // 原始文件名
-            taskName: task.name,
-            fileUrl: fileUrl,
-            taskId: task.id // 任务ID用于更新进度
-          }
-        })
-        window.dispatchEvent(event)
-        console.log('TaskManager: previewTaskFile事件已触发')
-        
-        // 如果事件触发后1秒内没有响应，再次尝试
-        setTimeout(() => {
-           console.log('TaskManager: 备用事件触发机制');
-           const backupEvent = new CustomEvent('previewTaskFile', {
-              detail: {
-                fileName: fileName,
-                originalFileName: task.fileName, // 原始文件名
-                taskName: task.name,
-                fileUrl: fileUrl,
-                taskId: task.id // 任务ID用于更新进度
-              }
-            });
-           window.dispatchEvent(backupEvent);
-         }, 1000);
-      }, delay)
+    // 更新加载状态
+    updateLoadingProgress(loadingModal, 20, '正在加载...')
+    
+    // 使用实际文件名进行预览
+    const apiUrl = `/api/preview/${encodeURIComponent(actualFileName)}`
+    console.log('请求URL:', apiUrl)
+    console.log('文件名:', actualFileName)
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    console.log('HTTP响应状态:', response.status)
+    console.log('响应头:', Object.fromEntries(response.headers.entries()))
+    
+    updateLoadingProgress(loadingModal, 50, '正在获取文件数据...')
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('HTTP错误响应:', errorText)
+      throw new Error(`预览请求失败: ${response.status} - ${errorText}`)
+    }
+    
+    const previewData = await response.json()
+    console.log('预览数据结构:', previewData)
+    
+    if (previewData.error) {
+      console.error('预览数据中的错误:', previewData.error)
+      throw new Error(previewData.error)
+    }
+    
+    // 添加任务ID到预览数据中，供视频预览使用
+    previewData.id = task.id
+    previewData.taskId = task.id
+    
+    updateLoadingProgress(loadingModal, 80, '正在准备预览...')
+    
+    // 关闭加载界面
+    if (document.body.contains(loadingModal)) {
+      document.body.removeChild(loadingModal)
+    }
+    
+    // 根据文件类型调用不同的预览方法
+    console.log('检测到的文件类型:', previewData.fileType)
+    switch (previewData.fileType) {
+      case 'txt':
+        await previewTextFile(previewData)
+        break
+      case 'pdf':
+        await previewPdfFile(previewData)
+        break
+      case 'doc':
+      case 'docx':
+      case 'ppt':
+      case 'pptx':
+        await previewOfficeFile(previewData)
+        break
+      case 'xls':
+      case 'xlsx':
+        await previewExcelFile(previewData)
+        break
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'bmp':
+      case 'webp':
+      case 'svg':
+        await previewImageFile(previewData)
+        break
+      case 'mp4':
+      case 'avi':
+      case 'mov':
+      case 'wmv':
+      case 'flv':
+      case 'webm':
+      case 'mkv':
+        await previewVideoFile(previewData)
+        break
+      default:
+        console.warn('不支持的文件类型:', previewData.fileType)
+        throw new Error(`不支持预览此文件类型: ${previewData.fileType}`)
+    }
+    
+    console.log('文件预览成功完成')
     
   } catch (error) {
-    console.error('跳转到资料库失败:', error)
-    alert('跳转到资料库失败: ' + error.message)
+    // 关闭加载界面
+    if (document.body.contains(loadingModal)) {
+      document.body.removeChild(loadingModal)
+    }
+    console.error('预览失败详细信息:', {
+      message: error.message,
+      stack: error.stack,
+      fileName: task.fileName,
+      task: task
+    })
+    showErrorModal('预览失败', `${error.message}\n\n请检查控制台获取详细错误信息`)
   }
 }
+
+
 
 
 
@@ -1222,7 +1258,39 @@ const createModal = (title) => {
   return { modal, content }
 }
 
-const createLoadingModal = (fileName) => {
+// 添加加载进度更新函数（照搬资料库的实现）
+const updateLoadingProgress = (loadingModal, progress, message) => {
+  const progressBar = loadingModal.querySelector('.progress-bar')
+  const progressText = loadingModal.querySelector('.progress-text')
+  
+  if (progressBar) {
+    progressBar.style.width = `${progress}%`
+  }
+  
+  if (progressText) {
+    progressText.textContent = message
+  }
+}
+
+// 添加错误模态框显示函数（照搬资料库的实现）
+const showErrorModal = (title, message = '') => {
+  const { modal, content } = createModal(title)
+  
+  content.innerHTML = `
+    <div style="text-align: center; padding: 20px; color: #dc3545;">
+      <div style="font-size: 48px; margin-bottom: 15px;">⚠️</div>
+      <h4>${title}</h4>
+      ${message ? `<p>${message}</p>` : ''}
+      <button onclick="this.closest('.file-preview-modal').remove()" 
+              style="margin-top: 15px; padding: 8px 16px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        关闭
+      </button>
+    </div>
+  `
+}
+
+// 修改createLoadingModal函数，添加进度条（照搬资料库的实现）
+const createPreviewLoadingModal = (fileName) => {
   const modal = document.createElement('div')
   modal.className = 'loading-modal'
   modal.style.position = 'fixed'
@@ -1244,6 +1312,7 @@ const createLoadingModal = (fileName) => {
   content.style.textAlign = 'center'
   content.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)'
   content.style.position = 'relative'
+  content.style.minWidth = '300px'
   
   // 添加关闭按钮
   const closeBtn = document.createElement('button')
@@ -1288,13 +1357,31 @@ const createLoadingModal = (fileName) => {
   
   const text = document.createElement('p')
   text.textContent = `正在预览 ${fileName}...`
-  text.style.margin = '0 0 10px 0'
+  text.style.margin = '0 0 15px 0'
   
-  const subText = document.createElement('p')
-  subText.textContent = '请稍候，预览可能需要几秒钟'
-  subText.style.fontSize = '12px'
-  subText.style.color = '#666'
-  subText.style.margin = '0 0 15px 0'
+  // 添加进度条
+  const progressContainer = document.createElement('div')
+  progressContainer.style.width = '100%'
+  progressContainer.style.height = '6px'
+  progressContainer.style.backgroundColor = '#f0f0f0'
+  progressContainer.style.borderRadius = '3px'
+  progressContainer.style.margin = '15px 0'
+  progressContainer.style.overflow = 'hidden'
+  
+  const progressBar = document.createElement('div')
+  progressBar.className = 'progress-bar'
+  progressBar.style.width = '0%'
+  progressBar.style.height = '100%'
+  progressBar.style.backgroundColor = '#3498db'
+  progressBar.style.transition = 'width 0.3s ease'
+  progressContainer.appendChild(progressBar)
+  
+  const progressText = document.createElement('p')
+  progressText.className = 'progress-text'
+  progressText.textContent = '正在初始化...'
+  progressText.style.fontSize = '12px'
+  progressText.style.color = '#666'
+  progressText.style.margin = '10px 0'
   
   const cancelText = document.createElement('p')
   cancelText.textContent = '点击右上角 × 可取消预览'
@@ -1315,7 +1402,8 @@ const createLoadingModal = (fileName) => {
   content.appendChild(closeBtn)
   content.appendChild(spinner)
   content.appendChild(text)
-  content.appendChild(subText)
+  content.appendChild(progressContainer)
+  content.appendChild(progressText)
   content.appendChild(cancelText)
   modal.appendChild(content)
   
@@ -1323,150 +1411,395 @@ const createLoadingModal = (fileName) => {
   return modal
 }
 
-// PDF文件预览
-const previewPdfFile = async (previewData, task) => {
+// 保留原有的createLoadingModal函数以保持兼容性
+const createLoadingModal = (fileName) => {
+  const modal = document.createElement('div')
+  modal.className = 'loading-modal'
+  modal.style.position = 'fixed'
+  modal.style.top = '0'
+  modal.style.left = '0'
+  modal.style.width = '100%'
+  modal.style.height = '100%'
+  modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'
+  modal.style.zIndex = '10001'
+  modal.style.display = 'flex'
+  modal.style.alignItems = 'center'
+  modal.style.justifyContent = 'center'
+  
+  const content = document.createElement('div')
+  content.className = 'loading-content'
+  content.style.background = 'white'
+  content.style.padding = '30px'
+  content.style.borderRadius = '8px'
+  content.style.textAlign = 'center'
+  content.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)'
+  content.style.position = 'relative'
+  content.style.minWidth = '300px'
+  
+  // 添加关闭按钮
+  const closeBtn = document.createElement('button')
+  closeBtn.textContent = '×'
+  closeBtn.style.position = 'absolute'
+  closeBtn.style.top = '10px'
+  closeBtn.style.right = '10px'
+  closeBtn.style.background = 'none'
+  closeBtn.style.border = 'none'
+  closeBtn.style.fontSize = '20px'
+  closeBtn.style.cursor = 'pointer'
+  closeBtn.style.color = '#999'
+  closeBtn.style.width = '30px'
+  closeBtn.style.height = '30px'
+  closeBtn.style.borderRadius = '50%'
+  closeBtn.style.display = 'flex'
+  closeBtn.style.alignItems = 'center'
+  closeBtn.style.justifyContent = 'center'
+  closeBtn.onmouseover = () => {
+    closeBtn.style.backgroundColor = '#f0f0f0'
+    closeBtn.style.color = '#333'
+  }
+  closeBtn.onmouseout = () => {
+    closeBtn.style.backgroundColor = 'transparent'
+    closeBtn.style.color = '#999'
+  }
+  closeBtn.onclick = () => {
+    if (modal && modal.parentNode) {
+      document.body.removeChild(modal)
+    }
+  }
+  
+  const spinner = document.createElement('div')
+  spinner.className = 'loading-spinner'
+  spinner.style.width = '40px'
+  spinner.style.height = '40px'
+  spinner.style.border = '4px solid #f3f3f3'
+  spinner.style.borderTop = '4px solid #3498db'
+  spinner.style.borderRadius = '50%'
+  spinner.style.animation = 'spin 1s linear infinite'
+  spinner.style.margin = '0 auto 15px'
+  
+  const text = document.createElement('p')
+  text.textContent = `正在预览 ${fileName}...`
+  text.style.margin = '0 0 15px 0'
+  
+  // 添加进度条
+  const progressContainer = document.createElement('div')
+  progressContainer.style.width = '100%'
+  progressContainer.style.height = '6px'
+  progressContainer.style.backgroundColor = '#f0f0f0'
+  progressContainer.style.borderRadius = '3px'
+  progressContainer.style.margin = '15px 0'
+  progressContainer.style.overflow = 'hidden'
+  
+  const progressBar = document.createElement('div')
+  progressBar.className = 'progress-bar'
+  progressBar.style.width = '0%'
+  progressBar.style.height = '100%'
+  progressBar.style.backgroundColor = '#3498db'
+  progressBar.style.transition = 'width 0.3s ease'
+  progressContainer.appendChild(progressBar)
+  
+  const progressText = document.createElement('p')
+  progressText.className = 'progress-text'
+  progressText.textContent = '正在初始化...'
+  progressText.style.fontSize = '12px'
+  progressText.style.color = '#666'
+  progressText.style.margin = '10px 0'
+  
+  const cancelText = document.createElement('p')
+  cancelText.textContent = '点击右上角 × 可取消预览'
+  cancelText.style.fontSize = '11px'
+  cancelText.style.color = '#999'
+  cancelText.style.margin = '0'
+  
+  // 添加旋转动画样式
+  const style = document.createElement('style')
+  style.textContent = `
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `
+  document.head.appendChild(style)
+  
+  content.appendChild(closeBtn)
+  content.appendChild(spinner)
+  content.appendChild(text)
+  content.appendChild(progressContainer)
+  content.appendChild(progressText)
+  content.appendChild(cancelText)
+  modal.appendChild(content)
+  
+  document.body.appendChild(modal)
+  return modal
+}
+
+// 添加动态加载脚本的函数
+const loadScript = (url) => {
+  return new Promise((resolve, reject) => {
+    // 检查脚本是否已经加载
+    if (document.querySelector(`script[src="${url}"]`)) {
+      resolve()
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = url
+    script.onload = resolve
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
+}
+
+// PDF文件预览 - 完整实现
+const previewPdfFile = async (previewData) => {
   try {
     // 创建预览模态框
     const { modal, content } = createModal(previewData.fileName)
-    
+
     // 创建PDF容器
     const pdfContainer = document.createElement('div')
     pdfContainer.className = 'pdf-container'
-    pdfContainer.style.textAlign = 'center'
+    pdfContainer.style.width = '100%'
+    pdfContainer.style.padding = '20px'
+    pdfContainer.style.overflowY = 'auto'
     content.appendChild(pdfContainer)
-    
+
     // 添加下载链接
     const downloadLink = document.createElement('a')
-    downloadLink.href = task.fileUrl || `/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}`
+    downloadLink.href = previewData.downloadUrl
     downloadLink.className = 'download-link'
-    downloadLink.textContent = '下载原文件'
+    downloadLink.textContent = '下载PDF'
     downloadLink.target = '_blank'
     downloadLink.style.display = 'inline-block'
-    downloadLink.style.marginTop = '15px'
-    downloadLink.style.marginBottom = '15px'
+    downloadLink.style.marginBottom = '20px'
+    downloadLink.style.padding = '10px 20px'
+    downloadLink.style.backgroundColor = '#28a745'
+    downloadLink.style.color = 'white'
+    downloadLink.style.textDecoration = 'none'
+    downloadLink.style.borderRadius = '4px'
+    downloadLink.style.fontSize = '14px'
     pdfContainer.appendChild(downloadLink)
-    
-    // 如果是多页面文档
-    if (previewData.multiPage) {
-      // 分割页面内容
-      const pageImages = previewData.content.split(',')
+
+    if (!previewData.content || !previewData.content.trim()) {
+      throw new Error('PDF数据为空')
+    }
+
+    // 检查是否为多页PDF（后端返回的图片序列）
+    if (previewData.multiPage && previewData.content.includes(',')) {
+      // 多页PDF预览 - 分割图片内容
+      const pages = previewData.content.split(',').filter(page => page.trim())
+      
+      if (pages.length === 0) {
+        throw new Error('PDF页面数据为空')
+      }
+
+      let currentPage = 0
       
       // 创建页面导航
-      const pageNav = document.createElement('div')
-      pageNav.className = 'page-navigation'
-      pageNav.style.marginBottom = '15px'
-      pageNav.style.display = 'flex'
-      pageNav.style.justifyContent = 'center'
-      pageNav.style.gap = '10px'
+      const navigation = document.createElement('div')
+      navigation.style.display = 'flex'
+      navigation.style.justifyContent = 'space-between'
+      navigation.style.alignItems = 'center'
+      navigation.style.marginBottom = '20px'
+      navigation.style.padding = '10px'
+      navigation.style.backgroundColor = '#f8f9fa'
+      navigation.style.borderRadius = '4px'
       
-      // 添加页面计数器
-      const pageCounter = document.createElement('div')
-      pageCounter.className = 'page-counter'
-      pageCounter.style.margin = '0 10px'
-      pageCounter.style.lineHeight = '30px'
+      const pageCounter = document.createElement('span')
+      pageCounter.style.fontWeight = 'bold'
+      pageCounter.style.color = '#495057'
       
-      // 添加上一页按钮
       const prevBtn = document.createElement('button')
       prevBtn.textContent = '上一页'
-      prevBtn.style.padding = '5px 10px'
+      prevBtn.style.padding = '8px 16px'
+      prevBtn.style.backgroundColor = '#007bff'
+      prevBtn.style.color = 'white'
+      prevBtn.style.border = 'none'
+      prevBtn.style.borderRadius = '4px'
       prevBtn.style.cursor = 'pointer'
       
-      // 添加下一页按钮
       const nextBtn = document.createElement('button')
       nextBtn.textContent = '下一页'
-      nextBtn.style.padding = '5px 10px'
+      nextBtn.style.padding = '8px 16px'
+      nextBtn.style.backgroundColor = '#007bff'
+      nextBtn.style.color = 'white'
+      nextBtn.style.border = 'none'
+      nextBtn.style.borderRadius = '4px'
       nextBtn.style.cursor = 'pointer'
       
-      pageNav.appendChild(prevBtn)
-      pageNav.appendChild(pageCounter)
-      pageNav.appendChild(nextBtn)
-      pdfContainer.appendChild(pageNav)
+      navigation.appendChild(prevBtn)
+      navigation.appendChild(pageCounter)
+      navigation.appendChild(nextBtn)
+      pdfContainer.appendChild(navigation)
       
-      // 创建图片容器
-      const imageContainer = document.createElement('div')
-      imageContainer.className = 'pdf-image-container'
-      imageContainer.style.maxWidth = '100%'
-      imageContainer.style.margin = '0 auto'
-      pdfContainer.appendChild(imageContainer)
+      // 创建页面显示区域
+      const pageDisplay = document.createElement('div')
+      pageDisplay.style.textAlign = 'center'
+      pageDisplay.style.marginBottom = '20px'
+      pdfContainer.appendChild(pageDisplay)
       
-      // 当前页码
-      let currentPage = 0
-      let maxPageReached = 0 // 记录用户浏览过的最大页码
-      
-      // 显示指定页面
+      // 显示页面函数
       const showPage = (pageIndex) => {
-        // 清空容器
-        imageContainer.innerHTML = ''
-        
-        // 更新页码显示
-        pageCounter.textContent = `第 ${pageIndex + 1} 页 / 共 ${pageImages.length} 页`
-        
-        // 创建图片元素
-        const img = document.createElement('img')
-        img.src = `data:image/png;base64,${pageImages[pageIndex]}`
-        img.style.maxWidth = '100%'
-        img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)'
-        imageContainer.appendChild(img)
-        
-        // 更新按钮状态
+        pageCounter.textContent = `第 ${pageIndex + 1} 页 / 共 ${pages.length} 页`
         prevBtn.disabled = pageIndex === 0
-        nextBtn.disabled = pageIndex === pageImages.length - 1
+        nextBtn.disabled = pageIndex === pages.length - 1
         
-        // 更新最大浏览页码
-        if (pageIndex > maxPageReached) {
-          maxPageReached = pageIndex
-          // 计算进度百分比（基于浏览的页数）
-          const progress = Math.round(((maxPageReached + 1) / pageImages.length) * 100)
-          // 更新任务进度
-          updateTaskProgress(task.id, progress)
+        prevBtn.style.backgroundColor = pageIndex === 0 ? '#6c757d' : '#007bff'
+        nextBtn.style.backgroundColor = pageIndex === pages.length - 1 ? '#6c757d' : '#007bff'
+        
+        const img = document.createElement('img')
+        img.src = `data:image/png;base64,${pages[pageIndex].trim()}`
+        img.style.maxWidth = '100%'
+        img.style.height = 'auto'
+        img.style.border = '1px solid #dee2e6'
+        img.style.borderRadius = '4px'
+        img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+        
+        img.onerror = () => {
+          pageDisplay.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc3545;">
+              <div style="font-size: 48px; margin-bottom: 15px;">⚠️</div>
+              <h4>页面加载失败</h4>
+              <p>第 ${pageIndex + 1} 页无法显示</p>
+            </div>
+          `
+        }
+        
+        pageDisplay.innerHTML = ''
+        pageDisplay.appendChild(img)
+        
+        // 添加进度追踪功能
+        if (previewData.taskId) {
+          const progress = Math.round(((pageIndex + 1) / pages.length) * 100)
+          updateTaskProgress(previewData.taskId, progress)
+          console.log(`PDF阅读进度已更新: 第${pageIndex + 1}页/${pages.length}页 (${progress}%)`)
         }
       }
       
-      // 显示第一页
-      showPage(currentPage)
-      
-      // 初始化时设置第一页的进度
-      maxPageReached = 0
-      const initialProgress = Math.round(((maxPageReached + 1) / pageImages.length) * 100)
-      console.log(`TaskManager PDF初始进度: ${initialProgress}% (已浏览 ${maxPageReached + 1}/${pageImages.length} 页)`)
-      updateTaskProgress(task.id, initialProgress)
-      
-      // 绑定按钮事件
-      prevBtn.addEventListener('click', () => {
+      // 事件监听
+      prevBtn.onclick = () => {
         if (currentPage > 0) {
           currentPage--
           showPage(currentPage)
         }
-      })
+      }
       
-      nextBtn.addEventListener('click', () => {
-        if (currentPage < pageImages.length - 1) {
+      nextBtn.onclick = () => {
+        if (currentPage < pages.length - 1) {
           currentPage++
           showPage(currentPage)
         }
-      })
+      }
+      
+      // 显示第一页
+      showPage(0)
       
     } else {
-      // 单页PDF（兼容旧版本）
-      const img = document.createElement('img')
-      img.src = `data:image/png;base64,${previewData.content}`
-      img.style.maxWidth = '100%'
-      img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)'
-      pdfContainer.appendChild(img)
-      
-      // 单页PDF直接设置为100%完成
-      updateTaskProgress(task.id, 100)
+      // 单页PDF或使用PDF.js渲染
+      try {
+        // 动态加载PDF.js库
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js')
+
+        const pdfjsLib = window['pdfjs-dist/build/pdf']
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js'
+
+        // 清理base64数据
+        let base64Data = previewData.content.replace(/^data:[^;]+;base64,/, '').replace(/\s/g, '')
+        
+        // 验证base64格式
+        const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/
+        if (!base64Regex.test(base64Data)) {
+          throw new Error('PDF数据格式无效')
+        }
+        
+        // 解码base64数据
+        const binaryString = atob(base64Data)
+        const pdfData = Uint8Array.from(binaryString, c => c.charCodeAt(0))
+        
+        // 加载PDF
+        const loadingTask = pdfjsLib.getDocument({ data: pdfData })
+        const pdf = await loadingTask.promise
+
+        // 渲染所有页面
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i)
+          const viewport = page.getViewport({ scale: 1.0 })
+
+          const canvas = document.createElement('canvas')
+          const context = canvas.getContext('2d')
+          canvas.height = viewport.height
+          canvas.width = viewport.width
+          canvas.style.display = 'block'
+          canvas.style.margin = '0 auto 20px'
+          canvas.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)'
+          canvas.style.maxWidth = '100%'
+
+          // 添加页面分隔线（除第一页外）
+          if (i > 1) {
+            const divider = document.createElement('hr')
+            divider.style.margin = '20px 0'
+            pdfContainer.appendChild(divider)
+          }
+
+          // 添加页面标题
+          const pageHeader = document.createElement('div')
+          pageHeader.textContent = `第 ${i} 页`
+          pageHeader.style.marginBottom = '10px'
+          pageHeader.style.fontWeight = 'bold'
+          pageHeader.style.textAlign = 'center'
+          pdfContainer.appendChild(pageHeader)
+
+          pdfContainer.appendChild(canvas)
+
+          // 渲染页面
+          await page.render({
+            canvasContext: context,
+            viewport: viewport
+          }).promise
+        }
+        
+      } catch (pdfError) {
+        console.error('PDF.js渲染失败，尝试图片显示:', pdfError)
+        
+        // 如果PDF.js失败，尝试作为图片显示
+        const img = document.createElement('img')
+        img.src = `data:image/png;base64,${previewData.content}`
+        img.style.maxWidth = '100%'
+        img.style.height = 'auto'
+        img.style.border = '1px solid #dee2e6'
+        img.style.borderRadius = '4px'
+        img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+        img.style.display = 'block'
+        img.style.margin = '0 auto'
+        
+        img.onerror = () => {
+          pdfContainer.innerHTML += `
+            <div style="text-align: center; padding: 40px; color: #dc3545;">
+              <h4>PDF预览失败</h4>
+              <p>无法显示PDF内容，请下载文件查看</p>
+            </div>
+          `
+        }
+        
+        pdfContainer.appendChild(img)
+      }
     }
-    
+
   } catch (error) {
-    console.error('PDF渲染失败:', error)
+    console.error('PDF预览失败:', error)
     const { modal, content } = createModal(previewData.fileName)
     content.innerHTML = `
-      <p>PDF预览失败: ${error.message}</p>
-      <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
-         target="_blank" class="download-link">
-        下载文件
-      </a>
+      <div style="text-align: center; padding: 40px; color: #dc3545;">
+        <div style="font-size: 48px; margin-bottom: 15px;">📄</div>
+        <h4>PDF预览失败</h4>
+        <p>${error.message}</p>
+        <a href="${previewData.downloadUrl}"
+           target="_blank" 
+           style="display: inline-block; margin-top: 20px; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px;">
+          下载PDF
+        </a>
+      </div>
     `
   }
 }
@@ -1511,64 +1844,30 @@ const updateTaskProgress = async (taskId, progress) => {
 const previewTextFile = async (previewData) => {
   const { modal, content } = createModal(previewData.fileName)
   
-  const textContainer = document.createElement('div')
-  textContainer.style.maxHeight = '600px'
-  textContainer.style.overflow = 'auto'
-  textContainer.style.whiteSpace = 'pre-wrap'
-  textContainer.style.fontFamily = 'monospace'
-  textContainer.style.fontSize = '14px'
-  textContainer.style.lineHeight = '1.5'
-  textContainer.style.padding = '15px'
-  textContainer.style.backgroundColor = '#f8f9fa'
-  textContainer.style.border = '1px solid #e9ecef'
-  textContainer.style.borderRadius = '4px'
-  
-  textContainer.textContent = previewData.content
-  content.appendChild(textContainer)
+  content.innerHTML = `
+    <div style="text-align: center; padding: 20px;">
+      <p>文本文件预览功能开发中</p>
+      <a href="${previewData.downloadUrl}"
+         target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+        下载文件
+      </a>
+    </div>
+  `
 }
 
 // Office文件预览
 const previewOfficeFile = async (previewData) => {
   const { modal, content } = createModal(previewData.fileName)
   
-  if (previewData.content && previewData.content.trim()) {
-    const docContainer = document.createElement('div')
-    docContainer.style.maxHeight = '600px'
-    docContainer.style.overflow = 'auto'
-    docContainer.style.fontFamily = 'Arial, sans-serif'
-    docContainer.style.lineHeight = '1.6'
-    
-    try {
-      // 使用正确的UTF-8解码方法处理中文字符
-      let htmlContent = ''
-      try {
-        const binaryString = atob(previewData.content)
-        const bytes = new Uint8Array(binaryString.length)
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i)
-        }
-        htmlContent = new TextDecoder('utf-8').decode(bytes)
-      } catch (decodeError) {
-        console.warn('UTF-8解码失败，尝试直接解码:', decodeError)
-        htmlContent = atob(previewData.content)
-      }
-      docContainer.innerHTML = htmlContent
-    } catch (error) {
-      docContainer.textContent = previewData.content
-    }
-    
-    content.appendChild(docContainer)
-  } else {
-    content.innerHTML = `
-      <div style="text-align: center; padding: 20px;">
-        <p>无法预览此Office文件</p>
-        <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
-           target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
-          下载文件
-        </a>
-      </div>
-    `
-  }
+  content.innerHTML = `
+    <div style="text-align: center; padding: 20px;">
+      <p>Office文件预览功能开发中</p>
+      <a href="${previewData.downloadUrl}"
+         target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+        下载文件
+      </a>
+    </div>
+  `
 }
 
 // Excel文件预览
@@ -1578,7 +1877,7 @@ const previewExcelFile = async (previewData) => {
   content.innerHTML = `
     <div style="text-align: center; padding: 20px;">
       <p>Excel文件预览功能开发中</p>
-      <a href="/api/files/download?fileName=${encodeURIComponent(previewData.fileName)}"
+      <a href="${previewData.downloadUrl}"
          target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
         下载文件
       </a>
@@ -1591,12 +1890,525 @@ const previewImageFile = async (previewData) => {
   const { modal, content } = createModal(previewData.fileName)
   
   const img = document.createElement('img')
-  img.src = `data:image/${previewData.fileType};base64,${previewData.content}`
+  img.src = previewData.downloadUrl
   img.style.maxWidth = '100%'
   img.style.maxHeight = '70vh'
   img.style.objectFit = 'contain'
   
+  img.onerror = () => {
+    content.innerHTML = `
+      <div style="text-align: center; padding: 40px; color: #dc3545;">
+        <div style="font-size: 48px; margin-bottom: 15px;">🖼️</div>
+        <h4>图片加载失败</h4>
+        <p>无法显示图片预览，请下载文件后查看</p>
+        <a href="${previewData.downloadUrl}"
+           target="_blank" 
+           style="display: inline-block; margin-top: 20px; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px;">
+          下载图片
+        </a>
+      </div>
+    `
+  }
+  
   content.appendChild(img)
+}
+
+// 视频文件预览
+const previewVideoFile = async (previewData) => {
+  try {
+    console.log('开始视频预览:', previewData)
+    const { modal, content } = createModal(previewData.fileName)
+    
+    const videoContainer = document.createElement('div')
+    videoContainer.style.textAlign = 'center'
+    videoContainer.style.padding = '20px'
+    videoContainer.style.maxHeight = '80vh'
+    videoContainer.style.overflow = 'auto'
+
+    // 创建视频元素
+    const video = document.createElement('video')
+    video.controls = true
+    video.style.borderRadius = '8px'
+    video.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)'
+    video.style.backgroundColor = '#000'
+    video.style.outline = 'none'
+    video.style.pointerEvents = 'auto'
+
+    // 确保视频控件可以交互
+    video.setAttribute('controlsList', '')
+    video.setAttribute('disablePictureInPicture', 'false')
+
+    console.log('视频元素创建完成，controls属性:', video.controls)
+
+    // 响应式视频尺寸设置
+    const setVideoSize = () => {
+      const windowWidth = window.innerWidth
+      const windowHeight = window.innerHeight
+      const isLandscape = windowWidth > windowHeight
+
+      if (isLandscape) {
+        // 横屏模式：优先考虑宽度
+        video.style.width = Math.min(windowWidth * 0.8, 1200) + 'px'
+        video.style.maxHeight = (windowHeight * 0.7) + 'px'
+        video.style.height = 'auto'
+      } else {
+        // 竖屏模式：优先考虑高度
+        video.style.height = Math.min(windowHeight * 0.6, 800) + 'px'
+        video.style.maxWidth = (windowWidth * 0.9) + 'px'
+        video.style.width = 'auto'
+      }
+    }
+
+    // 初始设置视频尺寸
+    setVideoSize()
+
+    // 监听窗口大小变化和屏幕方向变化
+    const resizeHandler = () => {
+      setVideoSize()
+    }
+
+    window.addEventListener('resize', resizeHandler)
+    window.addEventListener('orientationchange', () => {
+      // 延迟执行以确保方向变化完成
+      setTimeout(resizeHandler, 100)
+    })
+
+    // 创建时间显示元素
+    const timeDisplay = document.createElement('div')
+    timeDisplay.style.fontSize = '14px'
+    timeDisplay.style.color = '#666'
+    timeDisplay.style.marginTop = '5px'
+    timeDisplay.style.marginBottom = '10px'
+    timeDisplay.style.textAlign = 'center'
+
+    // 更新时间显示
+    const updateTimeDisplay = () => {
+      if (video.duration) {
+        const currentMinutes = Math.floor(video.currentTime / 60)
+        const currentSeconds = Math.floor(video.currentTime % 60)
+        const totalMinutes = Math.floor(video.duration / 60)
+        const totalSeconds = Math.floor(video.duration % 60)
+
+        timeDisplay.textContent = `${currentMinutes.toString().padStart(2, '0')}:${currentSeconds.toString().padStart(2, '0')} / ${totalMinutes.toString().padStart(2, '0')}:${totalSeconds.toString().padStart(2, '0')}`
+      }
+    }
+
+    // 监听时间更新事件，更新时间显示
+    video.addEventListener('timeupdate', updateTimeDisplay)
+
+    // 在模态框关闭时移除事件监听器
+    const originalCloseBtn = modal.querySelector('button')
+    const originalOnClick = originalCloseBtn.onclick
+    originalCloseBtn.onclick = () => {
+      // 移除窗口事件监听器
+      window.removeEventListener('resize', resizeHandler)
+      window.removeEventListener('orientationchange', resizeHandler)
+
+      // 移除拖拽相关的事件监听器
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.removeEventListener('touchmove', handleTouchMove)
+      document.removeEventListener('touchend', handleTouchEnd)
+
+      // 移除视频事件监听器
+      if (videoCanPlayHandler) {
+        video.removeEventListener('canplay', videoCanPlayHandler)
+      }
+
+      // 执行原始的关闭函数
+      originalOnClick()
+    }
+
+    // 设置视频源
+    const videoUrl = previewData.downloadUrl || `/api/files/download/${encodeURIComponent(previewData.fileName)}`
+    video.src = videoUrl
+    video.preload = 'metadata'
+
+    // 添加错误处理
+    video.onerror = () => {
+      videoContainer.innerHTML = `
+        <div style="padding: 20px; text-align: center; color: #666;">
+          <p>视频加载失败，请检查文件格式或网络连接</p>
+          <a href="${videoUrl}"
+             target="_blank"
+             style="color: #007bff; text-decoration: none;">
+            下载视频文件
+          </a>
+        </div>
+      `
+    }
+
+    // 添加加载提示
+    const loadingText = document.createElement('p')
+    loadingText.textContent = '视频加载中...'
+    loadingText.style.textAlign = 'center'
+    loadingText.style.color = '#666'
+    loadingText.style.margin = '20px 0'
+
+    video.onloadstart = () => {
+      loadingText.style.display = 'block'
+    }
+
+    video.oncanplay = () => {
+      loadingText.style.display = 'none'
+    }
+
+    // 添加视频信息
+    const videoInfo = document.createElement('div')
+    videoInfo.style.marginTop = '15px'
+    videoInfo.style.padding = '10px'
+    videoInfo.style.backgroundColor = '#f8f9fa'
+    videoInfo.style.borderRadius = '4px'
+    videoInfo.style.fontSize = '14px'
+    videoInfo.style.color = '#666'
+
+    // 视频观看进度跟踪
+    let maxWatchedProgress = 0
+    const taskId = previewData.id || previewData.taskId // 使用任务ID
+    let currentTaskProgress = 0 // 当前任务进度
+    let isProgressComplete = false // 标记任务是否已完成
+
+    // 获取当前任务进度
+    const getCurrentTaskProgress = async () => {
+      if (!taskId) return
+
+      try {
+        const token = localStorage.getItem('accessToken')
+        const response = await fetch(`/api/tasks/${taskId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (response.ok) {
+          const task = await response.json()
+          currentTaskProgress = task.progress || 0
+          isProgressComplete = currentTaskProgress >= 100
+          console.log(`当前任务进度: ${currentTaskProgress}%, 是否已完成: ${isProgressComplete}`)
+
+          if (isProgressComplete) {
+            console.log('任务已完成，不再记录观看进度')
+          }
+        }
+      } catch (error) {
+        console.error('获取任务进度失败:', error)
+      }
+    }
+
+    // 初始化时获取当前进度
+    await getCurrentTaskProgress()
+
+    // 格式化时间的辅助函数
+    const formatTime = (seconds) => {
+      const mins = Math.floor(seconds / 60)
+      const secs = Math.floor(seconds % 60)
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    }
+
+    // 更新观看进度的函数
+    const updateWatchProgress = () => {
+      if (video.duration && taskId && !isProgressComplete && !isUserSeeking) {
+        const currentTime = video.currentTime
+        const duration = video.duration
+        const percentage = Math.round((currentTime / duration) * 100)
+
+        // 记录最大观看进度，但不能低于当前任务进度
+        const newProgress = Math.max(percentage, currentTaskProgress)
+
+        if (newProgress > maxWatchedProgress) {
+          maxWatchedProgress = newProgress
+          console.log(`视频观看进度更新: ${maxWatchedProgress}%`)
+
+          // 每当进度增加5%时更新任务进度
+          if (maxWatchedProgress % 5 === 0 || maxWatchedProgress === 100) {
+            updateTaskProgress(taskId, maxWatchedProgress)
+          }
+        }
+      }
+    }
+
+    video.onloadedmetadata = () => {
+      const duration = Math.round(video.duration)
+      const minutes = Math.floor(duration / 60)
+      const seconds = duration % 60
+      videoInfo.innerHTML = `
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+          <span>时长: ${minutes}:${seconds.toString().padStart(2, '0')}</span>
+          <span>分辨率: ${video.videoWidth} × ${video.videoHeight}</span>
+          <span>文件大小: ${previewData.fileSize ? (previewData.fileSize / 1024 / 1024).toFixed(2) + ' MB' : '未知'}</span>
+        </div>
+      `
+
+      console.log(`视频元数据加载完成，时长: ${duration}秒, 当前任务进度: ${currentTaskProgress}%`)
+    }
+
+    // 在视频可以播放时设置进度（移到进度条创建之后）
+    let videoCanPlayHandler = null
+
+    // 监听时间更新事件
+    video.addEventListener('timeupdate', updateWatchProgress)
+
+    // 监听播放状态变化
+    video.addEventListener('play', () => {
+      console.log('视频开始播放')
+    })
+
+    video.addEventListener('pause', () => {
+      console.log('视频暂停播放')
+    })
+
+    video.addEventListener('ended', () => {
+      console.log('视频播放完成')
+      // 视频播放完成时确保进度为100%（仅当任务未完成时）
+      if (taskId && !isProgressComplete) {
+        maxWatchedProgress = 100
+        updateTaskProgress(taskId, 100)
+      }
+    })
+
+    // 监听用户手动跳转进度
+    video.addEventListener('seeked', () => {
+      if (video.duration && taskId && !isProgressComplete) {
+        const currentTime = video.currentTime
+        const duration = video.duration
+        const percentage = Math.round((currentTime / duration) * 100)
+
+        // 如果用户跳转到更高的进度，更新最大观看进度
+        if (percentage > maxWatchedProgress) {
+          maxWatchedProgress = percentage
+          console.log(`用户跳转到新进度: ${maxWatchedProgress}%`)
+
+          // 立即更新任务进度
+          updateTaskProgress(taskId, maxWatchedProgress)
+        }
+      }
+    })
+
+    // 添加下载链接
+    const downloadLink = document.createElement('a')
+    downloadLink.href = videoUrl
+    downloadLink.textContent = '下载视频'
+    downloadLink.target = '_blank'
+    downloadLink.style.display = 'inline-block'
+    downloadLink.style.marginTop = '15px'
+    downloadLink.style.padding = '8px 16px'
+    downloadLink.style.backgroundColor = '#007bff'
+    downloadLink.style.color = 'white'
+    downloadLink.style.textDecoration = 'none'
+    downloadLink.style.borderRadius = '4px'
+    downloadLink.style.fontSize = '14px'
+
+    downloadLink.onmouseover = () => {
+      downloadLink.style.backgroundColor = '#0056b3'
+    }
+    downloadLink.onmouseout = () => {
+      downloadLink.style.backgroundColor = '#007bff'
+    }
+
+    // 创建自定义进度条容器
+    const progressWrapper = document.createElement('div')
+    progressWrapper.style.width = '100%'
+    progressWrapper.style.padding = '10px 0'
+    progressWrapper.style.cursor = 'pointer'
+
+    const customProgressContainer = document.createElement('div')
+    customProgressContainer.style.width = '100%'
+    customProgressContainer.style.height = '6px'
+    customProgressContainer.style.backgroundColor = '#e0e0e0'
+    customProgressContainer.style.borderRadius = '3px'
+    customProgressContainer.style.position = 'relative'
+    customProgressContainer.style.cursor = 'pointer'
+
+    const customProgressBar = document.createElement('div')
+    customProgressBar.style.width = '0%'
+    customProgressBar.style.height = '100%'
+    customProgressBar.style.backgroundColor = '#4CAF50'
+    customProgressBar.style.borderRadius = '3px'
+    customProgressBar.style.transition = 'width 0.1s'
+
+    // 创建拖拽手柄
+    const progressHandle = document.createElement('div')
+    progressHandle.style.width = '16px'
+    progressHandle.style.height = '16px'
+    progressHandle.style.backgroundColor = '#4CAF50'
+    progressHandle.style.borderRadius = '50%'
+    progressHandle.style.position = 'absolute'
+    progressHandle.style.top = '-5px'
+    progressHandle.style.left = '0%'
+    progressHandle.style.cursor = 'grab'
+    progressHandle.style.border = '2px solid white'
+    progressHandle.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)'
+    progressHandle.style.transform = 'translateX(-50%)'
+    progressHandle.style.zIndex = '10'
+
+    customProgressContainer.appendChild(customProgressBar)
+    customProgressContainer.appendChild(progressHandle)
+    progressWrapper.appendChild(customProgressContainer)
+
+    // 更新自定义进度条和手柄位置
+    const updateCustomProgress = () => {
+      if (video.duration) {
+        const percentage = (video.currentTime / video.duration) * 100
+        customProgressBar.style.width = `${percentage}%`
+        progressHandle.style.left = `${percentage}%`
+      }
+    }
+
+    // 监听视频时间更新事件，更新自定义进度条
+    video.addEventListener('timeupdate', updateCustomProgress)
+
+    // 拖拽状态管理
+    let isDragging = false
+    let dragStartX = 0
+    let dragStartTime = 0
+    let isUserSeeking = false // 标记用户是否在手动跳转
+
+    // 获取进度位置的辅助函数
+    const getProgressPosition = (clientX) => {
+      const rect = customProgressContainer.getBoundingClientRect()
+      const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+      return pos
+    }
+
+    // 设置视频时间的辅助函数
+    const setVideoTime = (position, isUserAction = false) => {
+      if (video.duration) {
+        if (isUserAction) {
+          isUserSeeking = true
+          // 用户拖拽时，更新maxWatchedProgress以保持最大观看进度
+          const newTime = position * video.duration
+          const newProgress = (newTime / video.duration) * 100
+          if (newProgress > maxWatchedProgress) {
+            maxWatchedProgress = newProgress
+          }
+        }
+        video.currentTime = position * video.duration
+        updateCustomProgress()
+
+        // 延迟重置标志，确保timeupdate事件能正确识别
+        if (isUserAction) {
+          setTimeout(() => {
+            isUserSeeking = false
+          }, 100)
+        }
+      }
+    }
+
+    // 点击进度条跳转
+    progressWrapper.addEventListener('click', (e) => {
+      if (!isDragging) {
+        const pos = getProgressPosition(e.clientX)
+        setVideoTime(pos, true) // 标记为用户操作
+      }
+    })
+
+    // 鼠标拖拽事件
+    const handleMouseDown = (e) => {
+      isDragging = true
+      dragStartX = e.clientX
+      dragStartTime = video.currentTime
+      progressHandle.style.cursor = 'grabbing'
+      const pos = getProgressPosition(e.clientX)
+      setVideoTime(pos, true) // 标记为用户操作
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    const handleMouseMove = (e) => {
+      if (isDragging) {
+        const pos = getProgressPosition(e.clientX)
+        setVideoTime(pos, true) // 标记为用户操作
+        e.preventDefault()
+      }
+    }
+
+    const handleMouseUp = () => {
+      if (isDragging) {
+        isDragging = false
+        progressHandle.style.cursor = 'grab'
+      }
+    }
+
+    // 触摸拖拽事件
+    const handleTouchStart = (e) => {
+      isDragging = true
+      const touch = e.touches[0]
+      dragStartX = touch.clientX
+      dragStartTime = video.currentTime
+      const pos = getProgressPosition(touch.clientX)
+      setVideoTime(pos, true) // 标记为用户操作
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    const handleTouchMove = (e) => {
+      if (isDragging) {
+        const touch = e.touches[0]
+        const pos = getProgressPosition(touch.clientX)
+        setVideoTime(pos, true) // 标记为用户操作
+        e.preventDefault()
+      }
+    }
+
+    const handleTouchEnd = () => {
+      isDragging = false
+    }
+
+    // 绑定事件监听器
+    progressHandle.addEventListener('mousedown', handleMouseDown)
+    progressWrapper.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    progressHandle.addEventListener('touchstart', handleTouchStart)
+    progressWrapper.addEventListener('touchstart', handleTouchStart)
+    document.addEventListener('touchmove', handleTouchMove)
+    document.addEventListener('touchend', handleTouchEnd)
+
+    // 定义并绑定视频可播放事件处理器
+    let hasInitializedProgress = false
+    videoCanPlayHandler = () => {
+      console.log('视频可以播放，准备设置进度')
+
+      // 只在首次加载时设置进度，避免用户拖拽时被重置
+      if (!hasInitializedProgress && currentTaskProgress > 0 && currentTaskProgress < 100) {
+        const startTime = (currentTaskProgress / 100) * video.duration
+        video.currentTime = startTime
+        maxWatchedProgress = currentTaskProgress
+        hasInitializedProgress = true
+        console.log(`从记录的进度开始播放: ${currentTaskProgress}% (${Math.round(startTime)}秒)`)
+
+        // 更新自定义进度条到正确位置
+        updateCustomProgress()
+      }
+    }
+
+    // 绑定事件
+    video.addEventListener('canplay', videoCanPlayHandler)
+
+    // 组装元素
+    videoContainer.appendChild(loadingText)
+    videoContainer.appendChild(video)
+    videoContainer.appendChild(timeDisplay)
+    videoContainer.appendChild(progressWrapper)
+    videoContainer.appendChild(videoInfo)
+    videoContainer.appendChild(downloadLink)
+    content.appendChild(videoContainer)
+
+  } catch (error) {
+    console.error('视频预览失败:', error)
+    const { modal, content } = createModal(previewData.fileName)
+    content.innerHTML = `
+      <div style="padding: 20px; text-align: center;">
+        <p>视频预览失败: ${error.message}</p>
+        <a href="/api/files/download/${encodeURIComponent(previewData.fileName)}"
+           target="_blank"
+           style="color: #007bff; text-decoration: none;">
+          下载视频文件
+        </a>
+      </div>
+    `
+  }
 }
 
 // DDL管理相关函数
@@ -1760,9 +2572,9 @@ const goToTask = async () => {
   
   try {
     // 如果有文件，打开文件
-    if (task.fileUrl) {
-      console.log('打开任务文件:', task.fileUrl)
-      await openFile(task.fileUrl, task)
+    if (task.fileName) {
+      console.log('打开任务文件:', task.fileName)
+      await openFile(task)
     } else {
       // 没有文件则高亮闪烁该任务
       console.log('高亮显示任务:', task.id)
