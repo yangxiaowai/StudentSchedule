@@ -92,7 +92,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/study-groups/public").permitAll()
                 .requestMatchers("/api/study-shares/public").permitAll()
                 .requestMatchers("/api/qa/questions").permitAll()
-                .requestMatchers("/api/leaderboard/**").permitAll()
+                // .requestMatchers("/api/leaderboard/**").permitAll() // 移除排行榜API权限配置
                 .requestMatchers("/api/study-groups/**").authenticated()
                 .requestMatchers("/api/study-shares/**").authenticated()
                 .requestMatchers("/api/qa/**").authenticated()

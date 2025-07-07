@@ -5,6 +5,7 @@ import History from '../components/History.vue'
 import DataIntegration from '../components/DataIntegration.vue'
 import PlanManager from '../components/PlanManager.vue'
 import AIAnalysis from '../components/AIAnalysis.vue'
+import SocialLearning from '../components/SocialLearning.vue'
 
 
 import AliCloudChat from '../components/AliCloudChat.vue'
@@ -48,6 +49,7 @@ const routes = [
       { path: 'ai-analysis', component: AIAnalysis },
       { path: 'ai-chat', component: AliCloudChat },
       { path: 'alicloud-chat', component: AliCloudChat },
+      { path: 'social-learning', component: SocialLearning }
 
     ]
   }

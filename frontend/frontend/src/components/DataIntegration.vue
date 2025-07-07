@@ -1,4 +1,29 @@
 <template>
+  <div class="material-container">
+    <!-- 顶部搜索栏 - 只读模式下隐藏 -->
+    <div v-if="!isReadOnly" class="search-section">
+      <div class="search-bar">
+        <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="输入关键词搜索资料..."
+            @keyup.enter="handleSearch"
+        />
+        <button @click="handleSearch">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+          </svg>
+          搜索
+        </button>
+      </div>
+
+      <div class="search-options" v-if="showAdvancedSearch">
+        <div class="filter-group">
+          <label>学科分类：</label>
+          <select v-model="selectedSubject">
+            <option value="">全部</option>
+            <option v-for="subject in subjects" :value="subject.value">{{ subject.label }}</option>
+          </select>
   <div class="data-integration">
     <!-- 侧边栏 -->
     <div class="sidebar" :class="{ 'readonly': isReadOnly }">
@@ -24,8 +49,8 @@
       <div class="subject-categories">
         <h3 class="sidebar-title">学科分类</h3>
         <div class="category-list">
-          <div 
-            class="category-item" 
+          <div
+            class="category-item"
             :class="{ 'active': selectedSubject === '' }"
             @click="selectSubject('')"
           >
@@ -33,10 +58,10 @@
             <span class="category-name">全部学科</span>
             <span class="category-count">({{ getTotalCount() }})</span>
           </div>
-          <div 
-            v-for="subject in subjects" 
+          <div
+            v-for="subject in subjects"
             :key="subject.value"
-            class="category-item" 
+            class="category-item"
             :class="{ 'active': selectedSubject === subject.value }"
             @click="selectSubject(subject.value)"
           >
@@ -45,12 +70,21 @@
             <span class="category-count">({{ getSubjectCount(subject.value) }})</span>
           </div>
         </div>
-      </div>
+        <!-- 在上传模态框的modal-body中添加 -->
+        <div v-if="uploadProgress > 0" class="upload-progress">
+          <progress :value="uploadProgress" max="100"></progress>
+          <span>{{ uploadProgress }}%</span>
+        </div>
 
+        <div class="filter-group">
+          <label>内容类型：</label>
+          <select v-model="selectedType">
+            <option value="">全部</option>
+            <option v-for="type in contentTypes" :value="type.value">{{ type.label }}</option>
       <!-- 高级筛选 -->
       <div v-if="!isReadOnly" class="advanced-filters">
         <h3 class="sidebar-title">筛选条件</h3>
-        
+
         <div class="filter-section">
           <label class="filter-label">内容类型</label>
           <select v-model="selectedType" class="filter-select">
@@ -59,6 +93,8 @@
           </select>
         </div>
 
+        <button class="toggle-advanced" @click="showAdvancedSearch = false">
+          简化搜索
         <div class="filter-section">
           <label class="filter-label">排序方式</label>
           <select v-model="sortOption" class="filter-select">
@@ -78,6 +114,10 @@
           清除筛选
         </button>
       </div>
+      <button v-else class="toggle-advanced" @click="showAdvancedSearch = true">
+        高级搜索
+      </button>
+    </div>
 
       <!-- 上传按钮 -->
       <div v-if="!isReadOnly" class="sidebar-upload">
@@ -94,6 +134,29 @@
     <!-- 主内容区域 -->
     <div class="main-content">
 
+    <!-- 资料库展示区域 -->
+    <div class="material-library">
+      <div class="library-header">
+        <div v-if="!isReadOnly" class="normal-header">
+          <h2>我的资料库</h2>
+          <div class="sort-options">
+            <span>排序方式：</span>
+            <select v-model="sortOption">
+              <option value="time-desc">最近上传</option>
+              <option value="time-asc">最早上传</option>
+              <option value="name-asc">名称(A-Z)</option>
+              <option value="name-desc">名称(Z-A)</option>
+              <option value="subject-asc">学科(A-Z)</option>
+              <option value="subject-desc">学科(Z-A)</option>
+            </select>
+          </div>
+        </div>
+
+        <div v-else class="readonly-header">
+          <h2>{{ targetUserName }}的资料库</h2>
+          <div class="readonly-badge">只读模式</div>
+        </div>
+      </div>
       <!-- 资料库展示区域 -->
       <div class="material-library">
         <div class="library-header">
@@ -103,7 +166,7 @@
               <span>共找到 {{ filteredMaterials.length }} 个资料</span>
             </div>
           </div>
-          
+
           <div v-else class="readonly-header">
             <h2>{{ targetUserName }}的资料库</h2>
             <div class="readonly-badge">只读模式</div>
@@ -151,7 +214,17 @@
           <p>暂无资料，请上传或搜索资料</p>
         </div>
       </div>
-      </div>
+    </div>
+
+    <!-- 底部上传按钮 -->
+    <div v-if="!isReadOnly" class="upload-section">
+      <button class="upload-btn" @click="showUploadModal = true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+        </svg>
+        上传资料
+      </button>
     </div>
 
     <!-- 上传资料模态框 -->
@@ -450,20 +523,20 @@ const clearFilters = () => {
 const openMaterial = async (material) => {
   // 创建预览加载界面
   const loadingModal = createPreviewLoadingModal(material.name);
-  
+
   try {
     const token = localStorage.getItem('accessToken');
-    
+
     // 更新加载状态
     updateLoadingProgress(loadingModal, 20, '正在加载...');
-    
+
     const response = await fetch(`/api/preview/file/${material.id}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
     updateLoadingProgress(loadingModal, 50, '正在获取文件数据...');
-    
+
     const previewData = await response.json();
 
     if (previewData.error) {
@@ -471,7 +544,7 @@ const openMaterial = async (material) => {
     }
 
     updateLoadingProgress(loadingModal, 80, '正在准备预览...');
-    
+
     // 关闭加载界面
     document.body.removeChild(loadingModal);
 
@@ -520,6 +593,7 @@ const openMaterial = async (material) => {
       document.body.removeChild(loadingModal);
     }
     console.error('预览失败:', error);
+    alert(`预览失败: ${error.message}`);
     showErrorModal('预览失败', error.message);
   }
 };
@@ -542,7 +616,7 @@ const previewImageFile = async (previewData) => {
       try {
         // 获取文件扩展名
         const fileExtension = previewData.fileName.split('.').pop().toLowerCase();
-        
+
         // 创建图片元素
         const img = document.createElement('img');
         img.style.maxWidth = '100%';
@@ -552,7 +626,7 @@ const previewImageFile = async (previewData) => {
         img.style.borderRadius = '8px';
         img.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
         img.alt = previewData.fileName;
-        
+
         // 设置图片源
         if (fileExtension === 'svg') {
           // SVG文件直接使用解码后的内容
@@ -573,10 +647,10 @@ const previewImageFile = async (previewData) => {
             'bmp': 'image/bmp',
             'webp': 'image/webp'
           }[fileExtension] || 'image/jpeg';
-          
+
           img.src = `data:${mimeType};base64,${previewData.content}`;
         }
-        
+
         // 添加加载事件处理
         img.onload = () => {
           // 添加图片信息
@@ -593,7 +667,7 @@ const previewImageFile = async (previewData) => {
           `;
           imageContainer.appendChild(imageInfo);
         };
-        
+
         img.onerror = () => {
           imageContainer.innerHTML = `
             <div style="padding: 40px 20px; text-align: center; color: #dc3545;">
@@ -603,9 +677,9 @@ const previewImageFile = async (previewData) => {
             </div>
           `;
         };
-        
+
         imageContainer.appendChild(img);
-        
+
       } catch (imageError) {
         console.error('图片预览失败:', imageError);
         imageContainer.innerHTML = `
@@ -717,7 +791,7 @@ const previewTextFile = async (previewData) => {
       try {
         // 尝试解码内容（如果是base64编码）
         let textContent = previewData.content;
-        
+
         // 检查是否是base64编码的内容
         if (textContent.match(/^[A-Za-z0-9+/]*={0,2}$/)) {
           try {
@@ -729,7 +803,7 @@ const previewTextFile = async (previewData) => {
         }
 
         textContainer.textContent = textContent;
-        
+
         // 添加复制功能
         copyButton.onclick = async () => {
           try {
@@ -750,7 +824,7 @@ const previewTextFile = async (previewData) => {
             }, 2000);
           }
         };
-        
+
       } catch (contentError) {
         console.error('文本内容处理失败:', contentError);
         textContainer.innerHTML = `
@@ -845,13 +919,13 @@ const previewPdfFile = async (previewData) => {
     if (previewData.multiPage && previewData.content.includes(',')) {
       // 多页PDF预览 - 分割图片内容
       const pages = previewData.content.split(',').filter(page => page.trim());
-      
+
       if (pages.length === 0) {
         throw new Error('PDF页面数据为空');
       }
 
       let currentPage = 0;
-      
+
       // 创建页面导航
       const navigation = document.createElement('div');
       navigation.style.display = 'flex';
@@ -861,11 +935,11 @@ const previewPdfFile = async (previewData) => {
       navigation.style.padding = '10px';
       navigation.style.backgroundColor = '#f8f9fa';
       navigation.style.borderRadius = '4px';
-      
+
       const pageCounter = document.createElement('span');
       pageCounter.style.fontWeight = 'bold';
       pageCounter.style.color = '#495057';
-      
+
       const prevBtn = document.createElement('button');
       prevBtn.textContent = '上一页';
       prevBtn.style.padding = '8px 16px';
@@ -874,7 +948,7 @@ const previewPdfFile = async (previewData) => {
       prevBtn.style.border = 'none';
       prevBtn.style.borderRadius = '4px';
       prevBtn.style.cursor = 'pointer';
-      
+
       const nextBtn = document.createElement('button');
       nextBtn.textContent = '下一页';
       nextBtn.style.padding = '8px 16px';
@@ -883,27 +957,27 @@ const previewPdfFile = async (previewData) => {
       nextBtn.style.border = 'none';
       nextBtn.style.borderRadius = '4px';
       nextBtn.style.cursor = 'pointer';
-      
+
       navigation.appendChild(prevBtn);
       navigation.appendChild(pageCounter);
       navigation.appendChild(nextBtn);
       pdfContainer.appendChild(navigation);
-      
+
       // 创建页面显示区域
       const pageDisplay = document.createElement('div');
       pageDisplay.style.textAlign = 'center';
       pageDisplay.style.marginBottom = '20px';
       pdfContainer.appendChild(pageDisplay);
-      
+
       // 显示页面函数
       const showPage = (pageIndex) => {
         pageCounter.textContent = `第 ${pageIndex + 1} 页 / 共 ${pages.length} 页`;
         prevBtn.disabled = pageIndex === 0;
         nextBtn.disabled = pageIndex === pages.length - 1;
-        
+
         prevBtn.style.backgroundColor = pageIndex === 0 ? '#6c757d' : '#007bff';
         nextBtn.style.backgroundColor = pageIndex === pages.length - 1 ? '#6c757d' : '#007bff';
-        
+
         const img = document.createElement('img');
         img.src = `data:image/png;base64,${pages[pageIndex].trim()}`;
         img.style.maxWidth = '100%';
@@ -911,15 +985,15 @@ const previewPdfFile = async (previewData) => {
         img.style.border = '1px solid #dee2e6';
         img.style.borderRadius = '4px';
         img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-        
+
         pageDisplay.innerHTML = '';
         pageDisplay.appendChild(img);
-        
+
         // 更新阅读进度
         const progress = Math.round(((pageIndex + 1) / pages.length) * 100);
         updateTaskProgress(currentTaskId, progress);
       };
-      
+
       // 事件监听
       prevBtn.onclick = () => {
         if (currentPage > 0) {
@@ -927,17 +1001,17 @@ const previewPdfFile = async (previewData) => {
           showPage(currentPage);
         }
       };
-      
+
       nextBtn.onclick = () => {
         if (currentPage < pages.length - 1) {
           currentPage++;
           showPage(currentPage);
         }
       };
-      
+
       // 显示第一页
       showPage(0);
-      
+
     } else {
       // 单页PDF或使用PDF.js渲染
       try {
@@ -950,17 +1024,17 @@ const previewPdfFile = async (previewData) => {
 
         // 清理base64数据
         let base64Data = previewData.content.replace(/^data:[^;]+;base64,/, '').replace(/\s/g, '');
-        
+
         // 验证base64格式
         const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
         if (!base64Regex.test(base64Data)) {
           throw new Error('PDF数据格式无效');
         }
-        
+
         // 解码base64数据
         const binaryString = atob(base64Data);
         const pdfData = Uint8Array.from(binaryString, c => c.charCodeAt(0));
-        
+
         // 加载PDF
         const loadingTask = pdfjsLib.getDocument({ data: pdfData });
         const pdf = await loadingTask.promise;
@@ -1002,13 +1076,13 @@ const previewPdfFile = async (previewData) => {
             viewport: viewport
           }).promise;
         }
-        
+
         // 设置100%阅读进度
         updateTaskProgress(currentTaskId, 100);
-        
+
       } catch (pdfError) {
         console.error('PDF.js渲染失败，尝试图片显示:', pdfError);
-        
+
         // 如果PDF.js失败，尝试作为图片显示
         const img = document.createElement('img');
         img.src = `data:image/png;base64,${previewData.content}`;
@@ -1019,7 +1093,7 @@ const previewPdfFile = async (previewData) => {
         img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
         img.style.display = 'block';
         img.style.margin = '0 auto';
-        
+
         img.onerror = () => {
           pdfContainer.innerHTML += `
             <div style="text-align: center; padding: 40px; color: #dc3545;">
@@ -1028,9 +1102,9 @@ const previewPdfFile = async (previewData) => {
             </div>
           `;
         };
-        
+
         pdfContainer.appendChild(img);
-        
+
         // 设置100%阅读进度
         updateTaskProgress(currentTaskId, 100);
       }
@@ -1043,7 +1117,7 @@ const previewPdfFile = async (previewData) => {
       <div style="padding: 20px; text-align: center; color: #666;">
         <p>PDF预览失败: ${error.message}</p>
         <a href="/api/files/download/${encodeURIComponent(previewData.fileName)}"
-           target="_blank" 
+           target="_blank"
            style="display: inline-block; margin-top: 20px; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px;">
           下载文件
         </a>
@@ -1080,7 +1154,7 @@ const previewOfficeFile = async (previewData) => {
 
     // 获取文件扩展名
     const fileExtension = previewData.fileName.split('.').pop().toLowerCase();
-    
+
     // 检查是否有base64内容可以预览
     if (previewData.content && previewData.content.trim()) {
       try {
@@ -1089,13 +1163,13 @@ const previewOfficeFile = async (previewData) => {
           if (previewData.multiPage && previewData.content.includes(',')) {
             // 多页面PPT预览 - 分割幻灯片图片内容
             const slides = previewData.content.split(',').filter(slide => slide.trim());
-            
+
             if (slides.length === 0) {
               throw new Error('PPT幻灯片数据为空');
             }
 
             let currentSlide = 0;
-            
+
             // 创建幻灯片导航
             const navigation = document.createElement('div');
             navigation.style.display = 'flex';
@@ -1105,11 +1179,11 @@ const previewOfficeFile = async (previewData) => {
             navigation.style.padding = '10px';
             navigation.style.backgroundColor = '#f8f9fa';
             navigation.style.borderRadius = '4px';
-            
+
             const slideCounter = document.createElement('span');
             slideCounter.style.fontWeight = 'bold';
             slideCounter.style.color = '#495057';
-            
+
             const prevBtn = document.createElement('button');
             prevBtn.textContent = '上一张';
             prevBtn.style.padding = '8px 16px';
@@ -1118,7 +1192,7 @@ const previewOfficeFile = async (previewData) => {
             prevBtn.style.border = 'none';
             prevBtn.style.borderRadius = '4px';
             prevBtn.style.cursor = 'pointer';
-            
+
             const nextBtn = document.createElement('button');
             nextBtn.textContent = '下一张';
             nextBtn.style.padding = '8px 16px';
@@ -1127,27 +1201,27 @@ const previewOfficeFile = async (previewData) => {
             nextBtn.style.border = 'none';
             nextBtn.style.borderRadius = '4px';
             nextBtn.style.cursor = 'pointer';
-            
+
             navigation.appendChild(prevBtn);
             navigation.appendChild(slideCounter);
             navigation.appendChild(nextBtn);
             officeContainer.appendChild(navigation);
-            
+
             // 创建幻灯片显示区域
             const slideDisplay = document.createElement('div');
             slideDisplay.style.textAlign = 'center';
             slideDisplay.style.marginBottom = '20px';
             officeContainer.appendChild(slideDisplay);
-            
+
             // 显示幻灯片函数
             const showSlide = (slideIndex) => {
               slideCounter.textContent = `第 ${slideIndex + 1} 张 / 共 ${slides.length} 张`;
               prevBtn.disabled = slideIndex === 0;
               nextBtn.disabled = slideIndex === slides.length - 1;
-              
+
               prevBtn.style.backgroundColor = slideIndex === 0 ? '#6c757d' : '#007bff';
               nextBtn.style.backgroundColor = slideIndex === slides.length - 1 ? '#6c757d' : '#007bff';
-              
+
               const img = document.createElement('img');
               img.src = `data:image/png;base64,${slides[slideIndex].trim()}`;
               img.style.maxWidth = '100%';
@@ -1155,15 +1229,15 @@ const previewOfficeFile = async (previewData) => {
               img.style.border = '1px solid #dee2e6';
               img.style.borderRadius = '4px';
               img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-              
+
               slideDisplay.innerHTML = '';
               slideDisplay.appendChild(img);
-              
+
               // 更新阅读进度
               const progress = Math.round(((slideIndex + 1) / slides.length) * 100);
               updateTaskProgress(currentTaskId, progress);
             };
-            
+
             // 事件监听
             prevBtn.onclick = () => {
               if (currentSlide > 0) {
@@ -1171,17 +1245,17 @@ const previewOfficeFile = async (previewData) => {
                 showSlide(currentSlide);
               }
             };
-            
+
             nextBtn.onclick = () => {
               if (currentSlide < slides.length - 1) {
                 currentSlide++;
                 showSlide(currentSlide);
               }
             };
-            
+
             // 显示第一张幻灯片
             showSlide(0);
-            
+
           } else {
             // 尝试解码HTML内容
             let decodedContent = '';
@@ -1197,11 +1271,11 @@ const previewOfficeFile = async (previewData) => {
               // 提取图片数据
               const imgRegex = /data:image\/[^;]+;base64,[^"\s]+/g;
               const images = decodedContent.match(imgRegex) || [];
-              
+
               if (images.length > 0) {
                 // 多页面预览
                 let currentSlide = 0;
-                
+
                 // 创建导航
                 const navigation = document.createElement('div');
                 navigation.style.display = 'flex';
@@ -1211,11 +1285,11 @@ const previewOfficeFile = async (previewData) => {
                 navigation.style.padding = '10px';
                 navigation.style.backgroundColor = '#f8f9fa';
                 navigation.style.borderRadius = '4px';
-                
+
                 const slideCounter = document.createElement('span');
                 slideCounter.style.fontWeight = 'bold';
                 slideCounter.style.color = '#495057';
-                
+
                 const prevBtn = document.createElement('button');
                 prevBtn.textContent = '上一张';
                 prevBtn.style.padding = '8px 16px';
@@ -1224,7 +1298,7 @@ const previewOfficeFile = async (previewData) => {
                 prevBtn.style.border = 'none';
                 prevBtn.style.borderRadius = '4px';
                 prevBtn.style.cursor = 'pointer';
-                
+
                 const nextBtn = document.createElement('button');
                 nextBtn.textContent = '下一张';
                 nextBtn.style.padding = '8px 16px';
@@ -1233,27 +1307,27 @@ const previewOfficeFile = async (previewData) => {
                 nextBtn.style.border = 'none';
                 nextBtn.style.borderRadius = '4px';
                 nextBtn.style.cursor = 'pointer';
-                
+
                 navigation.appendChild(prevBtn);
                 navigation.appendChild(slideCounter);
                 navigation.appendChild(nextBtn);
                 officeContainer.appendChild(navigation);
-                
+
                 // 创建幻灯片显示区域
                 const slideDisplay = document.createElement('div');
                 slideDisplay.style.textAlign = 'center';
                 slideDisplay.style.marginBottom = '20px';
                 officeContainer.appendChild(slideDisplay);
-                
+
                 // 显示幻灯片函数
                 const showSlide = (slideIndex) => {
                   slideCounter.textContent = `第 ${slideIndex + 1} 张 / 共 ${images.length} 张`;
                   prevBtn.disabled = slideIndex === 0;
                   nextBtn.disabled = slideIndex === images.length - 1;
-                  
+
                   prevBtn.style.backgroundColor = slideIndex === 0 ? '#6c757d' : '#007bff';
                   nextBtn.style.backgroundColor = slideIndex === images.length - 1 ? '#6c757d' : '#007bff';
-                  
+
                   const img = document.createElement('img');
                   img.src = images[slideIndex];
                   img.style.maxWidth = '100%';
@@ -1261,15 +1335,15 @@ const previewOfficeFile = async (previewData) => {
                   img.style.border = '1px solid #dee2e6';
                   img.style.borderRadius = '4px';
                   img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-                  
+
                   slideDisplay.innerHTML = '';
                   slideDisplay.appendChild(img);
-                  
+
                   // 更新阅读进度
                   const progress = Math.round(((slideIndex + 1) / images.length) * 100);
                   updateTaskProgress(currentTaskId, progress);
                 };
-                
+
                 // 事件监听
                 prevBtn.onclick = () => {
                   if (currentSlide > 0) {
@@ -1277,14 +1351,14 @@ const previewOfficeFile = async (previewData) => {
                     showSlide(currentSlide);
                   }
                 };
-                
+
                 nextBtn.onclick = () => {
                   if (currentSlide < images.length - 1) {
                     currentSlide++;
                     showSlide(currentSlide);
                   }
                 };
-                
+
                 // 显示第一张幻灯片
                 showSlide(0);
               } else {
@@ -1299,7 +1373,7 @@ const previewOfficeFile = async (previewData) => {
                 htmlContainer.style.padding = '20px';
                 htmlContainer.innerHTML = decodedContent;
                 officeContainer.appendChild(htmlContainer);
-                
+
                 // 设置100%阅读进度
                 updateTaskProgress(currentTaskId, 100);
               }
@@ -1315,7 +1389,7 @@ const previewOfficeFile = async (previewData) => {
               htmlContainer.style.padding = '20px';
               htmlContainer.innerHTML = decodedContent;
               officeContainer.appendChild(htmlContainer);
-              
+
               // 设置100%阅读进度
               updateTaskProgress(currentTaskId, 100);
             }
@@ -1347,11 +1421,11 @@ const previewOfficeFile = async (previewData) => {
             // 提取图片数据
             const imgRegex = /data:image\/[^;]+;base64,[^"\s]+/g;
             const images = decodedContent.match(imgRegex) || [];
-            
+
             if (images.length > 0) {
               // 多页面预览
               let currentPage = 0;
-              
+
               // 创建页面导航
               const navigation = document.createElement('div');
               navigation.style.display = 'flex';
@@ -1361,11 +1435,11 @@ const previewOfficeFile = async (previewData) => {
               navigation.style.padding = '10px';
               navigation.style.backgroundColor = '#f8f9fa';
               navigation.style.borderRadius = '4px';
-              
+
               const pageCounter = document.createElement('span');
               pageCounter.style.fontWeight = 'bold';
               pageCounter.style.color = '#495057';
-              
+
               const prevBtn = document.createElement('button');
               prevBtn.textContent = '上一页';
               prevBtn.style.padding = '8px 16px';
@@ -1374,7 +1448,7 @@ const previewOfficeFile = async (previewData) => {
               prevBtn.style.border = 'none';
               prevBtn.style.borderRadius = '4px';
               prevBtn.style.cursor = 'pointer';
-              
+
               const nextBtn = document.createElement('button');
               nextBtn.textContent = '下一页';
               nextBtn.style.padding = '8px 16px';
@@ -1383,27 +1457,27 @@ const previewOfficeFile = async (previewData) => {
               nextBtn.style.border = 'none';
               nextBtn.style.borderRadius = '4px';
               nextBtn.style.cursor = 'pointer';
-              
+
               navigation.appendChild(prevBtn);
               navigation.appendChild(pageCounter);
               navigation.appendChild(nextBtn);
               officeContainer.appendChild(navigation);
-              
+
               // 创建页面显示区域
               const pageDisplay = document.createElement('div');
               pageDisplay.style.textAlign = 'center';
               pageDisplay.style.marginBottom = '20px';
               officeContainer.appendChild(pageDisplay);
-              
+
               // 显示页面函数
               const showPage = (pageIndex) => {
                 pageCounter.textContent = `第 ${pageIndex + 1} 页 / 共 ${images.length} 页`;
                 prevBtn.disabled = pageIndex === 0;
                 nextBtn.disabled = pageIndex === images.length - 1;
-                
+
                 prevBtn.style.backgroundColor = pageIndex === 0 ? '#6c757d' : '#007bff';
                 nextBtn.style.backgroundColor = pageIndex === images.length - 1 ? '#6c757d' : '#007bff';
-                
+
                 const img = document.createElement('img');
                 img.src = images[pageIndex];
                 img.style.maxWidth = '100%';
@@ -1411,15 +1485,15 @@ const previewOfficeFile = async (previewData) => {
                 img.style.border = '1px solid #dee2e6';
                 img.style.borderRadius = '4px';
                 img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-                
+
                 pageDisplay.innerHTML = '';
                 pageDisplay.appendChild(img);
-                
+
                 // 更新阅读进度
                 const progress = Math.round(((pageIndex + 1) / images.length) * 100);
                 updateTaskProgress(currentTaskId, progress);
               };
-              
+
               // 事件监听
               prevBtn.onclick = () => {
                 if (currentPage > 0) {
@@ -1427,14 +1501,14 @@ const previewOfficeFile = async (previewData) => {
                   showPage(currentPage);
                 }
               };
-              
+
               nextBtn.onclick = () => {
                 if (currentPage < images.length - 1) {
                   currentPage++;
                   showPage(currentPage);
                 }
               };
-              
+
               // 显示第一页
               showPage(0);
             } else {
@@ -1449,7 +1523,7 @@ const previewOfficeFile = async (previewData) => {
               htmlContainer.style.padding = '20px';
               htmlContainer.innerHTML = decodedContent;
               officeContainer.appendChild(htmlContainer);
-              
+
               // 设置100%阅读进度
               updateTaskProgress(currentTaskId, 100);
             }
@@ -1485,7 +1559,7 @@ const previewOfficeFile = async (previewData) => {
             htmlContainer.style.padding = '20px';
             htmlContainer.innerHTML = decodedContent;
             officeContainer.appendChild(htmlContainer);
-            
+
             // 设置100%阅读进度
             updateTaskProgress(currentTaskId, 100);
           }
@@ -1495,30 +1569,30 @@ const previewOfficeFile = async (previewData) => {
           try {
             // 尝试使用永中DCS在线预览
             const previewUrl = `https://view.yozocloud.cn/view?url=${encodeURIComponent(window.location.origin + '/api/files/download/' + encodeURIComponent(previewData.fileName))}`;
-            
+
             const iframe = document.createElement('iframe');
             iframe.src = previewUrl;
             iframe.style.width = '100%';
             iframe.style.height = '70vh';
             iframe.style.border = '1px solid #ddd';
             iframe.style.borderRadius = '4px';
-            
+
             const previewNotice = document.createElement('div');
             previewNotice.className = 'office-preview-notice';
             previewNotice.innerHTML = `
               <p>正在使用在线预览服务加载文档...</p>
               <p style="font-size: 12px; color: #666;">如果预览失败，请下载文件后使用相应的Office软件查看</p>
             `;
-            
+
             officeContainer.appendChild(previewNotice);
             officeContainer.appendChild(iframe);
-            
+
             // 设置100%阅读进度
             updateTaskProgress(currentTaskId, 100);
-            
+
           } catch (onlinePreviewError) {
             console.error('在线预览失败:', onlinePreviewError);
-            
+
             // 显示备用下载链接
             const docInfo = document.createElement('div');
             docInfo.style.textAlign = 'center';
@@ -1526,13 +1600,13 @@ const previewOfficeFile = async (previewData) => {
             docInfo.style.backgroundColor = '#f8f9fa';
             docInfo.style.border = '2px dashed #dee2e6';
             docInfo.style.borderRadius = '8px';
-            
+
             const iconMap = {
               'xls': '📈', 'xlsx': '📈',
               'doc': '📄', 'docx': '📄',
               'ppt': '📊', 'pptx': '📊'
             };
-            
+
             docInfo.innerHTML = `
               <div style="font-size: 64px; margin-bottom: 20px;">${iconMap[fileExtension] || '📄'}</div>
               <h3 style="color: #495057; margin-bottom: 15px;">${previewData.fileName}</h3>
@@ -1542,7 +1616,7 @@ const previewOfficeFile = async (previewData) => {
                 <p style="color: #6c757d; margin: 5px 0 0 0; font-size: 14px;">请下载文件使用相应的Office软件查看完整内容</p>
               </div>
             `;
-            
+
             officeContainer.appendChild(docInfo);
           }
         }
@@ -1572,7 +1646,7 @@ const previewOfficeFile = async (previewData) => {
       <div style="padding: 20px; text-align: center; color: #666;">
         <p>文档预览失败: ${error.message}</p>
         <a href="/api/files/download/${encodeURIComponent(previewData.fileName)}"
-           target="_blank" 
+           target="_blank"
            style="display: inline-block; margin-top: 20px; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px;">
           下载文档
         </a>
@@ -1642,10 +1716,10 @@ const previewExcelFile = async (previewData) => {
         htmlContainer.style.padding = '20px';
         htmlContainer.innerHTML = decodedContent;
         excelContainer.appendChild(htmlContainer);
-        
+
         // 设置100%阅读进度
         updateTaskProgress(currentTaskId, 100);
-        
+
       } catch (previewError) {
         console.error('Excel预览失败:', previewError);
         excelContainer.innerHTML += `
@@ -1672,7 +1746,7 @@ const previewExcelFile = async (previewData) => {
       <div style="padding: 20px; text-align: center; color: #666;">
         <p>Excel预览失败: ${error.message}</p>
         <a href="/api/files/download/${encodeURIComponent(previewData.fileName)}"
-           target="_blank" 
+           target="_blank"
            style="display: inline-block; margin-top: 20px; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px;">
           下载文件
         </a>
@@ -2347,11 +2421,11 @@ const createPreviewLoadingModal = (fileName) => {
 const updateLoadingProgress = (modal, progress, status) => {
   const progressBar = modal.querySelector('.progress-bar');
   const statusText = modal.querySelector('.status-text');
-  
+
   if (progressBar) {
     progressBar.style.width = `${progress}%`;
   }
-  
+
   if (statusText) {
     statusText.textContent = status;
   }
@@ -2526,7 +2600,7 @@ const createModal = (title, contentElement) => {
 
   content.appendChild(closeBtn);
   content.appendChild(titleElement);
-  
+
   // 如果提供了内容元素，则添加到模态框中
   if (contentElement) {
     // 确保contentElement是一个有效的DOM节点
@@ -2536,7 +2610,7 @@ const createModal = (title, contentElement) => {
       console.error('contentElement must be a valid DOM Node');
     }
   }
-  
+
   modal.appendChild(content);
 
   document.body.appendChild(modal);
@@ -2743,7 +2817,7 @@ onMounted(() => {
 
   // 监听来自TaskManager的预览事件
   window.addEventListener('previewTaskFile', handleTaskFilePreview);
-  
+
   // 监听来自TaskManager的任务ID设置事件
   window.addEventListener('setTaskId', (event) => {
     setCurrentTaskId(event.detail.taskId);
@@ -3002,7 +3076,7 @@ const updateTaskProgress = async (taskId, progress) => {
         progress: progress
       })
     });
-    
+
     if (!response.ok) {
       console.warn('更新任务进度失败:', response.statusText);
     }
@@ -3520,7 +3594,7 @@ const loadScript = (url) => {
   .sidebar {
     width: 280px;
   }
-  
+
   .material-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 15px;
@@ -3531,7 +3605,7 @@ const loadScript = (url) => {
   .data-integration {
     flex-direction: column;
   }
-  
+
   .sidebar {
     width: 100%;
     height: auto;
@@ -3539,62 +3613,62 @@ const loadScript = (url) => {
     border-right: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   }
-  
+
   .sidebar-search {
     margin-bottom: 20px;
   }
-  
+
   .subject-categories {
     margin-bottom: 20px;
   }
-  
+
   .category-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 8px;
   }
-  
+
   .category-item {
     padding: 8px 12px;
     font-size: 12px;
   }
-  
+
   .category-icon {
     font-size: 16px;
     margin-right: 8px;
   }
-  
+
   .category-name {
     font-size: 12px;
   }
-  
+
   .category-count {
     font-size: 10px;
   }
-  
+
   .advanced-filters {
     display: none;
   }
-  
+
   .sidebar-upload {
     margin-top: 20px;
     padding-top: 15px;
   }
-  
+
   .main-content {
     padding: 15px;
   }
-  
+
   .material-grid {
     grid-template-columns: 1fr;
     gap: 15px;
     max-height: none;
   }
-  
+
   .library-header {
     padding: 20px;
   }
-  
+
   .normal-header h2,
   .readonly-header h2 {
     font-size: 20px;
@@ -3605,29 +3679,29 @@ const loadScript = (url) => {
   .sidebar {
     padding: 15px;
   }
-  
+
   .main-content {
     padding: 10px;
   }
-  
+
   .material-card {
     padding: 15px;
   }
-  
+
   .material-icon {
     width: 50px;
     height: 50px;
     font-size: 20px;
   }
-  
+
   .material-info h3 {
     font-size: 14px;
   }
-  
+
   .library-header {
     padding: 15px;
   }
-  
+
   .normal-header,
   .readonly-header {
     flex-direction: column;
@@ -4755,45 +4829,45 @@ video::-webkit-media-controls-panel {
   .data-integration {
     padding: 15px;
   }
-  
+
   .search-bar {
     padding: 20px;
     border-radius: 15px;
   }
-  
+
   .search-controls {
     flex-direction: column;
     align-items: stretch;
     gap: 15px;
   }
-  
+
   .search-input {
     min-width: auto;
   }
-  
+
   .material-item {
     padding: 15px 20px;
   }
-  
+
   .file-meta {
     flex-direction: column;
     gap: 8px;
     align-items: flex-start;
   }
-  
+
   .upload-modal {
     width: 95%;
     margin: 10px;
   }
-  
+
   .upload-area {
     padding: 30px 20px;
   }
-  
+
   .upload-icon {
     font-size: 48px;
   }
-  
+
   .file-preview-modal .modal-content {
     width: 95%;
     margin: 10px;
@@ -4805,16 +4879,16 @@ video::-webkit-media-controls-panel {
   .search-controls {
     gap: 10px;
   }
-  
+
   .upload-btn {
     padding: 12px 20px;
     font-size: 14px;
   }
-  
+
   .material-item {
     padding: 12px 15px;
   }
-  
+
   .file-icon {
     width: 40px;
     height: 40px;

@@ -42,7 +42,6 @@
           <el-select v-model="viewMode" @change="loadGroups">
             <el-option label="公开小组" value="public" />
             <el-option label="我的小组" value="my" />
-            <el-option label="热门小组" value="popular" />
           </el-select>
         </el-col>
         <el-col :span="4">
@@ -147,12 +146,7 @@
         <el-form-item label="最大人数" prop="maxMembers">
           <el-input-number v-model="newGroup.maxMembers" :min="2" :max="50" />
         </el-form-item>
-        <el-form-item label="小组类型">
-          <el-radio-group v-model="newGroup.isPublic">
-            <el-radio :value="true">公开小组</el-radio>
-            <el-radio :value="false">私密小组</el-radio>
-          </el-radio-group>
-        </el-form-item>
+        <!-- 所有小组都是公开的，移除小组类型选择 -->
         <el-form-item label="功能设置">
           <div style="display: flex; flex-direction: column; gap: 10px;">
             <el-checkbox v-model="newGroup.taskSharingEnabled">
@@ -179,15 +173,22 @@
     </el-dialog>
 
     <!-- 小组详情对话框 -->
-    <el-dialog v-model="showDetailDialog" title="小组详情" width="600px">
-      <div v-if="selectedGroup">
+    <el-dialog 
+      v-model="showDetailDialog" 
+      title="小组详情" 
+      width="600px"
+      :top="'50vh'"
+      :align-center="true"
+      draggable
+      :close-on-click-modal="false"
+    >
+      <div v-if="selectedGroup" class="dialog-content">
         <h3>{{ selectedGroup.name }}</h3>
         <p><strong>描述：</strong>{{ selectedGroup.description }}</p>
         <p><strong>学科：</strong>{{ selectedGroup.subject }}</p>
         <p><strong>学习目标：</strong>{{ selectedGroup.studyGoal }}</p>
         <p><strong>成员：</strong>{{ selectedGroup.currentMembers }}/{{ selectedGroup.maxMembers }}</p>
-        <p><strong>类型：</strong>{{ selectedGroup.isPublic ? '公开小组' : '私密小组' }}</p>
-        <p v-if="!selectedGroup.isPublic"><strong>邀请码：</strong>{{ selectedGroup.inviteCode }}</p>
+        <p><strong>类型：</strong>公开小组</p>
         <div class="sharing-features">
           <p><strong>功能设置：</strong></p>
           <div style="margin-left: 20px;">
@@ -236,11 +237,11 @@
         <div class="members-section">
           <h4>小组成员</h4>
           <el-table :data="groupMembers" style="width: 100%">
-            <el-table-column prop="userId" label="用户ID" width="80" />
+            <el-table-column prop="username" label="用户名" width="120" />
             <el-table-column prop="role" label="角色" width="100">
               <template #default="scope">
-                <el-tag :type="scope.row.role === 'ADMIN' ? 'danger' : 'primary'">
-                  {{ scope.row.role === 'ADMIN' ? '管理员' : '成员' }}
+                <el-tag :type="(scope.row.role === 'ADMIN' || scope.row.role === 'CREATOR') ? 'danger' : 'primary'">
+                  {{ (scope.row.role === 'ADMIN' || scope.row.role === 'CREATOR') ? '管理员' : '成员' }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -287,11 +288,11 @@
       <div class="member-selection">
         <p>请选择要查看的成员：</p>
         <el-table :data="filteredGroupMembers" @row-click="selectMember" highlight-current-row>
-          <el-table-column prop="userId" label="用户ID" width="100" />
+          <el-table-column prop="username" label="用户名" width="120" />
           <el-table-column prop="role" label="角色" width="100">
             <template #default="scope">
-              <el-tag :type="scope.row.role === 'ADMIN' ? 'danger' : 'primary'">
-                {{ scope.row.role === 'ADMIN' ? '管理员' : '成员' }}
+              <el-tag :type="(scope.row.role === 'ADMIN' || scope.row.role === 'CREATOR') ? 'danger' : 'primary'">
+                {{ (scope.row.role === 'ADMIN' || scope.row.role === 'CREATOR') ? '管理员' : '成员' }}
               </el-tag>
             </template>
           </el-table-column>
@@ -309,6 +310,7 @@
 </template>
 
 <script>
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, User, Reading, Aim, QuestionFilled, Check, Close, Folder, Delete } from '@element-plus/icons-vue'
 import socialAPI from '../api/social.js'
@@ -352,7 +354,6 @@ export default {
       subject: '',
       studyGoal: '',
       maxMembers: 10,
-      isPublic: true,
       taskSharingEnabled: false,
       resourceSharingEnabled: false
     })
@@ -384,19 +385,40 @@ export default {
     
     const currentUserId = ref(getCurrentUserId())
     
+    // 过滤成员列表，排除当前用户
+    const filteredGroupMembers = computed(() => {
+      return groupMembers.value.filter(member => 
+        member.userId.toString() !== currentUserId.value.toString()
+      )
+    })
+    
     // 加载小组列表
     const loadGroups = async () => {
       try {
-        let url = '/study-groups'
-        if (viewMode.value === 'public') {
-          url = '/study-groups/public'
-        } else if (viewMode.value === 'my') {
-          url = `/study-groups/user/${currentUserId.value}`
-        } else if (viewMode.value === 'popular') {
-          url = '/study-groups/popular'
-        }
+        let response
         
-        const response = await studyGroupAPI.getPublicGroups(currentPage.value - 1, pageSize.value)
+        if (viewMode.value === 'public') {
+          response = await studyGroupAPI.getPublicGroups(currentPage.value - 1, pageSize.value)
+        } else if (viewMode.value === 'my') {
+          response = await studyGroupAPI.getUserGroups(currentUserId.value)
+          // 对于我的小组，需要特殊处理数据格式
+          if (response.data.success) {
+            const myGroupsData = response.data.data
+            // 获取每个小组的详细信息
+            const groupPromises = myGroupsData.map(member => 
+              studyGroupAPI.getGroupDetails(member.groupId)
+            )
+            const groupResponses = await Promise.all(groupPromises)
+            groups.value = groupResponses
+              .filter(res => res.data.success)
+              .map(res => res.data.data)
+            total.value = groups.value.length
+            return
+          }
+
+        } else {
+          response = await studyGroupAPI.getPublicGroups(currentPage.value - 1, pageSize.value)
+        }
         
         if (response.data.success) {
           groups.value = response.data.data
@@ -447,6 +469,7 @@ export default {
     
     // 按学科筛选
     const filterGroups = async () => {
+      // 如果没有选择学科，则加载所有小组
       if (!selectedSubject.value) {
         loadGroups()
         return
@@ -459,6 +482,7 @@ export default {
           total.value = response.data.totalElements
         }
       } catch (error) {
+        console.error('筛选失败:', error)
         ElMessage.error('筛选失败')
       }
     }
@@ -476,7 +500,6 @@ export default {
             subject: '',
             studyGoal: '',
             maxMembers: 10,
-            isPublic: true,
             taskSharingEnabled: false,
             resourceSharingEnabled: false
           })
@@ -532,10 +555,17 @@ export default {
           showDetailDialog.value = false
           loadGroups()
           loadMyGroups()
+        } else {
+          ElMessage.error(response.data.message || '退出失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
-          ElMessage.error('退出失败')
+          console.error('退出小组失败', error)
+          if (error.response && error.response.data && error.response.data.message) {
+            ElMessage.error(error.response.data.message)
+          } else {
+            ElMessage.error('退出失败，请重试')
+          }
         }
       }
     }
@@ -592,15 +622,27 @@ export default {
         showDetailDialog.value = true
         
         // 获取小组成员信息
+        console.log('正在获取小组成员信息，小组ID:', group.id)
         const response = await studyGroupAPI.getGroupMembers(group.id)
+        console.log('小组成员API响应:', response.data)
+        
         if (response.data.success) {
           groupMembers.value = response.data.data
+          console.log('设置groupMembers:', groupMembers.value)
+          console.log('成员数量:', groupMembers.value.length)
+          if (groupMembers.value.length > 0) {
+            console.log('第一个成员的结构:', groupMembers.value[0])
+          }
+        } else {
+          console.error('获取小组成员失败:', response.data.message)
+          groupMembers.value = []
         }
       } catch (error) {
         console.error('加载小组详情失败', error)
         // 如果获取详情失败，仍然显示基本信息
         selectedGroup.value = group
         showDetailDialog.value = true
+        groupMembers.value = []
       }
     }
     
@@ -779,6 +821,7 @@ export default {
     return {
       groups,
       groupMembers,
+      filteredGroupMembers,
       myGroups,
       currentPage,
       pageSize,
@@ -824,6 +867,9 @@ export default {
   padding: 24px;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   min-height: 100vh;
+  width: calc(90vw - 96px);
+  margin: 0 14px;
+  box-sizing: border-box;
 }
 
 .header {
@@ -940,6 +986,30 @@ export default {
   justify-content: flex-end;
   gap: 12px;
   padding: 20px 0;
+}
+
+.dialog-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.dialog-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dialog-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.dialog-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.dialog-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .detail-header {

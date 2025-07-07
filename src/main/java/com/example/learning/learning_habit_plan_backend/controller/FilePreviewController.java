@@ -44,7 +44,7 @@ public class FilePreviewController {
             
             // 调用预览服务
             FilePreviewResponse previewResponse = filePreviewService.previewFile(actualFileName);
-            
+
             // 设置文件类型信息
             if (previewResponse.getFileType() == null || previewResponse.getFileType().isEmpty()) {
                 String fileExtension = getFileExtension(material.getFileName());
