@@ -673,11 +673,11 @@ const validateForm = () => {
 async function fetchTasks() {
   try {
     const token = localStorage.getItem('accessToken')
-    let url = 'http://localhost:8080/api/tasks'
+    let url = 'https://localhost:8443/api/tasks'
 
     // 如果是只读模式，获取指定用户的任务
     if (isReadOnly.value && targetUserId.value) {
-      url = `http://localhost:8080/api/tasks/user/${targetUserId.value}`
+      url = `https://localhost:8443/api/tasks/user/${targetUserId.value}`
     }
 
     const response = await fetch(url, {
@@ -746,8 +746,8 @@ async function addTask() {
   try {
     const token = localStorage.getItem('accessToken')
     const url = isEditing.value 
-      ? `http://localhost:8080/api/tasks/${newTask.value.id}`
-      : 'http://localhost:8080/api/tasks'
+      ? `https://localhost:8443/api/tasks/${newTask.value.id}`
+      : 'https://localhost:8443/api/tasks'
 
     const response = await fetch(url, {
       method: isEditing.value ? 'PUT' : 'POST',
@@ -869,7 +869,7 @@ async function deleteTask(taskId) {
   
   try {
     const token = localStorage.getItem('accessToken')
-    const response = await fetch(`http://localhost:8080/api/tasks/${taskId}`, {
+    const response = await fetch(`https://localhost:8443/api/tasks/${taskId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -923,7 +923,14 @@ const handleFileUpload = async (event) => {
     formData.append('type', newTask.value.type || 'other');
 
     const token = localStorage.getItem('accessToken');
-    const response = await fetch('/api/files/upload', {
+    
+    // 检查token是否存在
+    if (!token) {
+      alert('请先登录后再上传文件');
+      return;
+    }
+    
+    const response = await fetch('https://localhost:8443/api/files/upload', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -1170,6 +1177,12 @@ const uploadVideo = async (file) => {
     formData.append('type', newTask.value.type || 'other')
 
     const token = localStorage.getItem('accessToken')
+    
+    // 检查token是否存在
+    if (!token) {
+      alert('请先登录后再上传视频')
+      return
+    }
 
     // 使用XMLHttpRequest以支持上传进度
     const xhr = new XMLHttpRequest()
@@ -1212,7 +1225,24 @@ const uploadVideo = async (file) => {
           alert('视频上传成功！')
           resolve(result)
         } else {
-          reject(new Error('视频上传失败'))
+          // 显示详细的错误信息
+          let errorMessage = `视频上传失败 (HTTP ${xhr.status})`
+          try {
+            const errorResponse = JSON.parse(xhr.responseText)
+            if (errorResponse.message) {
+              errorMessage += `: ${errorResponse.message}`
+            }
+          } catch (e) {
+            if (xhr.responseText) {
+              errorMessage += `: ${xhr.responseText}`
+            }
+          }
+          console.error('视频上传错误详情:', {
+            status: xhr.status,
+            statusText: xhr.statusText,
+            responseText: xhr.responseText
+          })
+          reject(new Error(errorMessage))
         }
       })
 
@@ -1220,7 +1250,7 @@ const uploadVideo = async (file) => {
         reject(new Error('网络错误'))
       })
 
-      xhr.open('POST', '/api/files/upload')
+      xhr.open('POST', 'https://localhost:8443/api/files/upload')
       xhr.setRequestHeader('Authorization', `Bearer ${token}`)
       xhr.send(formData)
     })
@@ -2708,7 +2738,7 @@ const batchDeleteTasks = async () => {
   try {
     const token = localStorage.getItem('accessToken')
     const deletePromises = selectedTasks.value.map(task => 
-      fetch(`http://localhost:8080/api/tasks/${task.id}`, {
+      fetch(`https://localhost:8443/api/tasks/${task.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

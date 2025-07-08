@@ -35,7 +35,7 @@ async function login() {
   errorMessage.value = ''
   
   try {
-    const response = await axios.post('http://localhost:8080/api/user/login', {
+    const response = await axios.post('https://localhost:8443/api/user/login', {
       username: username.value,
       password: password.value
     }, {

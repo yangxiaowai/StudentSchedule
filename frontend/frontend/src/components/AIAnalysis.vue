@@ -271,7 +271,7 @@ async function generateSmartSuggestions() {
       throw new Error('用户未登录，请先登录后再进行操作')
     }
     
-    const { data } = await axios.post('http://localhost:8080/api/analysis/smart-suggestions', {
+    const { data } = await axios.post('https://localhost:8443/api/analysis/smart-suggestions', {
       taskIds: currentSelectedTasks.value.map(t => t.id),
       efficiencyData: efficiencyData.value
     }, {
@@ -307,7 +307,7 @@ async function generatePersonalizedPlan() {
       throw new Error('用户未登录，请先登录后再进行操作')
     }
     
-    const { data } = await axios.post('http://localhost:8080/api/analysis/personalized-plan', {
+    const { data } = await axios.post('https://localhost:8443/api/analysis/personalized-plan', {
       taskIds: currentSelectedTasks.value.map(t => t.id),
       goals: learningGoals.value,
       patterns: studyPatterns.value
@@ -388,7 +388,7 @@ async function generateAIReport() {
       throw new Error('用户未登录，请先登录后再进行AI分析')
     }
     
-    const { data } = await axios.post('http://localhost:8080/api/analysis/tasks', taskIds, {
+    const { data } = await axios.post('https://localhost:8443/api/analysis/tasks', taskIds, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`

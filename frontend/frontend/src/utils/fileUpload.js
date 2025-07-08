@@ -17,12 +17,17 @@ const baseUpload = async (file, subject, type) => {
     formData.append('type', type);
 
     const token = localStorage.getItem('accessToken');
-    const headers = {};
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+    
+    // 检查token是否存在
+    if (!token) {
+        throw new Error('请先登录后再上传文件');
     }
+    
+    const headers = {
+        'Authorization': `Bearer ${token}`
+    };
 
-    const response = await fetch('/api/files/upload', {
+    const response = await fetch('https://localhost:8443/api/files/upload', {
         method: 'POST',
         headers: headers,
         body: formData

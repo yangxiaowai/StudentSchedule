@@ -25,8 +25,8 @@ spring:
       port: 6379
   servlet:
     multipart:
-      max-file-size: 50MB      # 单个文件最大大小
-      max-request-size: 100MB  # 整个请求最大大小（适用于多文件上传）
+      max-file-size: 200MB     # 单个文件最大大小
+      max-request-size: 250MB  # 整个请求最大大小（适用于多文件上传）
   # 邮件配置
   mail:
     host: smtp.qq.com

@@ -247,7 +247,7 @@ export default {
       try {
         // 获取用户统计数据
         const token = localStorage.getItem('token')
-        const response = await axios.get('http://localhost:8080/api/users/stats', {
+        const response = await axios.get('https://localhost:8443/api/users/stats', {
           headers: {
             'Authorization': `Bearer ${token}`
           }

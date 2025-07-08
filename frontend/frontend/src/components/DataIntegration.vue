@@ -1,29 +1,4 @@
 <template>
-  <div class="material-container">
-    <!-- 顶部搜索栏 - 只读模式下隐藏 -->
-    <div v-if="!isReadOnly" class="search-section">
-      <div class="search-bar">
-        <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="输入关键词搜索资料..."
-            @keyup.enter="handleSearch"
-        />
-        <button @click="handleSearch">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-          </svg>
-          搜索
-        </button>
-      </div>
-
-      <div class="search-options" v-if="showAdvancedSearch">
-        <div class="filter-group">
-          <label>学科分类：</label>
-          <select v-model="selectedSubject">
-            <option value="">全部</option>
-            <option v-for="subject in subjects" :value="subject.value">{{ subject.label }}</option>
-          </select>
   <div class="data-integration">
     <!-- 侧边栏 -->
     <div class="sidebar" :class="{ 'readonly': isReadOnly }">
@@ -70,17 +45,8 @@
             <span class="category-count">({{ getSubjectCount(subject.value) }})</span>
           </div>
         </div>
-        <!-- 在上传模态框的modal-body中添加 -->
-        <div v-if="uploadProgress > 0" class="upload-progress">
-          <progress :value="uploadProgress" max="100"></progress>
-          <span>{{ uploadProgress }}%</span>
-        </div>
+      </div>
 
-        <div class="filter-group">
-          <label>内容类型：</label>
-          <select v-model="selectedType">
-            <option value="">全部</option>
-            <option v-for="type in contentTypes" :value="type.value">{{ type.label }}</option>
       <!-- 高级筛选 -->
       <div v-if="!isReadOnly" class="advanced-filters">
         <h3 class="sidebar-title">筛选条件</h3>
@@ -95,6 +61,8 @@
 
         <button class="toggle-advanced" @click="showAdvancedSearch = false">
           简化搜索
+        </button>
+        
         <div class="filter-section">
           <label class="filter-label">排序方式</label>
           <select v-model="sortOption" class="filter-select">
@@ -117,7 +85,6 @@
       <button v-else class="toggle-advanced" @click="showAdvancedSearch = true">
         高级搜索
       </button>
-    </div>
 
       <!-- 上传按钮 -->
       <div v-if="!isReadOnly" class="sidebar-upload">
@@ -157,21 +124,7 @@
           <div class="readonly-badge">只读模式</div>
         </div>
       </div>
-      <!-- 资料库展示区域 -->
-      <div class="material-library">
-        <div class="library-header">
-          <div v-if="!isReadOnly" class="normal-header">
-            <h2>我的资料库</h2>
-            <div class="result-info">
-              <span>共找到 {{ filteredMaterials.length }} 个资料</span>
-            </div>
-          </div>
 
-          <div v-else class="readonly-header">
-            <h2>{{ targetUserName }}的资料库</h2>
-            <div class="readonly-badge">只读模式</div>
-          </div>
-        </div>
 
       <div class="material-grid">
         <div
@@ -184,7 +137,17 @@
             <span class="subject-icon">{{ getSubjectIcon(material.subject) }}</span>
           </div>
           <div class="material-info">
-            <h3>{{ material.name }}</h3>
+            <h3 v-if="!material.isEditing" @dblclick="!isReadOnly && startRename(material)">{{ material.displayName || material.name }}</h3>
+            <div v-else class="rename-input-container">
+              <input 
+                v-model="material.tempName" 
+                @keyup.enter="confirmRename(material)"
+                @keyup.esc="cancelRename(material)"
+                @blur="confirmRename(material)"
+                class="rename-input"
+                ref="renameInput"
+              />
+            </div>
             <p class="material-meta">
               <span>{{ material.subject }} · {{ material.type }}</span>
               <span>{{ formatDate(material.uploadTime) }}</span>
@@ -195,6 +158,11 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                 <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+              </svg>
+            </button>
+            <button v-if="!isReadOnly" @click.stop="startRename(material)" title="重命名">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708L10.5 8.207l-3-3L12.146.146zM11.207 9L8 5.793 1.146 12.646a.5.5 0 0 0-.146.354v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .354-.146L11.207 9zM4 15.5a.5.5 0 0 1-.5-.5v-3a.5.5 0 0 1 .146-.354L14.793 0.854a1.5 1.5 0 0 1 2.122 2.122L5.768 14.122A.5.5 0 0 1 5.414 14.268z"/>
               </svg>
             </button>
             <button v-if="!isReadOnly" @click.stop="deleteMaterial(material)">
@@ -322,48 +290,50 @@
         </div>
       </div>
     </div>
-  </div>
-  <!-- AI学习资源检索 - 只读模式下隐藏 -->
-  <div v-if="!isReadOnly" class="ai-search-section">
-    <div class="ai-search-box">
-      <input
-          v-model="aiSearchQuery"
-          type="text"
-          placeholder="输入学习主题，AI将推荐相关学习网站..."
-          @keyup.enter="handleAiSearch"
-      />
-      <button @click="handleAiSearch" :disabled="aiLoading">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-        </svg>
-        {{ aiLoading ? '搜索中...' : 'AI推荐' }}
-      </button>
-    </div>
 
-    <div v-if="aiLoading" class="ai-loading">
-      <div class="loading-spinner"></div>
-      <p>AI正在搜索最佳学习资源...</p>
-    </div>
+    <!-- AI学习资源检索 - 只读模式下隐藏 -->
+    <div v-if="!isReadOnly" class="ai-search-section">
+      <div class="ai-search-box">
+        <input
+            v-model="aiSearchQuery"
+            type="text"
+            placeholder="输入学习主题，AI将推荐相关学习网站..."
+            @keyup.enter="handleAiSearch"
+        />
+        <button @click="handleAiSearch" :disabled="aiLoading">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+          </svg>
+          {{ aiLoading ? '搜索中...' : 'AI推荐' }}
+        </button>
+      </div>
 
-    <div v-else-if="aiError" class="ai-error">
-      <p>{{ aiError }}</p>
-      <button @click="handleAiSearch" class="retry-button">重试</button>
-    </div>
+      <div v-if="aiLoading" class="ai-loading">
+        <div class="loading-spinner"></div>
+        <p>AI正在搜索最佳学习资源...</p>
+      </div>
 
-    <div v-else-if="aiResults.length > 0" class="ai-results">
-      <h3>AI推荐的学习资源：</h3>
-      <ul>
-        <li v-for="(result, index) in aiResults" :key="index">
-          <a :href="result.url" target="_blank" rel="noopener noreferrer">{{ result.title }}</a>
-          <p>{{ result.description }}</p>
-        </li>
-      </ul>
+      <div v-else-if="aiError" class="ai-error">
+        <p>{{ aiError }}</p>
+        <button @click="handleAiSearch" class="retry-button">重试</button>
+      </div>
+
+      <div v-else-if="aiResults.length > 0" class="ai-results">
+        <h3>AI推荐的学习资源：</h3>
+        <ul>
+          <li v-for="(result, index) in aiResults" :key="index">
+            <a :href="result.url" target="_blank" rel="noopener noreferrer">{{ result.title }}</a>
+            <p>{{ result.description }}</p>
+          </li>
+        </ul>
+      </div>
+    </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import VideoUpload from './VideoUpload.vue'
 
@@ -402,6 +372,7 @@ watch(() => route.query, () => {
 const searchQuery = ref('')
 const selectedSubject = ref('')
 const selectedType = ref('')
+const showAdvancedSearch = ref(false)
 
 // 资料库相关状态
 const sortOption = ref('time-desc')
@@ -2682,8 +2653,8 @@ const confirmUpload = async () => {
     // 删除下面这行重复的声明
     // const response = await fetch('/api/files/upload', {
 
-    console.log('发送上传请求到: /api/files/upload');
-        const uploadResponse = await fetch('/api/files/upload', {
+    console.log('发送上传请求到: https://localhost:8443/api/files/upload');
+        const uploadResponse = await fetch('https://localhost:8443/api/files/upload', {
           method: 'POST',
           body: formData,
           headers: {
@@ -2810,6 +2781,37 @@ const deleteMaterial = async (material) => {
   }
 };
 
+// 重命名相关方法
+const startRename = (material) => {
+  material.isEditing = true;
+  material.tempName = material.displayName || material.name;
+  // 使用nextTick确保DOM更新后再聚焦
+  nextTick(() => {
+    const input = document.querySelector('.rename-input');
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  });
+};
+
+const confirmRename = (material) => {
+  if (material.tempName && material.tempName.trim()) {
+    material.displayName = material.tempName.trim();
+    // 保存到localStorage以持久化重命名
+    const renamedFiles = JSON.parse(localStorage.getItem('renamedFiles') || '{}');
+    renamedFiles[material.id] = material.displayName;
+    localStorage.setItem('renamedFiles', JSON.stringify(renamedFiles));
+  }
+  material.isEditing = false;
+  delete material.tempName;
+};
+
+const cancelRename = (material) => {
+  material.isEditing = false;
+  delete material.tempName;
+};
+
 
 // 修改 onMounted 加载文件列表
 onMounted(() => {
@@ -2890,14 +2892,19 @@ const loadMaterials = async () => {
     }
 
     const data = await response.json();
+    // 加载保存的重命名信息
+    const renamedFiles = JSON.parse(localStorage.getItem('renamedFiles') || '{}');
+    
     materials.value = data.map(file => ({
       id: file.id,
       name: file.fileName,
+      displayName: renamedFiles[file.id] || null, // 添加显示名称
       subject: file.subject,
       type: file.contentType,
       uploadTime: file.uploadTime || new Date().toISOString(),
       size: file.size,
-      url: file.fileDownloadUri
+      url: file.fileDownloadUri,
+      isEditing: false // 添加编辑状态
     }));
   } catch (error) {
     console.error('加载文件错误:', error);
@@ -4894,6 +4901,63 @@ video::-webkit-media-controls-panel {
     height: 40px;
     font-size: 16px;
   }
+}
+
+/* 重命名功能样式 */
+.rename-input-container {
+  width: 100%;
+  margin: 0;
+}
+
+.rename-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 2px solid #4a6cf7;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  background: white;
+  color: #333;
+  outline: none;
+  box-shadow: 0 2px 8px rgba(74, 108, 247, 0.2);
+  transition: all 0.3s ease;
+}
+
+.rename-input:focus {
+  border-color: #2c5aa0;
+  box-shadow: 0 4px 12px rgba(74, 108, 247, 0.3);
+}
+
+.material-info h3 {
+  cursor: pointer;
+  transition: color 0.2s ease;
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.material-info h3:hover {
+  color: #4a6cf7;
+}
+
+.material-actions button[title="重命名"] {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: none;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.material-actions button[title="重命名"]:hover {
+  background: linear-gradient(135deg, #218838, #1e7e34);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
 }
 
 </style>
