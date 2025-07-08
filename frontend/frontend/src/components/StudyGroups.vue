@@ -197,7 +197,31 @@
           </div>
         </div>
         
-        <!-- 小组共享功能已隐藏 -->
+        <!-- 小组共享功能 -->
+        <div v-if="isGroupMember(selectedGroup?.id)" class="sharing-section">
+          <h4>小组共享功能</h4>
+          <div class="sharing-buttons">
+            <el-button 
+              v-if="selectedGroup.taskSharingEnabled" 
+              type="primary" 
+              @click="showMemberSelectionForTasks"
+              :icon="Folder"
+            >
+              查看共享任务
+            </el-button>
+            <el-button 
+              v-if="selectedGroup.resourceSharingEnabled" 
+              type="success" 
+              @click="showMemberSelectionForMaterials"
+              :icon="Folder"
+            >
+              查看共享资料库
+            </el-button>
+            <el-text v-if="!selectedGroup.taskSharingEnabled && !selectedGroup.resourceSharingEnabled" type="info">
+              该小组未开启任何共享功能
+            </el-text>
+          </div>
+        </div>
         
         <div class="members-section">
           <h4>小组成员</h4>
@@ -249,10 +273,24 @@
     </el-dialog>
 
     <!-- 成员选择对话框 -->
-    <el-dialog v-model="showMemberSelectionDialog" :title="memberSelectionTitle" width="500px">
+    <el-dialog v-model="showMemberSelectionDialog" :title="memberSelectionTitle" width="600px">
       <div class="member-selection">
-        <p>请选择要查看的成员：</p>
-        <el-table :data="filteredGroupMembers" @row-click="selectMember" highlight-current-row>
+        <div class="selection-info">
+          <el-alert
+            title="只读模式"
+            type="info"
+            description="您将以只读模式查看所选成员的内容，可以预览和下载，但不能修改。"
+            :closable="false"
+            show-icon
+          />
+        </div>
+        <p class="selection-tip">请选择要查看的成员：</p>
+        <el-table 
+          :data="filteredGroupMembers" 
+          @row-click="selectMember" 
+          highlight-current-row
+          class="member-table"
+        >
           <el-table-column prop="username" label="用户名" width="120" />
           <el-table-column prop="role" label="角色" width="100">
             <template #default="scope">
@@ -263,7 +301,17 @@
           </el-table-column>
           <el-table-column prop="contributionScore" label="贡献分" width="100" />
           <el-table-column prop="joinedAt" label="加入时间" />
+          <el-table-column label="操作" width="80">
+            <template #default="scope">
+              <el-button type="text" size="small" @click="selectMember(scope.row)">
+                查看
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
+        <div v-if="filteredGroupMembers.length === 0" class="no-members">
+          <el-empty description="暂无其他成员" />
+        </div>
       </div>
       <template #footer>
         <span class="dialog-footer">
@@ -1020,6 +1068,39 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+.sharing-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 12px;
+  border: 1px solid #bae6fd;
+}
+
+.sharing-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0c4a6e;
+}
+
+.sharing-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sharing-buttons .el-button {
+  height: 40px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.sharing-buttons .el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .members-section {
   margin-top: 24px;
 }
@@ -1038,6 +1119,56 @@ export default {
   margin-bottom: 16px;
   color: #2d3748;
   font-weight: 600;
+}
+
+/* 成员选择对话框样式 */
+.member-selection {
+  padding: 8px 0;
+}
+
+.selection-info {
+  margin-bottom: 20px;
+}
+
+.selection-tip {
+  margin: 16px 0 12px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.member-table {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.member-table .el-table__row {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.member-table .el-table__row:hover {
+  background-color: #f8fafc;
+}
+
+.member-table .el-button--text {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.member-table .el-button--text:hover {
+  color: #1d4ed8;
+  background-color: #eff6ff;
+}
+
+.no-members {
+  margin-top: 20px;
+  text-align: center;
+  padding: 40px 20px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
 }
 
 @keyframes fadeInUp {

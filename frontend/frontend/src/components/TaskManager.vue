@@ -1887,7 +1887,7 @@ const updateTaskProgress = async (taskId, progress) => {
     console.log(`TaskManager: 准备更新任务 ${taskId} 进度为 ${progress}%`)
     console.log(`TaskManager: 使用token: ${token ? '已获取' : '未获取'}`)
     
-    const response = await fetch(`/api/tasks/${taskId}/progress`, {
+    const response = await fetch(`https://localhost:8443/api/tasks/${taskId}/progress`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -2261,7 +2261,7 @@ const previewVideoFile = async (previewData) => {
 
       try {
         const token = localStorage.getItem('accessToken')
-        const response = await fetch(`/api/tasks/${taskId}`, {
+        const response = await fetch(`https://localhost:8443/api/tasks/${taskId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

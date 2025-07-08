@@ -501,7 +501,7 @@ const openMaterial = async (material) => {
     // 更新加载状态
     updateLoadingProgress(loadingModal, 20, '正在加载...');
 
-    const response = await fetch(`/api/preview/file/${material.id}`, {
+    const response = await fetch(`https://localhost:8443/api/preview/file/${material.id}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -1902,7 +1902,7 @@ const previewVideoFile = async (previewData) => {
 
       try {
         const token = localStorage.getItem('accessToken');
-        const response = await fetch(`/api/tasks/${taskId}`, {
+        const response = await fetch(`https://localhost:8443/api/tasks/${taskId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -1961,7 +1961,7 @@ const previewVideoFile = async (previewData) => {
         const token = localStorage.getItem('accessToken');
         console.log(`准备更新任务 ${taskId} 视频观看进度为 ${progress}%`);
 
-        const response = await fetch(`/api/tasks/${taskId}/progress`, {
+        const response = await fetch(`https://localhost:8443/api/tasks/${taskId}/progress`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -2627,7 +2627,7 @@ const uploadFile = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch('/api/upload', {
+  const response = await fetch('https://localhost:8443/api/upload', {
     method: 'POST',
     body: formData,
     // 添加进度监控
@@ -2770,7 +2770,7 @@ const deleteMaterial = async (material) => {
 
   try {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`/api/files/delete/${material.id}`, {
+    const response = await fetch(`https://localhost:8443/api/files/delete/${material.id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -2885,11 +2885,11 @@ const handleTaskFilePreview = async (event) => {
 const loadMaterials = async () => {
   try {
     const token = localStorage.getItem('accessToken');
-    let url = '/api/files/list';
+    let url = 'https://localhost:8443/api/files/list';
     
     // 如果是只读模式，获取指定用户的资料
     if (isReadOnly.value && targetUserId.value) {
-      url = `/api/files/user/${targetUserId.value}`;
+      url = `https://localhost:8443/api/files/user/${targetUserId.value}`;
     }
     
     const response = await fetch(url, {
@@ -2997,7 +2997,7 @@ const handleAiSearch = async () => {
   aiResults.value = []
 
   try {
-    const response = await fetch(`/api/ai-search?query=${encodeURIComponent(aiSearchQuery.value)}`, {
+    const response = await fetch(`https://localhost:8443/api/ai-search?query=${encodeURIComponent(aiSearchQuery.value)}`, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -3084,7 +3084,7 @@ const createLoadingModal = (message = '加载中...') => {
 // 辅助函数：更新任务进度
 const updateTaskProgress = async (taskId, progress) => {
   try {
-    const response = await fetch('/api/tasks/progress', {
+    const response = await fetch('https://localhost:8443/api/tasks/progress', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
