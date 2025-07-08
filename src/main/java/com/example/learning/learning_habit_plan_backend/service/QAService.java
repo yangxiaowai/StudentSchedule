@@ -50,10 +50,16 @@ public class QAService {
     }
     
     /**
-     * 获取所有问题（按时间排序）
+     * 获取所有问题（按时间排序，排除已关闭的问题）
      */
     public Page<QAQuestion> getAllQuestions(Pageable pageable) {
-        return questionRepository.findAllByOrderByCreatedAtDesc(pageable);
+        // 排除已关闭的问题，只显示开放和已回答的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findByStatusInOrderByCreatedAtDesc(visibleStatuses, pageable);
     }
     
     /**
@@ -64,24 +70,42 @@ public class QAService {
     }
     
     /**
-     * 根据学科获取问题
+     * 根据学科获取问题（排除已关闭的问题）
      */
     public Page<QAQuestion> getQuestionsBySubject(String subject, Pageable pageable) {
-        return questionRepository.findBySubjectOrderByCreatedAtDesc(subject, pageable);
+        // 排除已关闭的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findBySubjectAndStatusIn(subject, visibleStatuses, pageable);
     }
     
     /**
-     * 根据难度获取问题
+     * 根据难度获取问题（排除已关闭的问题）
      */
     public Page<QAQuestion> getQuestionsByDifficulty(QAQuestion.DifficultyLevel difficulty, Pageable pageable) {
-        return questionRepository.findByDifficultyLevelOrderByCreatedAtDesc(difficulty, pageable);
+        // 排除已关闭的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findByDifficultyLevelAndStatusIn(difficulty, visibleStatuses, pageable);
     }
     
     /**
-     * 获取小组内的问题
+     * 获取小组内的问题（排除已关闭的问题）
      */
     public Page<QAQuestion> getGroupQuestions(Long groupId, Pageable pageable) {
-        return questionRepository.findByGroupIdOrderByCreatedAtDesc(groupId, pageable);
+        // 排除已关闭的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findByGroupIdAndStatusIn(groupId, visibleStatuses, pageable);
     }
     
     /**
@@ -92,17 +116,29 @@ public class QAService {
     }
     
     /**
-     * 搜索问题
+     * 搜索问题（排除已关闭的问题）
      */
     public Page<QAQuestion> searchQuestions(String keyword, Pageable pageable) {
-        return questionRepository.findByTitleContaining(keyword, pageable);
+        // 排除已关闭的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findByTitleContainingAndStatusIn(keyword, visibleStatuses, pageable);
     }
     
     /**
-     * 获取热门问题
+     * 获取热门问题（排除已关闭的问题）
      */
     public Page<QAQuestion> getPopularQuestions(Pageable pageable) {
-        return questionRepository.findPopularQuestions(pageable);
+        // 排除已关闭的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findPopularQuestionsByStatus(visibleStatuses, pageable);
     }
     
     /**
@@ -116,42 +152,72 @@ public class QAService {
     }
     
     /**
-     * 获取有悬赏的问题
+     * 获取有悬赏的问题（排除已关闭的问题）
      */
     public Page<QAQuestion> getQuestionsWithReward(Pageable pageable) {
-        return questionRepository.findQuestionsWithReward(pageable);
+        // 排除已关闭的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findQuestionsWithRewardAndStatus(visibleStatuses, pageable);
     }
     
     /**
-     * 根据标签搜索问题
+     * 根据标签搜索问题（排除已关闭的问题）
      */
     public Page<QAQuestion> searchQuestionsByTag(String tag, Pageable pageable) {
-        return questionRepository.findByTagsContaining(tag, pageable);
+        // 排除已关闭的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findByTagsContainingAndStatusIn(tag, visibleStatuses, pageable);
     }
     
     /**
-     * 获取推荐问题
+     * 获取推荐问题（排除已关闭的问题）
      */
     public Page<QAQuestion> getRecommendedQuestions(List<String> userSubjects, Pageable pageable) {
         if (userSubjects == null || userSubjects.isEmpty()) {
             return getPopularQuestions(pageable);
         }
-        return questionRepository.findRecommendedQuestions(userSubjects, pageable);
+        // 排除已关闭的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findRecommendedQuestionsBySubjectsAndStatus(userSubjects, visibleStatuses, pageable);
     }
     
     /**
-     * 获取推荐问题（按点赞数排序）
+     * 获取推荐问题（按点赞数排序，排除已关闭的问题）
      */
     public Page<QAQuestion> getRecommendedQuestionsByLikes(Pageable pageable) {
-        return questionRepository.findRecommendedQuestionsByLikes(pageable);
+        // 排除已关闭的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findRecommendedQuestionsByLikesAndStatus(visibleStatuses, pageable);
     }
     
     /**
-     * 获取最近问题
+     * 获取最近问题（排除已关闭的问题）
      */
     public Page<QAQuestion> getRecentQuestions(Pageable pageable) {
         LocalDateTime startDate = LocalDateTime.now().minusDays(7);
-        return questionRepository.findRecentQuestions(startDate, pageable);
+        // 排除已关闭的问题
+        List<QAQuestion.QuestionStatus> visibleStatuses = Arrays.asList(
+            QAQuestion.QuestionStatus.OPEN,
+            QAQuestion.QuestionStatus.ANSWERED,
+            QAQuestion.QuestionStatus.RESOLVED
+        );
+        return questionRepository.findRecentQuestionsByStatus(startDate, visibleStatuses, pageable);
     }
     
     /**

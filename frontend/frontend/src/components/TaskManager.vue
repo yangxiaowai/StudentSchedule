@@ -1933,17 +1933,128 @@ const previewTextFile = async (previewData) => {
 
 // Office文件预览
 const previewOfficeFile = async (previewData) => {
-  const { modal, content } = createModal(previewData.fileName)
+  try {
+    const { modal, content } = createModal(previewData.fileName);
 
-  content.innerHTML = `
-    <div style="text-align: center; padding: 20px;">
-      <p>Office文件预览功能开发中</p>
-      <a href="${previewData.downloadUrl}"
-         target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
-        下载文件
-      </a>
-    </div>
-  `
+    // 创建Office文档容器
+    const officeContainer = document.createElement('div');
+    officeContainer.className = 'office-container';
+    officeContainer.style.padding = '20px';
+    content.appendChild(officeContainer);
+
+    // 添加下载链接
+    const downloadLink = document.createElement('a');
+    downloadLink.href = previewData.downloadUrl || `/api/files/download/${encodeURIComponent(previewData.fileName)}`;
+    downloadLink.className = 'download-link';
+    downloadLink.textContent = '下载原文件';
+    downloadLink.target = '_blank';
+    downloadLink.style.display = 'inline-block';
+    downloadLink.style.marginBottom = '20px';
+    downloadLink.style.padding = '10px 20px';
+    downloadLink.style.backgroundColor = '#28a745';
+    downloadLink.style.color = 'white';
+    downloadLink.style.textDecoration = 'none';
+    downloadLink.style.borderRadius = '4px';
+    downloadLink.style.fontSize = '14px';
+    officeContainer.appendChild(downloadLink);
+
+    // 获取文件扩展名
+    const fileExtension = previewData.fileName.split('.').pop().toLowerCase();
+    
+    // 检查是否有base64内容可以预览
+    if (previewData.content && previewData.content.trim()) {
+      try {
+        // Word文档预览
+        if (['doc', 'docx'].includes(fileExtension)) {
+          // 解码HTML内容 - 使用正确的UTF-8解码方式处理中文
+          let decodedContent = '';
+          try {
+            // 先进行Base64解码
+            const binaryString = atob(previewData.content);
+            // 将二进制字符串转换为字节数组
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            // 使用UTF-8解码器正确处理中文字符
+            decodedContent = new TextDecoder('utf-8').decode(bytes);
+          } catch (decodeError) {
+            console.warn('UTF-8解码失败，尝试直接解码:', decodeError);
+            // 如果UTF-8解码失败，尝试直接使用atob作为备选方案
+            try {
+              decodedContent = atob(previewData.content);
+            } catch (fallbackError) {
+              throw new Error('Word文档内容解码失败');
+            }
+          }
+
+          // 创建HTML预览容器
+          const htmlContainer = document.createElement('div');
+          htmlContainer.className = 'word-html-container';
+          htmlContainer.style.width = '100%';
+          htmlContainer.style.maxHeight = '600px';
+          htmlContainer.style.overflow = 'auto';
+          htmlContainer.style.border = '1px solid #e1e5e9';
+          htmlContainer.style.borderRadius = '8px';
+          htmlContainer.style.padding = '20px';
+          htmlContainer.style.backgroundColor = '#ffffff';
+          htmlContainer.style.fontFamily = 'Arial, sans-serif';
+          htmlContainer.style.lineHeight = '1.6';
+          htmlContainer.innerHTML = decodedContent;
+          
+          officeContainer.appendChild(htmlContainer);
+          
+          // 添加进度追踪（假设整个文档预览完成为100%）
+          if (previewData.taskId) {
+            updateTaskProgress(previewData.taskId, 100);
+            console.log('Word文档预览完成，进度更新为100%');
+          }
+        }
+        // PPT/PPTX文件的多页面预览（保持原有逻辑）
+        else if (['ppt', 'pptx'].includes(fileExtension)) {
+          // ... 保持原有PPT预览逻辑
+        }
+      } catch (error) {
+        console.error('Office文件预览失败:', error);
+        // 显示错误信息和下载选项
+        const errorDiv = document.createElement('div');
+        errorDiv.style.textAlign = 'center';
+        errorDiv.style.padding = '40px';
+        errorDiv.style.color = '#dc3545';
+        errorDiv.innerHTML = `
+          <div style="font-size: 48px; margin-bottom: 15px;">📄</div>
+          <h4>文档预览失败</h4>
+          <p>${error.message}</p>
+          <p>请下载文件后使用相应的Office软件查看</p>
+        `;
+        officeContainer.appendChild(errorDiv);
+      }
+    } else {
+      // 没有预览内容，显示下载提示
+      const noPreviewDiv = document.createElement('div');
+      noPreviewDiv.style.textAlign = 'center';
+      noPreviewDiv.style.padding = '40px';
+      noPreviewDiv.style.color = '#6c757d';
+      noPreviewDiv.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 15px;">📄</div>
+        <h4>Office文件预览</h4>
+        <p>该文件类型需要下载后使用相应软件打开</p>
+      `;
+      officeContainer.appendChild(noPreviewDiv);
+    }
+  } catch (error) {
+    console.error('Office文件预览错误:', error);
+    const { modal, content } = createModal(previewData.fileName);
+    content.innerHTML = `
+      <div style="text-align: center; padding: 20px; color: #dc3545;">
+        <p>文件预览失败: ${error.message}</p>
+        <a href="${previewData.downloadUrl || `/api/files/download/${encodeURIComponent(previewData.fileName)}`}"
+           target="_blank" style="display: inline-block; margin-top: 15px; padding: 8px 16px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+          下载文件
+        </a>
+      </div>
+    `;
+  }
 }
 
 // Excel文件预览

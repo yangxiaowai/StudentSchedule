@@ -1499,40 +1499,51 @@ const previewOfficeFile = async (previewData) => {
               updateTaskProgress(currentTaskId, 100);
             }
           } else {
-            // 单页DOC预览
+            // 单页DOC预览 - 使用正确的UTF-8解码方式处理中文
             let decodedContent = '';
             try {
-              // 使用正确的UTF-8解码方法处理中文字符
+              // 先进行Base64解码
               const binaryString = atob(previewData.content);
+              // 将二进制字符串转换为字节数组
               const bytes = new Uint8Array(binaryString.length);
               for (let i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
               }
+              // 使用UTF-8解码器正确处理中文字符
               decodedContent = new TextDecoder('utf-8').decode(bytes);
             } catch (decodeError) {
               console.warn('UTF-8解码失败，尝试直接解码:', decodeError);
-              // 如果UTF-8解码失败，尝试直接使用atob
+              // 如果UTF-8解码失败，尝试直接使用atob作为备选方案
               try {
                 decodedContent = atob(previewData.content);
               } catch (fallbackError) {
-                throw new Error('DOC内容解码失败');
+                throw new Error('Word文档内容解码失败');
               }
             }
 
-            // 文本模式预览
+            // 创建HTML预览容器
             const htmlContainer = document.createElement('div');
-            htmlContainer.className = 'doc-container';
-            htmlContainer.style.maxHeight = '70vh';
+            htmlContainer.className = 'word-html-container';
+            htmlContainer.style.width = '100%';
+            htmlContainer.style.maxHeight = '600px';
             htmlContainer.style.overflow = 'auto';
-            htmlContainer.style.border = '1px solid #ddd';
-            htmlContainer.style.borderRadius = '4px';
-            htmlContainer.style.backgroundColor = 'white';
+            htmlContainer.style.border = '1px solid #e1e5e9';
+            htmlContainer.style.borderRadius = '8px';
             htmlContainer.style.padding = '20px';
+            htmlContainer.style.backgroundColor = '#ffffff';
+            htmlContainer.style.fontFamily = 'Arial, sans-serif';
+            htmlContainer.style.lineHeight = '1.6';
             htmlContainer.innerHTML = decodedContent;
+            
             officeContainer.appendChild(htmlContainer);
-
-            // 设置100%阅读进度
-            updateTaskProgress(currentTaskId, 100);
+            
+            // 添加进度追踪（假设整个文档预览完成为100%）
+            if (previewData.taskId) {
+              updateTaskProgress(previewData.taskId, 100);
+              console.log('Word文档预览完成，进度更新为100%');
+            } else {
+              updateTaskProgress(currentTaskId, 100);
+            }
           }
         }
         // 其他Office文件

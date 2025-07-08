@@ -94,7 +94,7 @@
               {{ question.viewCount }}
             </el-button>
             <el-button 
-              v-if="question.userId === currentUserId && question.status !== 'CLOSED'"
+              v-if="question.userId === currentUserId && question.status === 'OPEN'"
               size="small" 
               type="warning"
               @click="closeQuestion(question.id)"

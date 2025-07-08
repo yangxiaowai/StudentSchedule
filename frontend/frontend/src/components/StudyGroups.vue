@@ -85,14 +85,6 @@
               >
                 加入小组
               </el-button>
-              <el-button 
-                v-else 
-                type="success" 
-                size="small" 
-                disabled
-              >
-                已加入
-              </el-button>
               <el-button size="small" @click.stop="viewGroupDetail(group)">查看详情</el-button>
             </div>
           </el-card>
@@ -205,34 +197,7 @@
           </div>
         </div>
         
-        <!-- 小组共享功能 -->
-        <div class="sharing-actions" v-if="isGroupMember(selectedGroup?.id)">
-          <h4>小组共享</h4>
-          <el-row :gutter="10">
-            <el-col :span="12">
-              <el-button 
-                v-if="selectedGroup.taskSharingEnabled" 
-                type="primary" 
-                @click="showMemberSelectionForTasks"
-                style="width: 100%"
-              >
-                <el-icon><Reading /></el-icon>
-                查看共享任务
-              </el-button>
-            </el-col>
-            <el-col :span="12">
-              <el-button 
-                v-if="selectedGroup.resourceSharingEnabled" 
-                type="success" 
-                @click="showMemberSelectionForMaterials"
-                style="width: 100%"
-              >
-                <el-icon><Folder /></el-icon>
-                查看共享资料
-              </el-button>
-            </el-col>
-          </el-row>
-        </div>
+        <!-- 小组共享功能已隐藏 -->
         
         <div class="members-section">
           <h4>小组成员</h4>
@@ -504,6 +469,7 @@ export default {
             resourceSharingEnabled: false
           })
           loadGroups()
+          loadMyGroups() // 更新用户的小组列表，确保新创建的小组不显示"加入小组"按钮
         }
       } catch (error) {
         ElMessage.error('创建失败')

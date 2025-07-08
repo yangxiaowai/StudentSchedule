@@ -658,14 +658,7 @@ onMounted(() => {
           >
             <i class="icon-download"></i>导出增强报告
           </button>
-          <button 
-            class="ai-btn accent" 
-            @click="generatePersonalizedPlan"
-            :disabled="loading.plan || !currentSelectedTasks.length"
-          >
-            <i class="icon-target"></i>
-            {{ loading.plan ? '生成中...' : '生成学习计划' }}
-          </button>
+
         </div>
       </header>
 

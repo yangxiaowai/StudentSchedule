@@ -16,14 +16,7 @@
             </span>
           </template>
         </el-tab-pane>
-        <el-tab-pane label="学习分享" name="shares">
-          <template #label>
-            <span class="tab-label">
-              <el-icon><Share /></el-icon>
-              学习分享
-            </span>
-          </template>
-        </el-tab-pane>
+        <!-- 学习分享标签页已隐藏 -->
         <el-tab-pane label="互助答疑" name="qa">
           <template #label>
             <span class="tab-label">
@@ -55,22 +48,7 @@
             </div>
           </el-card>
         </el-col>
-        <el-col :span="6">
-          <el-card shadow="hover" class="feature-card" @click="activeTab = 'shares'">
-            <div class="feature-content">
-              <div class="feature-icon shares">
-                <el-icon><Share /></el-icon>
-              </div>
-              <div class="feature-info">
-                <h3>学习分享</h3>
-                <p>分享学习笔记、心得和资源，帮助他人学习</p>
-                <div class="feature-stats">
-                  <span>{{ shareStats.count }} 个分享</span>
-                </div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
+        <!-- 学习分享功能卡片已隐藏 -->
         <el-col :span="6">
           <el-card shadow="hover" class="feature-card" @click="activeTab = 'qa'">
             <div class="feature-content">
@@ -100,10 +78,7 @@
         <StudyGroups />
       </div>
       
-      <!-- 学习分享 -->
-      <div v-if="activeTab === 'shares'" class="tab-content">
-        <StudyShares />
-      </div>
+      <!-- 学习分享组件已隐藏 -->
       
       <!-- 互助答疑 -->
       <div v-if="activeTab === 'qa'" class="tab-content">
@@ -128,16 +103,7 @@
             </el-button>
           </el-tooltip>
           
-          <el-tooltip content="发布分享" placement="left">
-            <el-button 
-              type="success" 
-              circle 
-              size="large"
-              @click="quickAction('createShare')"
-            >
-              <el-icon><Edit /></el-icon>
-            </el-button>
-          </el-tooltip>
+          <!-- 发布分享按钮已隐藏 -->
           
           <el-tooltip content="提问" placement="left">
             <el-button 
